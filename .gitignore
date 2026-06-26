@@ -1,0 +1,14 @@
+target/
+*.class
+*.jar
+*.war
+*.log
+.idea/
+*.iml
+*.ipr
+*.iws
+.settings/
+.project
+.classpath
+.vscode/
+maven/
