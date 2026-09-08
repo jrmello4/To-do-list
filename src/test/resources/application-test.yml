@@ -1,17 +1,20 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    # MODE=MySQL faz o H2 aceitar a sintaxe das migrations escritas para MySQL
+    # (AUTO_INCREMENT, TEXT). Não torna o H2 um MySQL — ver Testcontainers na fase 1.
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL
     username: sa
     password:
     driver-class-name: org.h2.Driver
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      # validate, e não create-drop: o schema vem do Flyway e o Hibernate apenas
+      # confere se as entidades batem com ele. É o que faz uma migration quebrada
+      # (ou uma entidade sem migration correspondente) derrubar o build.
+      ddl-auto: validate
     show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
 
   flyway:
-    enabled: false
+    enabled: true
+    locations: classpath:db/migration
