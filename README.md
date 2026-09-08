@@ -25,11 +25,11 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 
 | | |
 |---|---|
-| **Interface web** | Criar, concluir, editar, excluir e filtrar tarefas, com resumo e barra de progresso |
+| **Interface web** | Criar, concluir, editar, excluir e filtrar tarefas, com anel de progresso e resumo do dia |
+| **Personalização** | Saudação com o seu nome, seis cores de destaque e tema claro/escuro/sistema |
 | **API REST** | Cinco endpoints em `/api/tarefas`, com validação de entrada e erros padronizados |
 | **Documentação** | Swagger UI com exemplos, descrições de campo e schemas de erro |
 | **Banco** | MySQL em produção e H2 em memória nos testes, com schema versionado pelo Flyway |
-| **Tema** | Claro e escuro automáticos, seguindo a preferência do sistema |
 
 ## Tecnologias
 
@@ -40,7 +40,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 - **SpringDoc OpenAPI / Swagger** (documentação)
 - **JUnit 5 + Mockito** (testes)
 - **Maven 3.9.9**
-- **HTML, CSS e JavaScript puro** (interface web, sem framework)
+- **HTML, CSS e JavaScript puro** (interface web, sem framework nem build)
 
 ## Pré-requisitos
 
@@ -100,20 +100,39 @@ Com a aplicação no ar:
 
 ## Interface Web
 
-<div align="center">
-<img src="docs/screenshot-dark.png" alt="Interface web no tema escuro" width="440">
-</div>
-
 Os arquivos ficam em `src/main/resources/static/` e são servidos automaticamente pelo Spring Boot:
 não há passo de build, instalação de pacotes nem servidor separado. A página consome os mesmos
 endpoints REST documentados abaixo e traz:
 
+- Saudação que muda com o horário e o nome configurado, com a data do dia
+- Anel de progresso e resumo contextual ("faltam 3 tarefas para zerar o dia")
 - Formulário de criação com validação e contador de caracteres
-- Lista de tarefas com conclusão em um clique, edição em modal e exclusão com confirmação
-- Filtros por situação (todas, pendentes, concluídas)
-- Cartões de resumo e barra de progresso
+- Lista com conclusão em um clique, edição em modal e exclusão com confirmação
+- Filtros por situação, com indicador deslizante
 - Mensagens de erro vindas da API exibidas na tela
-- Tema claro/escuro automático e layout responsivo
+- Layout responsivo e animações que respeitam `prefers-reduced-motion`
+
+### Personalização
+
+<div align="center">
+<img src="docs/personalizar.png" alt="Painel de personalização" width="420">
+</div>
+
+O painel de personalização define **nome**, **cor de destaque** (seis opções) e **tema**
+(claro, escuro ou seguindo o sistema). Toda a paleta da interface deriva de dois valores —
+`--accent-h` e `--accent-s` — então trocar a cor repinta o hero, os botões, os filtros e os
+estados de foco de uma vez só.
+
+As preferências ficam em `localStorage`: valem só naquele navegador e nunca são enviadas à API.
+São aplicadas por `js/prefs.js`, carregado de forma síncrona no `<head>` justamente para que o
+tema esteja definido antes da primeira pintura — sem piscar a tela no tema errado.
+
+O contraste do texto sobre o hero foi medido nas seis cores e nos dois temas: o pior caso fica
+em **4,68:1**, acima do mínimo de 4,5:1 exigido pelo WCAG AA.
+
+<div align="center">
+<img src="docs/screenshot-dark.png" alt="Interface web no tema escuro" width="420">
+</div>
 
 ## Endpoints da API
 
@@ -221,7 +240,10 @@ src/
 │   │   └── service/         # Lógica de negócio
 │   └── resources/
 │       ├── db/migration/    # Migrações Flyway
-│       ├── static/          # Interface web (HTML, CSS e JS)
+│       ├── static/          # Interface web
+│       │   ├── css/         #   estilos (tema e cor dinâmicos)
+│       │   ├── js/          #   prefs.js (preferências) e app.js (cliente da API)
+│       │   └── index.html
 │       └── application.yml  # Configurações da aplicação
 └── test/
     └── java/com/todolist/

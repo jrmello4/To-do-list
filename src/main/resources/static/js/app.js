@@ -11,7 +11,8 @@
     /** Estado da aplicação em memória. */
     var state = {
         tarefas: [],
-        filtro: 'todas'
+        filtro: 'todas',
+        percentualAnterior: null
     };
 
     var el = {
@@ -23,6 +24,7 @@
         submitBtn: document.getElementById('submit-btn'),
         list: document.getElementById('task-list'),
         template: document.getElementById('task-template'),
+        filtersNav: document.getElementById('filters'),
         filters: document.querySelectorAll('.filters__item'),
         loading: document.getElementById('state-loading'),
         empty: document.getElementById('state-empty'),
@@ -31,19 +33,32 @@
         error: document.getElementById('state-error'),
         errorText: document.getElementById('error-text'),
         retryBtn: document.getElementById('retry-btn'),
+        greeting: document.getElementById('greeting'),
+        today: document.getElementById('today'),
+        avatar: document.getElementById('avatar'),
+        summary: document.getElementById('summary'),
+        ring: document.getElementById('ring'),
+        ringValue: document.getElementById('ring-value'),
+        ringLabel: document.getElementById('ring-label'),
         statTotal: document.getElementById('stat-total'),
         statPending: document.getElementById('stat-pending'),
         statDone: document.getElementById('stat-done'),
-        progressFill: document.getElementById('progress-fill'),
-        progressLabel: document.getElementById('progress-label'),
         toasts: document.getElementById('toasts'),
+        confetti: document.getElementById('confetti'),
         modal: document.getElementById('edit-modal'),
         editForm: document.getElementById('edit-form'),
         editId: document.getElementById('edit-id'),
         editTitulo: document.getElementById('edit-titulo'),
         editTituloError: document.getElementById('edit-titulo-error'),
         editDescricao: document.getElementById('edit-descricao'),
-        editConcluida: document.getElementById('edit-concluida')
+        editConcluida: document.getElementById('edit-concluida'),
+        settingsBtn: document.getElementById('settings-btn'),
+        settingsModal: document.getElementById('settings-modal'),
+        settingsForm: document.getElementById('settings-form'),
+        prefNome: document.getElementById('pref-nome'),
+        swatches: document.getElementById('swatches'),
+        themeChoice: document.getElementById('theme-choice'),
+        themeBtn: document.getElementById('theme-btn')
     };
 
     /* ---------------------------------------------------------------- HTTP */
@@ -113,6 +128,49 @@
         }
     };
 
+    /* ------------------------------------------------------ Personalização */
+
+    function saudacao() {
+        var hora = new Date().getHours();
+        if (hora < 12) {
+            return 'Bom dia';
+        }
+        if (hora < 18) {
+            return 'Boa tarde';
+        }
+        return 'Boa noite';
+    }
+
+    function iniciais(nome) {
+        var partes = nome.trim().split(/\s+/).filter(Boolean);
+        if (partes.length === 0) {
+            return '';
+        }
+        if (partes.length === 1) {
+            return partes[0].charAt(0).toUpperCase();
+        }
+        return (partes[0].charAt(0) + partes[partes.length - 1].charAt(0)).toUpperCase();
+    }
+
+    function aplicarIdentidade() {
+        var nome = window.Prefs.obter().nome;
+
+        el.greeting.textContent = nome ? saudacao() + ', ' + nome : saudacao() + '!';
+        el.avatar.textContent = nome ? iniciais(nome) : '✓';
+
+        el.today.textContent = new Date().toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long'
+        });
+
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+            meta.setAttribute('content',
+                getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+        }
+    }
+
     /* ------------------------------------------------------------ Render */
 
     function tarefasFiltradas() {
@@ -144,11 +202,14 @@
         });
     }
 
-    function montarTarefa(tarefa) {
+    function montarTarefa(tarefa, indice) {
         var no = el.template.content.firstElementChild.cloneNode(true);
 
         no.dataset.id = tarefa.id;
         no.classList.toggle('is-done', !!tarefa.concluida);
+
+        // Entrada escalonada: as tarefas surgem em cascata, não todas de uma vez.
+        no.style.animationDelay = Math.min(indice, 8) * 32 + 'ms';
 
         // textContent evita qualquer injeção de HTML vinda do banco.
         no.querySelector('.task__title').textContent = tarefa.titulo;
@@ -170,8 +231,8 @@
         el.list.textContent = '';
 
         var fragmento = document.createDocumentFragment();
-        visiveis.forEach(function (tarefa) {
-            fragmento.appendChild(montarTarefa(tarefa));
+        visiveis.forEach(function (tarefa, i) {
+            fragmento.appendChild(montarTarefa(tarefa, i));
         });
         el.list.appendChild(fragmento);
 
@@ -193,6 +254,9 @@
         atualizarResumo();
     }
 
+    // Circunferência do anel (r = 52), casada com o stroke-dasharray no CSS.
+    var CIRCUNFERENCIA = 2 * Math.PI * 52;
+
     function atualizarResumo() {
         var total = state.tarefas.length;
         var concluidas = state.tarefas.filter(function (t) { return t.concluida; }).length;
@@ -203,16 +267,57 @@
         el.statPending.textContent = pendentes;
         el.statDone.textContent = concluidas;
 
-        el.progressFill.style.width = percentual + '%';
-        el.progressFill.setAttribute('aria-valuenow', percentual);
+        el.ringValue.style.strokeDashoffset = CIRCUNFERENCIA * (1 - percentual / 100);
+        el.ringLabel.firstChild.nodeValue = percentual;
+        el.ring.setAttribute('role', 'progressbar');
+        el.ring.setAttribute('aria-valuemin', '0');
+        el.ring.setAttribute('aria-valuemax', '100');
+        el.ring.setAttribute('aria-valuenow', percentual);
+        el.ring.setAttribute('aria-label', 'Progresso: ' + percentual + '% concluído');
 
         if (total === 0) {
-            el.progressLabel.textContent = 'Nenhuma tarefa ainda';
-        } else if (percentual === 100) {
-            el.progressLabel.textContent = '100% — tudo concluído!';
+            el.summary.textContent = 'Sua lista está vazia. Que tal começar agora?';
+        } else if (pendentes === 0) {
+            el.summary.textContent = 'Tudo concluído. Aproveite o resto do dia!';
+        } else if (pendentes === 1) {
+            el.summary.textContent = 'Falta 1 tarefa para zerar o dia.';
         } else {
-            el.progressLabel.textContent = percentual + '% concluído';
+            el.summary.textContent = 'Faltam ' + pendentes + ' tarefas para zerar o dia.';
         }
+
+        // Comemora só na transição para 100%, nunca no carregamento inicial.
+        var zerou = percentual === 100 && total > 0
+            && state.percentualAnterior !== null && state.percentualAnterior < 100;
+
+        if (zerou) {
+            comemorar();
+        }
+
+        el.ring.classList.toggle('is-complete', percentual === 100 && total > 0);
+        state.percentualAnterior = percentual;
+    }
+
+    /* --------------------------------------------------------- Comemoração */
+
+    function comemorar() {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+
+        var raiz = getComputedStyle(document.documentElement);
+        var matiz = parseFloat(raiz.getPropertyValue('--accent-h')) || 245;
+
+        for (var i = 0; i < 26; i++) {
+            var bit = document.createElement('span');
+            bit.className = 'confetti__bit';
+            bit.style.left = Math.random() * 100 + '%';
+            bit.style.background = 'hsl(' + (matiz + Math.random() * 90 - 45) + ' 80% 60%)';
+            bit.style.animationDelay = Math.random() * 350 + 'ms';
+            bit.style.animationDuration = 1500 + Math.random() * 900 + 'ms';
+            el.confetti.appendChild(bit);
+        }
+
+        setTimeout(function () { el.confetti.textContent = ''; }, 2900);
     }
 
     function mostrarEstado(nome) {
@@ -386,7 +491,7 @@
         });
     }
 
-    /* -------------------------------------------------------------- Modal */
+    /* -------------------------------------------------------------- Modais */
 
     var focoAnterior = null;
 
@@ -412,11 +517,73 @@
 
     function fecharModal() {
         el.modal.hidden = true;
+        devolverFoco();
+    }
 
+    function abrirAjustes() {
+        focoAnterior = document.activeElement;
+
+        var prefs = window.Prefs.obter();
+        el.prefNome.value = prefs.nome;
+        marcarCor(prefs.cor);
+        marcarTema(prefs.tema);
+
+        el.settingsModal.hidden = false;
+        el.prefNome.focus();
+    }
+
+    function fecharAjustes() {
+        el.settingsModal.hidden = true;
+        devolverFoco();
+    }
+
+    function devolverFoco() {
         if (focoAnterior && typeof focoAnterior.focus === 'function') {
             focoAnterior.focus();
             focoAnterior = null;
         }
+    }
+
+    /* ------------------------------------------------- Painel de ajustes */
+
+    function montarAmostras() {
+        window.Prefs.PALETA.forEach(function (cor) {
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'swatch';
+            botao.dataset.cor = cor.id;
+            botao.title = cor.nome;
+            botao.setAttribute('role', 'radio');
+            botao.setAttribute('aria-label', cor.nome);
+            botao.style.setProperty('--amostra',
+                'linear-gradient(140deg, hsl(' + cor.h + ' ' + cor.s + '% 56%), hsl('
+                    + (cor.h + 34) + ' ' + cor.s + '% 46%))');
+
+            botao.addEventListener('click', function () {
+                // Pré-visualiza na hora: a cor muda enquanto o painel está aberto.
+                window.Prefs.definir({ cor: cor.id });
+                marcarCor(cor.id);
+                aplicarIdentidade();
+            });
+
+            el.swatches.appendChild(botao);
+        });
+    }
+
+    function marcarCor(id) {
+        Array.prototype.forEach.call(el.swatches.children, function (botao) {
+            var ativo = botao.dataset.cor === id;
+            botao.classList.toggle('is-active', ativo);
+            botao.setAttribute('aria-checked', ativo ? 'true' : 'false');
+        });
+    }
+
+    function marcarTema(valor) {
+        Array.prototype.forEach.call(el.themeChoice.children, function (botao) {
+            var ativo = botao.dataset.themeValue === valor;
+            botao.classList.toggle('is-active', ativo);
+            botao.setAttribute('aria-checked', ativo ? 'true' : 'false');
+        });
     }
 
     /* ---------------------------------------------------------- Auxiliares */
@@ -463,7 +630,7 @@
         }
     });
 
-    Array.prototype.forEach.call(el.filters, function (botao) {
+    Array.prototype.forEach.call(el.filters, function (botao, indice) {
         botao.addEventListener('click', function () {
             state.filtro = botao.dataset.filter;
 
@@ -471,6 +638,8 @@
                 outro.classList.toggle('is-active', outro === botao);
             });
 
+            // Move o indicador deslizante para a opção escolhida.
+            el.filtersNav.style.setProperty('--indice', indice);
             renderizar();
         });
     });
@@ -479,14 +648,56 @@
         botao.addEventListener('click', fecharModal);
     });
 
+    Array.prototype.forEach.call(
+        el.settingsModal.querySelectorAll('[data-close-settings]'), function (botao) {
+            botao.addEventListener('click', fecharAjustes);
+        });
+
+    el.settingsBtn.addEventListener('click', abrirAjustes);
+
+    el.settingsForm.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        window.Prefs.definir({ nome: el.prefNome.value });
+        aplicarIdentidade();
+        fecharAjustes();
+        toast('Preferências salvas', 'success');
+    });
+
+    Array.prototype.forEach.call(el.themeChoice.children, function (botao) {
+        botao.addEventListener('click', function () {
+            window.Prefs.definir({ tema: botao.dataset.themeValue });
+            marcarTema(botao.dataset.themeValue);
+            aplicarIdentidade();
+        });
+    });
+
+    // Botão da barra superior: percorre sistema -> claro -> escuro -> sistema.
+    var CICLO = { system: 'light', light: 'dark', dark: 'system' };
+    var NOME_TEMA = { system: 'do sistema', light: 'claro', dark: 'escuro' };
+
+    el.themeBtn.addEventListener('click', function () {
+        var proximo = CICLO[window.Prefs.obter().tema];
+        window.Prefs.definir({ tema: proximo });
+        marcarTema(proximo);
+        aplicarIdentidade();
+        toast('Tema ' + NOME_TEMA[proximo], 'info');
+    });
+
     document.addEventListener('keydown', function (evento) {
-        if (evento.key === 'Escape' && !el.modal.hidden) {
+        if (evento.key !== 'Escape') {
+            return;
+        }
+        if (!el.modal.hidden) {
             fecharModal();
+        } else if (!el.settingsModal.hidden) {
+            fecharAjustes();
         }
     });
 
     /* ------------------------------------------------------------- Início */
 
+    montarAmostras();
+    aplicarIdentidade();
     atualizarContador();
     carregar();
 })();
