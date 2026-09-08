@@ -153,6 +153,16 @@
             <p class="hero__summary" id="summary">Carregando suas tarefas...</p>
         </section>
 
+        <nav class="abas" id="abas" role="tablist">
+            <button class="abas__item is-active" type="button" data-aba="tarefas" role="tab"
+                    aria-selected="true">Tarefas</button>
+            <button class="abas__item" type="button" data-aba="habitos" role="tab"
+                    aria-selected="false">Hábitos</button>
+            <button class="abas__item" type="button" data-aba="painel" role="tab"
+                    aria-selected="false">Painel</button>
+        </nav>
+
+        <div id="aba-tarefas">
         <section class="card card--form" aria-labelledby="form-title">
             <h2 class="card__title" id="form-title">Nova tarefa</h2>
             <form id="task-form" class="form" novalidate>
@@ -262,6 +272,51 @@
                 <button class="btn btn--ghost" type="button" id="retry-btn">Tentar novamente</button>
             </div>
         </main>
+        </div>
+
+        <div id="aba-habitos" hidden>
+            <section class="card">
+                <h2 class="card__title">Novo hábito</h2>
+                <form class="form" id="habito-form" novalidate>
+                    <div class="field">
+                        <label class="field__label" for="habito-nome">Nome</label>
+                        <input class="field__input" type="text" id="habito-nome" maxlength="120"
+                               placeholder="Ler 20 páginas, correr, estudar..." autocomplete="off">
+                        <span class="field__error" id="habito-error" role="alert"></span>
+                    </div>
+                    <div class="field">
+                        <span class="field__label">Dias da semana</span>
+                        <div class="dias-semana" id="habito-dias" role="group"
+                             aria-label="Dias da semana em que o hábito vale"></div>
+                        <span class="field__hint">Nenhum dia marcado significa todos os dias.</span>
+                    </div>
+                    <div class="field">
+                        <span class="field__label">Cor</span>
+                        <div class="swatches" id="habito-cores" role="radiogroup"
+                             aria-label="Cor do hábito"></div>
+                    </div>
+                    <button class="btn btn--primary" type="submit" id="habito-submit">
+                        Criar hábito
+                    </button>
+                </form>
+            </section>
+
+            <ul class="habitos" id="lista-habitos"></ul>
+
+            <div class="state" id="habitos-vazio" hidden>
+                <svg class="state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20V10M6 20v-6M18 20V4"></path>
+                </svg>
+                <p class="state__title">Nenhum hábito ainda</p>
+                <p class="state__text">
+                    Tarefa termina, hábito se repete. Cadastre o primeiro acima e a sequência
+                    começa a contar.
+                </p>
+            </div>
+        </div>
+
+        <div id="aba-painel" hidden></div>
 
         <footer class="footer">
             <span>To-do List API &middot; Spring Boot 3.4.1</span>
@@ -414,6 +469,30 @@
 
     <div class="toasts" id="toasts" aria-live="assertive"></div>
     <div class="confetti" id="confetti" aria-hidden="true"></div>
+
+    <template id="habito-template">
+        <li class="habito">
+            <div class="habito__topo">
+                <span class="habito__ponto" aria-hidden="true"></span>
+                <span class="habito__nome"></span>
+                <span class="habito__sequencia"></span>
+                <button class="icon-btn icon-btn--danger" type="button" data-acao="excluir"
+                        title="Excluir hábito" aria-label="Excluir hábito">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 7h16M10 11v6M14 11v6"></path>
+                        <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"></path>
+                        <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="habito__grade"></div>
+            <div class="habito__rodape">
+                <span class="habito__recorde"></span>
+                <button class="btn btn--ghost habito__hoje" type="button" data-acao="hoje"></button>
+            </div>
+        </li>
+    </template>
 
     <template id="task-template">
         <li class="task">

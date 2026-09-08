@@ -9,6 +9,7 @@
     var API = '/api/tarefas';
     var API_PROJETOS = '/api/projetos';
     var API_ETIQUETAS = '/api/etiquetas';
+    var API_HABITOS = '/api/habitos';
     var API_AUTH = '/api/auth';
     var CHAVE_TOKEN = 'todolist:token';
     var TAMANHO_PAGINA = 50;
@@ -23,7 +24,9 @@
         tarefas: [],          // acumuladas das páginas já carregadas
         projetos: [],
         etiquetas: [],
+        habitos: [],
         resumo: null,
+        aba: 'tarefas',
         filtro: 'todas',      // todas | pendentes | concluidas
         projetoAtivo: null,   // null = todos, 'nenhum' = caixa de entrada, id = projeto
         etiquetaAtiva: null,  // null = todas
@@ -117,7 +120,20 @@
         etiquetaErro: document.getElementById('etiqueta-error'),
         etiquetaCores: document.getElementById('etiqueta-cores'),
         etiquetaSubmit: document.getElementById('etiqueta-submit'),
-        listaEtiquetas: document.getElementById('lista-etiquetas')
+        listaEtiquetas: document.getElementById('lista-etiquetas'),
+        abas: document.getElementById('abas'),
+        abaTarefas: document.getElementById('aba-tarefas'),
+        abaHabitos: document.getElementById('aba-habitos'),
+        abaPainel: document.getElementById('aba-painel'),
+        habitoForm: document.getElementById('habito-form'),
+        habitoNome: document.getElementById('habito-nome'),
+        habitoErro: document.getElementById('habito-error'),
+        habitoDias: document.getElementById('habito-dias'),
+        habitoCores: document.getElementById('habito-cores'),
+        habitoSubmit: document.getElementById('habito-submit'),
+        listaHabitos: document.getElementById('lista-habitos'),
+        habitosVazio: document.getElementById('habitos-vazio'),
+        habitoTemplate: document.getElementById('habito-template')
     };
 
     /* ---------------------------------------------------------------- HTTP */
@@ -220,6 +236,23 @@
         },
         deletarEtiqueta: function (id) {
             return request(API_ETIQUETAS + '/' + id, { method: 'DELETE' });
+        },
+        habitos: function () {
+            return request(API_HABITOS + '?hoje=' + hojeISO());
+        },
+        criarHabito: function (habito) {
+            return request(API_HABITOS + '?hoje=' + hojeISO(), corpoJson('POST', habito));
+        },
+        deletarHabito: function (id) {
+            return request(API_HABITOS + '/' + id, { method: 'DELETE' });
+        },
+        marcarHabito: function (id, data) {
+            return request(API_HABITOS + '/' + id + '/registros/' + data + '?hoje=' + hojeISO(),
+                    { method: 'PUT' });
+        },
+        desmarcarHabito: function (id, data) {
+            return request(API_HABITOS + '/' + id + '/registros/' + data + '?hoje=' + hojeISO(),
+                    { method: 'DELETE' });
         }
     };
 
@@ -311,6 +344,7 @@
         state.tarefas = [];
         state.projetos = [];
         state.etiquetas = [];
+        state.habitos = [];
         state.resumo = null;
         state.filtro = 'todas';
         state.projetoAtivo = null;
@@ -1144,6 +1178,255 @@
         });
     }
 
+    /* ------------------------------------------------------------ Hábitos */
+
+    var NOMES_DOS_DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+
+    function montarDiasDaSemana() {
+        NOMES_DOS_DIAS.forEach(function (nome, indice) {
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'dia-semana';
+            botao.dataset.dia = indice + 1;          // ISO: 1 = segunda
+            botao.textContent = nome;
+            botao.setAttribute('aria-pressed', 'false');
+
+            botao.addEventListener('click', function () {
+                var ativo = botao.classList.toggle('is-active');
+                botao.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+            });
+
+            el.habitoDias.appendChild(botao);
+        });
+    }
+
+    function diasEscolhidos() {
+        return Array.prototype.filter
+                .call(el.habitoDias.children, function (b) {
+                    return b.classList.contains('is-active');
+                })
+                .map(function (b) { return Number(b.dataset.dia); });
+    }
+
+    function limparDiasEscolhidos() {
+        Array.prototype.forEach.call(el.habitoDias.children, function (b) {
+            b.classList.remove('is-active');
+            b.setAttribute('aria-pressed', 'false');
+        });
+    }
+
+    function montarHabito(habito, indice) {
+        var no = el.habitoTemplate.content.firstElementChild.cloneNode(true);
+        var cor = corDoProjeto(habito.cor);
+
+        no.dataset.id = habito.id;
+        no.style.animationDelay = Math.min(indice, 8) * 32 + 'ms';
+        no.style.setProperty('--ponto', cor);
+
+        no.querySelector('.habito__nome').textContent = habito.nome;
+
+        var sequencia = no.querySelector('.habito__sequencia');
+        sequencia.textContent = habito.sequenciaAtual === 1
+                ? '1 dia seguido'
+                : habito.sequenciaAtual + ' dias seguidos';
+        sequencia.classList.toggle('e-zerada', habito.sequenciaAtual === 0);
+
+        var grade = no.querySelector('.habito__grade');
+        var hoje = hojeISO();
+        habito.ultimosDias.forEach(function (dia) {
+            var celula = document.createElement('span');
+            celula.className = 'habito__dia'
+                    + (dia.feito ? ' e-feito' : '')
+                    + (dia.aplicavel ? '' : ' e-folga')
+                    + (dia.data === hoje ? ' e-hoje' : '');
+            celula.title = formatarDia(dia.data) + ' — '
+                    + (!dia.aplicavel ? 'folga' : dia.feito ? 'feito' : 'não feito');
+            grade.appendChild(celula);
+        });
+
+        no.querySelector('.habito__recorde').textContent = habito.maiorSequencia === 0
+                ? 'Sem recorde ainda'
+                : 'Recorde: ' + habito.maiorSequencia
+                        + (habito.maiorSequencia === 1 ? ' dia' : ' dias');
+
+        var botaoHoje = no.querySelector('.habito__hoje');
+        if (!habito.aplicavelHoje) {
+            botaoHoje.textContent = 'Folga hoje';
+            botaoHoje.disabled = true;
+        } else {
+            botaoHoje.textContent = habito.feitoHoje ? '✓ Feito hoje' : 'Marcar hoje';
+            botaoHoje.classList.toggle('e-feito', habito.feitoHoje);
+        }
+
+        return no;
+    }
+
+    function renderizarHabitos() {
+        el.listaHabitos.textContent = '';
+
+        var fragmento = document.createDocumentFragment();
+        state.habitos.forEach(function (habito, i) {
+            fragmento.appendChild(montarHabito(habito, i));
+        });
+        el.listaHabitos.appendChild(fragmento);
+
+        el.habitosVazio.hidden = state.habitos.length > 0;
+    }
+
+    function carregarHabitos() {
+        return api.habitos()
+            .then(function (habitos) {
+                state.habitos = Array.isArray(habitos) ? habitos : [];
+                renderizarHabitos();
+            })
+            .catch(function (erro) {
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
+            });
+    }
+
+    el.listaHabitos.addEventListener('click', function (evento) {
+        var botao = evento.target.closest('[data-acao]');
+        if (!botao) {
+            return;
+        }
+
+        var no = botao.closest('.habito');
+        var id = Number(no.dataset.id);
+        var habito = state.habitos.filter(function (h) { return h.id === id; })[0];
+        if (!habito) {
+            return;
+        }
+
+        if (botao.dataset.acao === 'excluir') {
+            if (!window.confirm('Excluir o hábito "' + habito.nome
+                    + '"? O histórico de dias vai junto.')) {
+                return;
+            }
+
+            api.deletarHabito(id)
+                .then(function () {
+                    toast('Hábito excluído', 'success');
+                    return carregarHabitos();
+                })
+                .catch(function (erro) {
+                    if (erro.message !== 'Sessão expirada') {
+                        toast(erro.message, 'error');
+                    }
+                });
+            return;
+        }
+
+        // Marcar ou desmarcar o dia de hoje
+        botao.disabled = true;
+        var acao = habito.feitoHoje ? api.desmarcarHabito : api.marcarHabito;
+
+        acao(id, hojeISO())
+            .then(function () {
+                return carregarHabitos();
+            })
+            .catch(function (erro) {
+                botao.disabled = false;
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
+            });
+    });
+
+    el.habitoForm.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+
+        var nome = el.habitoNome.value.trim();
+        if (!nome) {
+            el.habitoErro.textContent = 'Informe o nome do hábito.';
+            return;
+        }
+
+        el.habitoErro.textContent = '';
+        el.habitoSubmit.disabled = true;
+
+        api.criarHabito({
+            nome: nome,
+            cor: corDoNovoHabito,
+            diasSemana: diasEscolhidos()
+        })
+            .then(function () {
+                el.habitoNome.value = '';
+                limparDiasEscolhidos();
+                toast('Hábito criado', 'success');
+                return carregarHabitos();
+            })
+            .catch(function (erro) {
+                if (erro.message !== 'Sessão expirada') {
+                    el.habitoErro.textContent = erro.message;
+                }
+            })
+            .finally(function () {
+                el.habitoSubmit.disabled = false;
+            });
+    });
+
+    var corDoNovoHabito = 'verde';
+
+    function montarCoresDeHabito() {
+        window.Prefs.PALETA.forEach(function (cor) {
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'swatch';
+            botao.dataset.cor = cor.id;
+            botao.title = cor.nome;
+            botao.setAttribute('role', 'radio');
+            botao.setAttribute('aria-label', cor.nome);
+            botao.style.setProperty('--amostra',
+                'linear-gradient(140deg, hsl(' + cor.h + ' ' + cor.s + '% 56%), hsl('
+                    + (cor.h + 34) + ' ' + cor.s + '% 46%))');
+
+            botao.addEventListener('click', function () {
+                corDoNovoHabito = cor.id;
+                Array.prototype.forEach.call(el.habitoCores.children, function (outro) {
+                    var ativo = outro.dataset.cor === cor.id;
+                    outro.classList.toggle('is-active', ativo);
+                    outro.setAttribute('aria-checked', ativo ? 'true' : 'false');
+                });
+            });
+
+            el.habitoCores.appendChild(botao);
+        });
+
+        Array.prototype.forEach.call(el.habitoCores.children, function (botao) {
+            botao.classList.toggle('is-active', botao.dataset.cor === corDoNovoHabito);
+        });
+    }
+
+    /* --------------------------------------------------------------- Abas */
+
+    function trocarAba(nome) {
+        state.aba = nome;
+
+        Array.prototype.forEach.call(el.abas.children, function (botao) {
+            var ativo = botao.dataset.aba === nome;
+            botao.classList.toggle('is-active', ativo);
+            botao.setAttribute('aria-selected', ativo ? 'true' : 'false');
+        });
+
+        el.abaTarefas.hidden = nome !== 'tarefas';
+        el.abaHabitos.hidden = nome !== 'habitos';
+        el.abaPainel.hidden = nome !== 'painel';
+
+        // Carrega sob demanda: quem só usa tarefas nunca paga pela consulta
+        // de hábitos.
+        if (nome === 'habitos') {
+            carregarHabitos();
+        }
+    }
+
+    Array.prototype.forEach.call(el.abas.children, function (botao) {
+        botao.addEventListener('click', function () {
+            trocarAba(botao.dataset.aba);
+        });
+    });
+
     /* -------------------------------------------------- Painel de projetos */
 
     var corDoNovoProjeto = 'indigo';
@@ -1616,6 +1899,8 @@
     montarAmostras();
     montarCoresDeProjeto();
     montarCoresDeEtiqueta();
+    montarCoresDeHabito();
+    montarDiasDaSemana();
     atualizarContador();
     definirModo('login');
 

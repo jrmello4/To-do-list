@@ -1431,3 +1431,211 @@ svg {
     border: none;
     border-top: 1px solid var(--border);
 }
+
+/* ---------- Abas ---------- */
+
+.abas {
+    display: flex;
+    gap: 4px;
+    padding: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+}
+
+.abas__item {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.abas__item:hover { color: var(--text); }
+
+.abas__item.is-active {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: 0 2px 10px var(--accent-ring);
+}
+
+.abas__item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+#aba-tarefas, #aba-habitos, #aba-painel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ---------- Dias da semana ---------- */
+
+.dias-semana {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.dia-semana {
+    width: 40px;
+    height: 38px;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.dia-semana:hover { color: var(--text); border-color: var(--text-soft); }
+
+.dia-semana.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+
+/* ---------- Hábitos ---------- */
+
+.habitos {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;
+    margin: 0;
+}
+
+.habito {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    animation: entrada 300ms var(--ease) backwards;
+    transition: var(--transition);
+}
+
+.habito:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 26px var(--accent-glow);
+}
+
+.habito__topo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.habito__ponto {
+    width: 11px;
+    height: 11px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--ponto, var(--accent));
+}
+
+.habito__nome {
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.habito__sequencia {
+    flex: none;
+    padding: 3px 11px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.habito__sequencia.e-zerada {
+    background: var(--surface-alt);
+    color: var(--text-soft);
+}
+
+/* Grade dos últimos dias */
+
+.habito__grade {
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    gap: 5px;
+}
+
+.habito__dia {
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface-alt);
+}
+
+.habito__dia.e-feito {
+    background: var(--ponto, var(--accent));
+    border-color: transparent;
+}
+
+/* Dia em que o hábito não vale: nem cobrado, nem creditado. */
+.habito__dia.e-folga {
+    background: transparent;
+    border-style: dashed;
+}
+
+.habito__dia.e-hoje {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.habito__rodape {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.habito__recorde {
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.habito__hoje {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+.habito__hoje.e-feito {
+    background: var(--success-soft);
+    border-color: transparent;
+    color: var(--success);
+}
+
+.habito__hoje:disabled {
+    opacity: 0.5;
+}
+
+@media (max-width: 620px) {
+    .habito__grade { gap: 3px; }
+    .dia-semana { width: 38px; }
+}

@@ -56,7 +56,8 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler({NomeDeProjetoEmUsoException.class, NomeDeEtiquetaEmUsoException.class})
+    @ExceptionHandler({NomeDeProjetoEmUsoException.class, NomeDeEtiquetaEmUsoException.class,
+            NomeDeHabitoEmUsoException.class})
     public ResponseEntity<ErrorResponse> handleNomeDeProjeto(RuntimeException ex) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
