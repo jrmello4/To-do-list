@@ -1,7 +1,10 @@
 package com.todolist.db;
 
 import com.todolist.entity.Task;
+import com.todolist.entity.Usuario;
 import com.todolist.repository.TaskRepository;
+import com.todolist.repository.UsuarioRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,12 +33,28 @@ class TaskRepositoryTest {
     private TaskRepository taskRepository;
 
     @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
     private TestEntityManager entityManager;
+
+    private Usuario dono;
+
+    @BeforeEach
+    void criarDono() {
+        // tasks.usuario_id é NOT NULL desde a V3: não há mais tarefa sem dono.
+        dono = usuarioRepository.save(Usuario.builder()
+                .nome("Ana Ribeiro")
+                .email("ana@exemplo.com")
+                .senhaHash("$2a$10$hashfalso")
+                .build());
+    }
 
     @Test
     @DisplayName("grava e recupera uma tarefa")
     void gravaERecupera() {
         Task salva = taskRepository.save(Task.builder()
+                .usuario(dono)
                 .titulo("Estudar Flyway")
                 .descricao("Entender o histórico de migrations")
                 .build());
@@ -54,7 +73,7 @@ class TaskRepositoryTest {
     @Test
     @DisplayName("preenche as datas pelos callbacks da entidade")
     void preencheAsDatas() {
-        Task salva = taskRepository.save(Task.builder().titulo("Com data").build());
+        Task salva = taskRepository.save(Task.builder().usuario(dono).titulo("Com data").build());
         entityManager.flush();
 
         assertThat(salva.getDataCriacao()).isNotNull();
@@ -66,7 +85,7 @@ class TaskRepositoryTest {
     void aceitaDescricaoLonga() {
         String longa = "d".repeat(1000);
 
-        Task salva = taskRepository.save(Task.builder().titulo("Descrição longa").descricao(longa).build());
+        Task salva = taskRepository.save(Task.builder().usuario(dono).titulo("Descrição longa").descricao(longa).build());
         entityManager.flush();
         entityManager.clear();
 
@@ -79,12 +98,29 @@ class TaskRepositoryTest {
     @Test
     @DisplayName("remove uma tarefa")
     void remove() {
-        Task salva = taskRepository.save(Task.builder().titulo("Para excluir").build());
+        Task salva = taskRepository.save(Task.builder().usuario(dono).titulo("Para excluir").build());
         entityManager.flush();
 
         taskRepository.deleteById(salva.getId());
         entityManager.flush();
 
         assertThat(taskRepository.findById(salva.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("não devolve a tarefa de outro dono na busca escopada")
+    void naoDevolveTarefaDeOutroDono() {
+        Usuario outro = usuarioRepository.save(Usuario.builder()
+                .nome("Bruno Alves")
+                .email("bruno@exemplo.com")
+                .senhaHash("$2a$10$hashfalso")
+                .build());
+
+        Task daAna = taskRepository.save(Task.builder().usuario(dono).titulo("Só da Ana").build());
+        entityManager.flush();
+
+        assertThat(taskRepository.findByIdAndUsuarioId(daAna.getId(), outro.getId())).isEmpty();
+        assertThat(taskRepository.findByIdAndUsuarioId(daAna.getId(), dono.getId())).isPresent();
+        assertThat(taskRepository.findByUsuarioIdOrderByIdAsc(outro.getId())).isEmpty();
     }
 }

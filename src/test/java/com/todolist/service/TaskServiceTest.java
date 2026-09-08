@@ -4,7 +4,9 @@ import com.todolist.dto.TaskRequest;
 import com.todolist.dto.TaskResponse;
 import com.todolist.entity.Task;
 import com.todolist.exception.ResourceNotFoundException;
+import com.todolist.entity.Usuario;
 import com.todolist.repository.TaskRepository;
+import com.todolist.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,8 +29,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TaskServiceTest {
 
+    /** Dono usado em todas as chamadas: o serviço deixou de operar sem um. */
+    private static final Long USUARIO_ID = 7L;
+
     @Mock
     private TaskRepository taskRepository;
+
+    @Mock
+    private UsuarioRepository usuarioRepository;
 
     @InjectMocks
     private TaskService taskService;
@@ -43,6 +51,7 @@ class TaskServiceTest {
     void setUp() {
         task = Task.builder()
                 .id(1L)
+                .usuario(Usuario.builder().id(USUARIO_ID).build())
                 .titulo("Estudar Java")
                 .descricao("Estudar Spring Boot e JPA")
                 .concluida(false)
@@ -66,7 +75,7 @@ class TaskServiceTest {
         void deveCriarTarefaComSucesso() {
             when(taskRepository.save(any(Task.class))).thenReturn(task);
 
-            TaskResponse response = taskService.criar(request);
+            TaskResponse response = taskService.criar(USUARIO_ID, request);
 
             assertThat(response).isNotNull();
             assertThat(response.getId()).isEqualTo(1L);
@@ -91,7 +100,7 @@ class TaskServiceTest {
                 return t;
             });
 
-            TaskResponse response = taskService.criar(request);
+            TaskResponse response = taskService.criar(USUARIO_ID, request);
 
             assertThat(response.getConcluida()).isTrue();
         }
@@ -108,7 +117,7 @@ class TaskServiceTest {
                 return t;
             });
 
-            TaskResponse response = taskService.criar(request);
+            TaskResponse response = taskService.criar(USUARIO_ID, request);
 
             assertThat(response.getConcluida()).isFalse();
         }
@@ -121,9 +130,9 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve listar todas as tarefas")
         void deveListarTodas() {
-            when(taskRepository.findAll()).thenReturn(List.of(task));
+            when(taskRepository.findByUsuarioIdOrderByIdAsc(USUARIO_ID)).thenReturn(List.of(task));
 
-            List<TaskResponse> responses = taskService.listarTodas();
+            List<TaskResponse> responses = taskService.listarTodas(USUARIO_ID);
 
             assertThat(responses).hasSize(1);
             assertThat(responses.get(0).getTitulo()).isEqualTo("Estudar Java");
@@ -132,9 +141,9 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve retornar lista vazia quando não houver tarefas")
         void deveRetornarListaVazia() {
-            when(taskRepository.findAll()).thenReturn(List.of());
+            when(taskRepository.findByUsuarioIdOrderByIdAsc(USUARIO_ID)).thenReturn(List.of());
 
-            List<TaskResponse> responses = taskService.listarTodas();
+            List<TaskResponse> responses = taskService.listarTodas(USUARIO_ID);
 
             assertThat(responses).isEmpty();
         }
@@ -147,9 +156,9 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve buscar tarefa por ID com sucesso")
         void deveBuscarPorId() {
-            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+            when(taskRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(task));
 
-            TaskResponse response = taskService.buscarPorId(1L);
+            TaskResponse response = taskService.buscarPorId(USUARIO_ID, 1L);
 
             assertThat(response.getId()).isEqualTo(1L);
             assertThat(response.getTitulo()).isEqualTo("Estudar Java");
@@ -158,9 +167,9 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve lançar exceção quando tarefa não existir")
         void deveLancarExcecaoQuandoNaoExistir() {
-            when(taskRepository.findById(99L)).thenReturn(Optional.empty());
+            when(taskRepository.findByIdAndUsuarioId(99L, USUARIO_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> taskService.buscarPorId(99L))
+            assertThatThrownBy(() -> taskService.buscarPorId(USUARIO_ID, 99L))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Tarefa")
                     .hasMessageContaining("99");
@@ -174,7 +183,7 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve atualizar tarefa com sucesso")
         void deveAtualizarTarefa() {
-            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+            when(taskRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(task));
             when(taskRepository.save(any(Task.class))).thenReturn(task);
 
             TaskRequest updateRequest = TaskRequest.builder()
@@ -183,7 +192,7 @@ class TaskServiceTest {
                     .concluida(true)
                     .build();
 
-            TaskResponse response = taskService.atualizar(1L, updateRequest);
+            TaskResponse response = taskService.atualizar(USUARIO_ID, 1L, updateRequest);
 
             assertThat(response.getTitulo()).isEqualTo("Estudar Spring Boot");
             assertThat(response.getDescricao()).isEqualTo("Aprofundar em JPA e Flyway");
@@ -193,9 +202,9 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve lançar exceção ao atualizar tarefa inexistente")
         void deveLancarExcecaoAoAtualizarInexistente() {
-            when(taskRepository.findById(99L)).thenReturn(Optional.empty());
+            when(taskRepository.findByIdAndUsuarioId(99L, USUARIO_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> taskService.atualizar(99L, request))
+            assertThatThrownBy(() -> taskService.atualizar(USUARIO_ID, 99L, request))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
 
@@ -205,10 +214,10 @@ class TaskServiceTest {
             task.setConcluida(true);
             request.setConcluida(null);
 
-            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+            when(taskRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(task));
             when(taskRepository.save(any(Task.class))).thenReturn(task);
 
-            TaskResponse response = taskService.atualizar(1L, request);
+            TaskResponse response = taskService.atualizar(USUARIO_ID, 1L, request);
 
             assertThat(response.getConcluida()).isTrue();
         }
@@ -221,19 +230,19 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve deletar tarefa com sucesso")
         void deveDeletarTarefa() {
-            when(taskRepository.existsById(1L)).thenReturn(true);
+            when(taskRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(task));
 
-            taskService.deletar(1L);
+            taskService.deletar(USUARIO_ID, 1L);
 
-            verify(taskRepository).deleteById(1L);
+            verify(taskRepository).delete(task);
         }
 
         @Test
         @DisplayName("Deve lançar exceção ao deletar tarefa inexistente")
         void deveLancarExcecaoAoDeletarInexistente() {
-            when(taskRepository.existsById(99L)).thenReturn(false);
+            when(taskRepository.findByIdAndUsuarioId(99L, USUARIO_ID)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> taskService.deletar(99L))
+            assertThatThrownBy(() -> taskService.deletar(USUARIO_ID, 99L))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
     }

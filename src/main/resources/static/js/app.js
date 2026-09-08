@@ -7,6 +7,14 @@
     'use strict';
 
     var API = '/api/tarefas';
+    var API_AUTH = '/api/auth';
+    var CHAVE_TOKEN = 'todolist:token';
+
+    /** Token e conta em uso. Sem token, a aplicação nem chega a ser exibida. */
+    var sessao = {
+        token: null,
+        conta: null
+    };
 
     /** Estado da aplicação em memória. */
     var state = {
@@ -58,7 +66,20 @@
         prefNome: document.getElementById('pref-nome'),
         swatches: document.getElementById('swatches'),
         themeChoice: document.getElementById('theme-choice'),
-        themeBtn: document.getElementById('theme-btn')
+        themeBtn: document.getElementById('theme-btn'),
+        authView: document.getElementById('auth-view'),
+        appView: document.getElementById('app-view'),
+        authForm: document.getElementById('auth-form'),
+        authModo: document.getElementById('auth-modo'),
+        authNome: document.getElementById('auth-nome'),
+        campoNome: document.getElementById('campo-nome'),
+        authEmail: document.getElementById('auth-email'),
+        authSenha: document.getElementById('auth-senha'),
+        authDica: document.getElementById('auth-dica'),
+        authErro: document.getElementById('auth-error'),
+        authSubmit: document.getElementById('auth-submit'),
+        authLinha: document.getElementById('auth-linha'),
+        logoutBtn: document.getElementById('logout-btn')
     };
 
     /* ---------------------------------------------------------------- HTTP */
@@ -68,7 +89,26 @@
      * (ErrorResponse: status, mensagem, timestamp, erros).
      */
     function request(url, options) {
-        return fetch(url, options).then(function (resposta) {
+        var config = options || {};
+        var cabecalhos = {};
+
+        Object.keys(config.headers || {}).forEach(function (nome) {
+            cabecalhos[nome] = config.headers[nome];
+        });
+
+        if (sessao.token) {
+            cabecalhos.Authorization = 'Bearer ' + sessao.token;
+        }
+        config.headers = cabecalhos;
+
+        return fetch(url, config).then(function (resposta) {
+            // 401 fora das rotas de autenticação significa token expirado ou
+            // revogado: não adianta repetir, tem que entrar de novo.
+            if (resposta.status === 401 && url.indexOf(API_AUTH) !== 0) {
+                encerrarSessao('Sua sessão expirou. Entre novamente.');
+                throw new Error('Sessão expirada');
+            }
+
             if (resposta.status === 204) {
                 return null;
             }
@@ -128,6 +168,80 @@
         }
     };
 
+    var auth = {
+        registrar: function (dados) {
+            return request(API_AUTH + '/registrar', {
+                method: 'POST',
+                headers: JSON_HEADERS,
+                body: JSON.stringify(dados)
+            });
+        },
+        login: function (dados) {
+            return request(API_AUTH + '/login', {
+                method: 'POST',
+                headers: JSON_HEADERS,
+                body: JSON.stringify(dados)
+            });
+        },
+        eu: function () {
+            return request(API_AUTH + '/eu');
+        }
+    };
+
+    /* ------------------------------------------------------------- Sessão */
+
+    function lerToken() {
+        try {
+            return window.localStorage.getItem(CHAVE_TOKEN);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function gravarToken(token) {
+        try {
+            if (token) {
+                window.localStorage.setItem(CHAVE_TOKEN, token);
+            } else {
+                window.localStorage.removeItem(CHAVE_TOKEN);
+            }
+        } catch (e) {
+            // Sem persistência: a sessão vale só até fechar a aba.
+        }
+    }
+
+    function mostrarEntrada() {
+        el.authView.hidden = false;
+        el.appView.hidden = true;
+        el.authSenha.value = '';
+        el.authErro.textContent = '';
+    }
+
+    function entrarNaAplicacao(conta) {
+        sessao.conta = conta;
+        el.authView.hidden = true;
+        el.appView.hidden = false;
+        el.authForm.reset();
+        aplicarIdentidade();
+        carregar();
+    }
+
+    function encerrarSessao(mensagem) {
+        sessao.token = null;
+        sessao.conta = null;
+        gravarToken(null);
+
+        state.tarefas = [];
+        state.filtro = 'todas';
+        state.percentualAnterior = null;
+
+        mostrarEntrada();
+
+        if (mensagem) {
+            toast(mensagem, 'error');
+        }
+    }
+
     /* ------------------------------------------------------ Personalização */
 
     function saudacao() {
@@ -153,10 +267,14 @@
     }
 
     function aplicarIdentidade() {
-        var nome = window.Prefs.obter().nome;
+        // O apelido escolhido em Personalizar tem prioridade; sem ele, vale o
+        // nome da conta. A saudação usa o primeiro nome, o avatar as iniciais.
+        var preferido = window.Prefs.obter().nome;
+        var completo = preferido || (sessao.conta ? sessao.conta.nome : '');
+        var primeiro = completo ? completo.trim().split(/\s+/)[0] : '';
 
-        el.greeting.textContent = nome ? saudacao() + ', ' + nome : saudacao() + '!';
-        el.avatar.textContent = nome ? iniciais(nome) : '✓';
+        el.greeting.textContent = primeiro ? saudacao() + ', ' + primeiro : saudacao() + '!';
+        el.avatar.textContent = completo ? iniciais(completo) : '✓';
 
         el.today.textContent = new Date().toLocaleDateString('pt-BR', {
             weekday: 'long',
@@ -694,10 +812,96 @@
         }
     });
 
+    /* --------------------------------------------------- Tela de entrada */
+
+    var modoAuth = 'login';
+
+    function definirModo(modo) {
+        modoAuth = modo;
+
+        Array.prototype.forEach.call(el.authModo.children, function (botao) {
+            var ativo = botao.dataset.modo === modo;
+            botao.classList.toggle('is-active', ativo);
+            botao.setAttribute('aria-selected', ativo ? 'true' : 'false');
+        });
+
+        var cadastro = modo === 'registrar';
+        el.campoNome.hidden = !cadastro;
+        el.authDica.hidden = !cadastro;
+        el.authSubmit.textContent = cadastro ? 'Criar conta' : 'Entrar';
+        el.authLinha.textContent = cadastro
+                ? 'Crie sua conta para começar.'
+                : 'Entre para ver as suas tarefas.';
+        el.authSenha.setAttribute('autocomplete', cadastro ? 'new-password' : 'current-password');
+        el.authErro.textContent = '';
+    }
+
+    Array.prototype.forEach.call(el.authModo.children, function (botao) {
+        botao.addEventListener('click', function () {
+            definirModo(botao.dataset.modo);
+        });
+    });
+
+    el.authForm.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+
+        var email = el.authEmail.value.trim();
+        var senha = el.authSenha.value;
+        var nome = el.authNome.value.trim();
+
+        if (!email || !senha) {
+            el.authErro.textContent = 'Preencha e-mail e senha.';
+            return;
+        }
+        if (modoAuth === 'registrar' && !nome) {
+            el.authErro.textContent = 'Informe o seu nome.';
+            return;
+        }
+
+        el.authErro.textContent = '';
+        el.authSubmit.disabled = true;
+
+        var promessa = modoAuth === 'registrar'
+                ? auth.registrar({ nome: nome, email: email, senha: senha })
+                : auth.login({ email: email, senha: senha });
+
+        promessa
+            .then(function (resposta) {
+                sessao.token = resposta.token;
+                gravarToken(resposta.token);
+                entrarNaAplicacao(resposta.usuario);
+                toast(modoAuth === 'registrar' ? 'Conta criada. Boas-vindas!' : 'Bem-vindo de volta',
+                        'success');
+            })
+            .catch(function (erro) {
+                el.authErro.textContent = erro.message;
+            })
+            .finally(function () {
+                el.authSubmit.disabled = false;
+            });
+    });
+
+    el.logoutBtn.addEventListener('click', function () {
+        encerrarSessao('Você saiu da conta.');
+    });
+
     /* ------------------------------------------------------------- Início */
 
     montarAmostras();
-    aplicarIdentidade();
     atualizarContador();
-    carregar();
+    definirModo('login');
+
+    sessao.token = lerToken();
+
+    if (!sessao.token) {
+        mostrarEntrada();
+    } else {
+        // Um token guardado pode ter expirado enquanto a aba estava fechada:
+        // confirma com a API antes de exibir a aplicação.
+        auth.eu()
+            .then(entrarNaAplicacao)
+            .catch(function () {
+                encerrarSessao();
+            });
+    }
 })();

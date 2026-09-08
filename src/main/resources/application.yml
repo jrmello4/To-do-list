@@ -8,7 +8,8 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3306/todolist?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    # Sem driver-class-name: o Spring o deduz da URL. Fixá-lo aqui vazaria para
+    # o perfil de teste (que é aditivo) e forçaria o driver do MySQL sobre o H2.
 
   jpa:
     # Desligado de propósito: mantém a sessão JPA restrita à camada de serviço,

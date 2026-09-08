@@ -13,7 +13,51 @@
 <body>
     <div class="aurora" aria-hidden="true"></div>
 
-    <div class="page">
+    <div class="entrada" id="auth-view" hidden>
+        <div class="entrada__cartao">
+            <span class="entrada__mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12.5 9 17.5 20 6.5"></path>
+                </svg>
+            </span>
+
+            <h1 class="entrada__titulo">To-do List</h1>
+            <p class="entrada__linha" id="auth-linha">Entre para ver as suas tarefas.</p>
+
+            <div class="segmented" id="auth-modo" role="tablist">
+                <button class="segmented__item is-active" type="button" data-modo="login"
+                        role="tab" aria-selected="true">Entrar</button>
+                <button class="segmented__item" type="button" data-modo="registrar"
+                        role="tab" aria-selected="false">Criar conta</button>
+            </div>
+
+            <form class="form" id="auth-form" novalidate>
+                <div class="field" id="campo-nome" hidden>
+                    <label class="field__label" for="auth-nome">Nome</label>
+                    <input class="field__input" type="text" id="auth-nome" maxlength="120"
+                           autocomplete="name" placeholder="Como quer ser chamado">
+                </div>
+                <div class="field">
+                    <label class="field__label" for="auth-email">E-mail</label>
+                    <input class="field__input" type="email" id="auth-email" maxlength="180"
+                           autocomplete="email" placeholder="voce@exemplo.com" required>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="auth-senha">Senha</label>
+                    <input class="field__input" type="password" id="auth-senha" maxlength="72"
+                           autocomplete="current-password" placeholder="Sua senha" required>
+                    <span class="field__hint" id="auth-dica" hidden>Mínimo de 8 caracteres.</span>
+                </div>
+
+                <span class="field__error" id="auth-error" role="alert"></span>
+
+                <button class="btn btn--primary" type="submit" id="auth-submit">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="page" id="app-view" hidden>
         <header class="topbar">
             <span class="topbar__brand">
                 <span class="topbar__mark" aria-hidden="true">
@@ -49,6 +93,14 @@
                          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="3.2"></circle>
                         <path d="M19.4 14.5a1.6 1.6 0 0 0 .33 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.33 1.6 1.6 0 0 0-1 1.47V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 9.1 19.4a1.6 1.6 0 0 0-1.77.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .33-1.77 1.6 1.6 0 0 0-1.47-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.47-1.1 1.6 1.6 0 0 0-.33-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.33H9.1a1.6 1.6 0 0 0 1-1.47V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.47 1.6 1.6 0 0 0 1.77-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.33 1.77V9.1a1.6 1.6 0 0 0 1.47 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.47 1Z"></path>
+                    </svg>
+                </button>
+                <button class="icon-btn icon-btn--bare" type="button" id="logout-btn"
+                        title="Sair da conta" aria-label="Sair da conta">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"></path>
+                        <path d="M16 17l5-5-5-5M21 12H9"></path>
                     </svg>
                 </button>
                 <a class="icon-btn icon-btn--bare" href="swagger-ui.html"

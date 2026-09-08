@@ -4,6 +4,7 @@ import com.todolist.dto.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -40,6 +41,28 @@ public class GlobalExceptionHandler {
                         HttpStatus.BAD_REQUEST.value(),
                         "Erro de validação",
                         erros
+                ));
+    }
+
+    @ExceptionHandler(EmailJaCadastradoException.class)
+    public ResponseEntity<ErrorResponse> handleEmailDuplicado(EmailJaCadastradoException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(
+                        HttpStatus.CONFLICT.value(),
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleFalhaDeAutenticacao(AuthenticationException ex) {
+        // Mensagem única para e-mail inexistente e senha errada: distinguir os
+        // dois permitiria descobrir quais e-mails têm conta cadastrada.
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.of(
+                        HttpStatus.UNAUTHORIZED.value(),
+                        "E-mail ou senha incorretos"
                 ));
     }
 

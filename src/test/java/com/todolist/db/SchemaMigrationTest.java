@@ -55,8 +55,8 @@ class SchemaMigrationTest {
 
         assertThat(aplicadas)
                 .extracting(migration -> String.valueOf(migration.getVersion()))
-                .as("a V1 precisa constar como aplicada")
-                .contains("1");
+                .as("todas as migrations de db/migration precisam constar como aplicadas")
+                .contains("1", "2", "3");
     }
 
     @Test
@@ -75,6 +75,7 @@ class SchemaMigrationTest {
         }
 
         assertThat(colunas).containsExactlyInAnyOrder(
-                "id", "titulo", "descricao", "concluida", "data_criacao", "data_atualizacao");
+                "id", "titulo", "descricao", "concluida",
+                "data_criacao", "data_atualizacao", "usuario_id");
     }
 }

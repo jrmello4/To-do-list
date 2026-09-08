@@ -17,6 +17,14 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Dono da tarefa. LAZY porque nenhuma listagem precisa carregar o usuário —
+     * as consultas filtram por usuario_id, sem navegar pelo relacionamento.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "usuario_id", nullable = false)
+    private Usuario usuario;
+
     @Column(nullable = false, length = 200)
     private String titulo;
 
