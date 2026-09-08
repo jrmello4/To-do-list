@@ -11,6 +11,7 @@ import java.time.LocalDate;
 public record TaskFiltro(
         Boolean concluida,
         Long projetoId,
+        Long etiquetaId,
         Boolean semProjeto,
         Prioridade prioridade,
         LocalDate prazoAte,

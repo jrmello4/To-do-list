@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -66,4 +67,12 @@ public class TaskRequest {
             requiredMode = Schema.RequiredMode.NOT_REQUIRED
     )
     private Prioridade prioridade;
+
+    @Schema(
+            description = "Identificadores das etiquetas da tarefa. Substitui as atuais: enviar "
+                    + "lista vazia remove todas; omitir o campo mantém as que já existem.",
+            example = "[1, 2]",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private List<Long> etiquetaIds;
 }

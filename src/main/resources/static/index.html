@@ -170,6 +170,11 @@
                               maxlength="1000" rows="2" placeholder="Adicione mais detalhes..."></textarea>
                     <span class="field__counter" id="descricao-counter">0/1000</span>
                 </div>
+                <div class="field" id="campo-etiquetas" hidden>
+                    <span class="field__label">Etiquetas</span>
+                    <div class="etiquetas-escolha" id="etiquetas"></div>
+                </div>
+
                 <div class="linha-campos">
                     <div class="field">
                         <label class="field__label" for="projeto">Projeto</label>
@@ -214,6 +219,7 @@
         </div>
 
         <nav class="projetos" id="projetos" aria-label="Filtrar por projeto"></nav>
+        <nav class="projetos" id="etiquetas-barra" aria-label="Filtrar por etiqueta"></nav>
 
         <nav class="filters" id="filters" aria-label="Filtrar tarefas" style="--indice: 0">
             <span class="filters__pill" aria-hidden="true"></span>
@@ -279,6 +285,11 @@
                     <textarea class="field__input field__input--area" id="edit-descricao"
                               maxlength="1000" rows="3"></textarea>
                 </div>
+                <div class="field" id="edit-campo-etiquetas" hidden>
+                    <span class="field__label">Etiquetas</span>
+                    <div class="etiquetas-escolha" id="edit-etiquetas"></div>
+                </div>
+
                 <div class="linha-campos">
                     <div class="field">
                         <label class="field__label" for="edit-projeto">Projeto</label>
@@ -355,7 +366,7 @@
     <div class="modal" id="projetos-modal" hidden>
         <div class="modal__backdrop" data-close-projetos></div>
         <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="projetos-title">
-            <h2 class="card__title" id="projetos-title">Projetos</h2>
+            <h2 class="card__title" id="projetos-title">Organizar</h2>
             <p class="modal__hint">
                 Excluir um projeto não apaga as tarefas dele — elas voltam para a caixa de entrada.
             </p>
@@ -375,6 +386,25 @@
             </form>
 
             <ul class="lista-projetos" id="lista-projetos"></ul>
+
+            <hr class="divisor">
+
+            <form class="form" id="etiqueta-form" novalidate>
+                <div class="field">
+                    <label class="field__label" for="etiqueta-nome">Nova etiqueta</label>
+                    <input class="field__input" type="text" id="etiqueta-nome" maxlength="60"
+                           placeholder="Nome da etiqueta" autocomplete="off">
+                    <span class="field__error" id="etiqueta-error" role="alert"></span>
+                </div>
+                <div class="field">
+                    <span class="field__label">Cor</span>
+                    <div class="swatches" id="etiqueta-cores" role="radiogroup"
+                         aria-label="Cor da etiqueta"></div>
+                </div>
+                <button class="btn btn--primary" type="submit" id="etiqueta-submit">Adicionar</button>
+            </form>
+
+            <ul class="lista-projetos" id="lista-etiquetas"></ul>
 
             <div class="modal__actions">
                 <button class="btn btn--ghost" type="button" data-close-projetos>Fechar</button>
@@ -401,6 +431,7 @@
                     <span class="chip chip--projeto" hidden></span>
                     <span class="chip chip--prazo" hidden></span>
                     <span class="chip chip--prioridade" hidden></span>
+                    <span class="task__etiquetas"></span>
                     <span class="task__date"></span>
                 </div>
             </div>

@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -322,7 +323,125 @@ class PlanejamentoIntegrationTest {
         }
     }
 
+    /* ----------------------------------------------------------- etiquetas */
+
+    @Nested
+    @DisplayName("Etiquetas")
+    class Etiquetas {
+
+        @Test
+        @DisplayName("criar devolve 201; nome repetido devolve 409")
+        void criarEDuplicar() throws Exception {
+            mockMvc.perform(post("/api/etiquetas")
+                            .header("Authorization", "Bearer " + ana)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(EtiquetaRequest.builder().nome("urgente").cor("rosa").build())))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.nome").value("urgente"))
+                    .andExpect(jsonPath("$.cor").value("rosa"));
+
+            mockMvc.perform(post("/api/etiquetas")
+                            .header("Authorization", "Bearer " + ana)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(EtiquetaRequest.builder().nome("URGENTE").build())))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("são transversais: a mesma etiqueta vale em projetos diferentes")
+        void transversaisAosProjetos() throws Exception {
+            long casa = novoProjeto(ana, "Casa");
+            long trabalho = novoProjeto(ana, "Trabalho");
+            long urgente = novaEtiqueta(ana, "urgente");
+
+            criarTarefa(ana, TaskRequest.builder().titulo("Consertar torneira")
+                    .projetoId(casa).etiquetaIds(List.of(urgente)).build());
+            criarTarefa(ana, TaskRequest.builder().titulo("Enviar proposta")
+                    .projetoId(trabalho).etiquetaIds(List.of(urgente)).build());
+
+            mockMvc.perform(get("/api/tarefas?etiqueta=" + urgente)
+                            .header("Authorization", "Bearer " + ana))
+                    .andExpect(jsonPath("$.content", hasSize(2)));
+        }
+
+        @Test
+        @DisplayName("uma tarefa aceita várias etiquetas e a lista vazia remove todas")
+        void variasEtiquetasESubstituicao() throws Exception {
+            long urgente = novaEtiqueta(ana, "urgente");
+            long rapida = novaEtiqueta(ana, "rapida");
+
+            long tarefa = criarTarefa(ana, TaskRequest.builder().titulo("Ligar para o banco")
+                    .etiquetaIds(List.of(urgente, rapida)).build());
+
+            mockMvc.perform(get("/api/tarefas/" + tarefa).header("Authorization", "Bearer " + ana))
+                    .andExpect(jsonPath("$.etiquetas", hasSize(2)));
+
+            mockMvc.perform(put("/api/tarefas/" + tarefa)
+                            .header("Authorization", "Bearer " + ana)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(TaskRequest.builder().titulo("Ligar para o banco")
+                                    .etiquetaIds(List.of()).build())))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.etiquetas", hasSize(0)));
+        }
+
+        @Test
+        @DisplayName("etiqueta de outra conta devolve 404 em vez de ser ignorada")
+        void naoUsaEtiquetaDeOutraConta() throws Exception {
+            long daAna = novaEtiqueta(ana, "urgente");
+            String bruno = registrar("bruno@exemplo.com");
+
+            mockMvc.perform(post("/api/tarefas")
+                            .header("Authorization", "Bearer " + bruno)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(TaskRequest.builder().titulo("Invasora")
+                                    .etiquetaIds(List.of(daAna)).build())))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("excluir a etiqueta não apaga as tarefas, só a marcação")
+        void excluirNaoApagaTarefas() throws Exception {
+            long urgente = novaEtiqueta(ana, "urgente");
+            long tarefa = criarTarefa(ana, TaskRequest.builder().titulo("Pagar conta")
+                    .etiquetaIds(List.of(urgente)).build());
+
+            mockMvc.perform(delete("/api/etiquetas/" + urgente)
+                            .header("Authorization", "Bearer " + ana))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(get("/api/tarefas/" + tarefa).header("Authorization", "Bearer " + ana))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.etiquetas", hasSize(0)));
+        }
+
+        @Test
+        @DisplayName("conta as tarefas pendentes de cada etiqueta")
+        void contaPendentes() throws Exception {
+            long urgente = novaEtiqueta(ana, "urgente");
+            criarTarefa(ana, TaskRequest.builder().titulo("A").etiquetaIds(List.of(urgente)).build());
+            long feita = criarTarefa(ana, TaskRequest.builder().titulo("B")
+                    .etiquetaIds(List.of(urgente)).build());
+            concluir(ana, feita, true);
+
+            mockMvc.perform(get("/api/etiquetas").header("Authorization", "Bearer " + ana))
+                    .andExpect(jsonPath("$[0].tarefasPendentes").value(1));
+        }
+    }
+
     /* ----------------------------------------------------------- auxiliares */
+
+    private long novaEtiqueta(String token, String nome) throws Exception {
+        String corpo = mockMvc.perform(post("/api/etiquetas")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(EtiquetaRequest.builder().nome(nome).build())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        return objectMapper.readTree(corpo).get("id").asLong();
+    }
+
 
     private String registrar(String email) throws Exception {
         String corpo = mockMvc.perform(post("/api/auth/registrar")

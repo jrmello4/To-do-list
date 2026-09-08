@@ -80,6 +80,9 @@ public class TaskController {
             @Parameter(description = "Filtra pelas tarefas de um projeto", example = "1")
             @RequestParam(required = false) Long projeto,
 
+            @Parameter(description = "Filtra pelas tarefas com uma etiqueta", example = "2")
+            @RequestParam(required = false) Long etiqueta,
+
             @Parameter(description = "Apenas a caixa de entrada (tarefas sem projeto)")
             @RequestParam(required = false) Boolean semProjeto,
 
@@ -95,7 +98,8 @@ public class TaskController {
 
             @PageableDefault(size = 50, sort = "id") Pageable paginacao) {
 
-        TaskFiltro filtro = new TaskFiltro(concluida, projeto, semProjeto, prioridade, prazoAte, busca);
+        TaskFiltro filtro = new TaskFiltro(
+                concluida, projeto, etiqueta, semProjeto, prioridade, prazoAte, busca);
         return ResponseEntity.ok(taskService.listar(usuario.getId(), filtro, paginacao));
     }
 

@@ -56,8 +56,8 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(NomeDeProjetoEmUsoException.class)
-    public ResponseEntity<ErrorResponse> handleNomeDeProjeto(NomeDeProjetoEmUsoException ex) {
+    @ExceptionHandler({NomeDeProjetoEmUsoException.class, NomeDeEtiquetaEmUsoException.class})
+    public ResponseEntity<ErrorResponse> handleNomeDeProjeto(RuntimeException ex) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage()));

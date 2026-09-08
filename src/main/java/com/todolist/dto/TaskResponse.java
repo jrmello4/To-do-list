@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -29,6 +30,9 @@ public class TaskResponse {
 
     @Schema(description = "Projeto da tarefa. Nulo significa caixa de entrada.")
     private ProjetoResumoResponse projeto;
+
+    @Schema(description = "Etiquetas aplicadas à tarefa")
+    private List<EtiquetaResumoResponse> etiquetas;
 
     @Schema(description = "Data limite. Nula quando a tarefa não tem prazo.", example = "2026-09-30")
     private LocalDate prazo;

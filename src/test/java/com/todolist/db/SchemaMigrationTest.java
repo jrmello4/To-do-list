@@ -56,7 +56,7 @@ class SchemaMigrationTest {
         assertThat(aplicadas)
                 .extracting(migration -> String.valueOf(migration.getVersion()))
                 .as("todas as migrations de db/migration precisam constar como aplicadas")
-                .contains("1", "2", "3", "4", "5");
+                .contains("1", "2", "3", "4", "5", "6", "7");
     }
 
     @Test

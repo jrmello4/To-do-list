@@ -66,6 +66,18 @@ public final class TaskSpecifications {
                         construtor.lessThanOrEqualTo(raiz.get("prazo"), data));
     }
 
+    public static Specification<Task> comEtiqueta(Long etiquetaId) {
+        if (etiquetaId == null) {
+            return null;
+        }
+        return (raiz, consulta, construtor) -> {
+            // distinct porque o join com a tabela N:N pode repetir a mesma
+            // tarefa quando ela tem mais de uma etiqueta.
+            consulta.distinct(true);
+            return construtor.equal(raiz.join("etiquetas").get("id"), etiquetaId);
+        };
+    }
+
     public static Specification<Task> busca(String termo) {
         if (termo == null || termo.isBlank()) {
             return null;

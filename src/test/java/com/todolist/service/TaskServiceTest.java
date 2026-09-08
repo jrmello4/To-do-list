@@ -7,6 +7,7 @@ import com.todolist.exception.ResourceNotFoundException;
 import com.todolist.entity.Usuario;
 import com.todolist.repository.TaskRepository;
 import com.todolist.dto.TaskFiltro;
+import com.todolist.repository.EtiquetaRepository;
 import com.todolist.repository.ProjetoRepository;
 import com.todolist.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +49,9 @@ class TaskServiceTest {
 
     @Mock
     private ProjetoRepository projetoRepository;
+
+    @Mock
+    private EtiquetaRepository etiquetaRepository;
 
     @InjectMocks
     private TaskService taskService;
@@ -139,7 +143,7 @@ class TaskServiceTest {
     class Listar {
 
         private static final TaskFiltro SEM_FILTRO =
-                new TaskFiltro(null, null, null, null, null, null);
+                new TaskFiltro(null, null, null, null, null, null, null);
         private static final Pageable PRIMEIRA_PAGINA = PageRequest.of(0, 50);
 
         @Test

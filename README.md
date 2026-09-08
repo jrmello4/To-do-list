@@ -9,7 +9,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-61-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-67-success?style=flat-square)](#executar-testes)
 [![Segurança](https://img.shields.io/badge/auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](#autenticação)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)](#subir-com-docker)
 
@@ -28,7 +28,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 | | |
 |---|---|
 | **Contas** | Cadastro e login com JWT; cada conta enxerga apenas as próprias tarefas |
-| **Organização** | Projetos coloridos, prazos, prioridade e busca — filtrados no servidor |
+| **Organização** | Projetos, etiquetas, prazos, prioridade e busca — filtrados no servidor |
 | **Interface web** | Criar, concluir, editar, excluir e filtrar tarefas, com anel de progresso e resumo do dia |
 | **Personalização** | Saudação com o seu nome, seis cores de destaque e tema claro/escuro/sistema |
 | **API REST** | Cinco endpoints em `/api/tarefas`, com validação de entrada e erros padronizados |
@@ -180,7 +180,8 @@ endpoints REST documentados abaixo e traz:
 - Anel de progresso e resumo contextual ("faltam 3 tarefas para zerar o dia")
 - Formulário de criação com validação e contador de caracteres
 - Lista com conclusão em um clique, edição em modal e exclusão com confirmação
-- Projetos coloridos, com contagem de pendentes e painel para criar e excluir
+- Projetos e etiquetas coloridos, com contagem de pendentes e painel para criar e excluir
+- Etiquetas escolhidas por chips alternáveis, em vez de um select múltiplo
 - Prazo com destaque para atrasadas e para as que vencem hoje, e prioridade
 - Busca e filtros resolvidos no servidor, com "carregar mais" paginado
 - Mensagens de erro vindas da API exibidas na tela
@@ -235,6 +236,20 @@ as tarefas da conta autenticada.
 | `PUT` | `/api/projetos/{id}` | Atualizar projeto |
 | `DELETE` | `/api/projetos/{id}` | Excluir — as tarefas voltam à caixa de entrada |
 
+### Etiquetas
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/etiquetas` | Listar, com a contagem de pendentes de cada uma |
+| `POST` | `/api/etiquetas` | Criar etiqueta |
+| `PUT` | `/api/etiquetas/{id}` | Atualizar etiqueta |
+| `DELETE` | `/api/etiquetas/{id}` | Excluir — as tarefas continuam, só a marcação some |
+
+Etiquetas são transversais aos projetos: uma tarefa pertence a um projeto só,
+mas pode ter várias etiquetas. Em `POST`/`PUT` de tarefa, `etiquetaIds`
+**substitui** as etiquetas atuais — lista vazia remove todas, campo omitido
+mantém as que já existem.
+
 ### Filtros da listagem
 
 Combináveis, resolvidos no banco:
@@ -243,6 +258,7 @@ Combináveis, resolvidos no banco:
 |-----------|---------|-----------|
 | `concluida` | `true` | Filtra por situação |
 | `projeto` | `3` | Tarefas de um projeto |
+| `etiqueta` | `2` | Tarefas com uma etiqueta |
 | `semProjeto` | `true` | Apenas a caixa de entrada |
 | `prioridade` | `ALTA` | `BAIXA`, `MEDIA`, `ALTA` ou `URGENTE` |
 | `prazoAte` | `2026-09-30` | Vencem até a data (sem prazo fica de fora) |
@@ -348,7 +364,7 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-O projeto possui **61 testes**. A maioria roda contra H2 em memória, sem
+O projeto possui **67 testes**. A maioria roda contra H2 em memória, sem
 precisar de MySQL:
 
 | Classe | Cobre |
@@ -358,7 +374,7 @@ precisar de MySQL:
 | `SchemaMigrationTest` | As migrations aplicam e produzem as colunas que as entidades esperam |
 | `TaskRepositoryTest` | Persistência contra o schema criado pelo Flyway |
 | `AutenticacaoIntegrationTest` | Cadastro, login, token e **isolamento entre contas** |
-| `PlanejamentoIntegrationTest` | Projetos, prazos, prioridade, filtros, paginação e resumo |
+| `PlanejamentoIntegrationTest` | Projetos, etiquetas, prazos, prioridade, filtros, paginação e resumo |
 | `MigrationsNoMySQLTest` | As migrations contra **MySQL de verdade**, via Testcontainers |
 
 `MigrationsNoMySQLTest` é pulada automaticamente onde não há Docker, e executa

@@ -2,9 +2,11 @@ package com.todolist.service;
 
 import com.todolist.dto.*;
 import com.todolist.entity.Prioridade;
+import com.todolist.entity.Etiqueta;
 import com.todolist.entity.Projeto;
 import com.todolist.entity.Task;
 import com.todolist.exception.ResourceNotFoundException;
+import com.todolist.repository.EtiquetaRepository;
 import com.todolist.repository.ProjetoRepository;
 import com.todolist.repository.TaskRepository;
 import com.todolist.repository.TaskSpecifications;
@@ -18,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +30,7 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final ProjetoRepository projetoRepository;
+    private final EtiquetaRepository etiquetaRepository;
     private final UsuarioRepository usuarioRepository;
 
     @Transactional
@@ -39,6 +45,7 @@ public class TaskService {
                 .prazo(request.getPrazo())
                 .prioridade(request.getPrioridade() != null ? request.getPrioridade() : Prioridade.MEDIA)
                 .concluida(false)
+                .etiquetas(resolverEtiquetas(usuarioId, request.getEtiquetaIds()))
                 .build();
 
         if (Boolean.TRUE.equals(request.getConcluida())) {
@@ -56,6 +63,7 @@ public class TaskService {
                 TaskSpecifications.doUsuario(usuarioId),
                 TaskSpecifications.concluida(filtro.concluida()),
                 TaskSpecifications.doProjeto(filtro.projetoId()),
+                TaskSpecifications.comEtiqueta(filtro.etiquetaId()),
                 TaskSpecifications.semProjeto(filtro.semProjeto()),
                 TaskSpecifications.comPrioridade(filtro.prioridade()),
                 TaskSpecifications.prazoAte(filtro.prazoAte()),
@@ -105,6 +113,9 @@ public class TaskService {
         if (request.getPrioridade() != null) {
             task.setPrioridade(request.getPrioridade());
         }
+        if (request.getEtiquetaIds() != null) {
+            task.setEtiquetas(resolverEtiquetas(usuarioId, request.getEtiquetaIds()));
+        }
         if (request.getConcluida() != null) {
             aplicarConclusao(task, request.getConcluida());
         }
@@ -147,6 +158,26 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Projeto", projetoId));
     }
 
+    /**
+     * As etiquetas também são validadas contra o dono — mesmo motivo do
+     * projeto. Um id que não pertence à conta vira 404 em vez de ser ignorado
+     * em silêncio: ignorar faria a tarefa ser salva sem a etiqueta pedida,
+     * sem ninguém saber.
+     */
+    private Set<Etiqueta> resolverEtiquetas(Long usuarioId, List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new LinkedHashSet<>();
+        }
+
+        List<Etiqueta> encontradas = etiquetaRepository.findByUsuarioIdAndIdIn(usuarioId, ids);
+
+        if (encontradas.size() != ids.stream().distinct().count()) {
+            throw new ResourceNotFoundException("Etiqueta", null);
+        }
+
+        return new LinkedHashSet<>(encontradas);
+    }
+
     /** Mantém dataConclusao coerente com concluida, sem mexer no que não mudou. */
     private void aplicarConclusao(Task task, boolean concluida) {
         if (concluida == Boolean.TRUE.equals(task.getConcluida())) {
@@ -170,6 +201,13 @@ public class TaskService {
                         .nome(projeto.getNome())
                         .cor(projeto.getCor())
                         .build())
+                .etiquetas(task.getEtiquetas().stream()
+                        .map(etiqueta -> EtiquetaResumoResponse.builder()
+                                .id(etiqueta.getId())
+                                .nome(etiqueta.getNome())
+                                .cor(etiqueta.getCor())
+                                .build())
+                        .toList())
                 .prazo(task.getPrazo())
                 .prioridade(task.getPrioridade())
                 .dataConclusao(task.getDataConclusao())

@@ -8,6 +8,7 @@
 
     var API = '/api/tarefas';
     var API_PROJETOS = '/api/projetos';
+    var API_ETIQUETAS = '/api/etiquetas';
     var API_AUTH = '/api/auth';
     var CHAVE_TOKEN = 'todolist:token';
     var TAMANHO_PAGINA = 50;
@@ -21,9 +22,11 @@
     var state = {
         tarefas: [],          // acumuladas das páginas já carregadas
         projetos: [],
+        etiquetas: [],
         resumo: null,
         filtro: 'todas',      // todas | pendentes | concluidas
         projetoAtivo: null,   // null = todos, 'nenhum' = caixa de entrada, id = projeto
+        etiquetaAtiva: null,  // null = todas
         busca: '',
         paginaCarregada: 0,
         total: 0,
@@ -103,7 +106,18 @@
         projetoErro: document.getElementById('projeto-error'),
         projetoCores: document.getElementById('projeto-cores'),
         projetoSubmit: document.getElementById('projeto-submit'),
-        listaProjetos: document.getElementById('lista-projetos')
+        listaProjetos: document.getElementById('lista-projetos'),
+        etiquetasBarra: document.getElementById('etiquetas-barra'),
+        campoEtiquetas: document.getElementById('campo-etiquetas'),
+        etiquetasEscolha: document.getElementById('etiquetas'),
+        editCampoEtiquetas: document.getElementById('edit-campo-etiquetas'),
+        editEtiquetasEscolha: document.getElementById('edit-etiquetas'),
+        etiquetaForm: document.getElementById('etiqueta-form'),
+        etiquetaNome: document.getElementById('etiqueta-nome'),
+        etiquetaErro: document.getElementById('etiqueta-error'),
+        etiquetaCores: document.getElementById('etiqueta-cores'),
+        etiquetaSubmit: document.getElementById('etiqueta-submit'),
+        listaEtiquetas: document.getElementById('lista-etiquetas')
     };
 
     /* ---------------------------------------------------------------- HTTP */
@@ -197,6 +211,15 @@
         },
         deletarProjeto: function (id) {
             return request(API_PROJETOS + '/' + id, { method: 'DELETE' });
+        },
+        etiquetas: function () {
+            return request(API_ETIQUETAS);
+        },
+        criarEtiqueta: function (etiqueta) {
+            return request(API_ETIQUETAS, corpoJson('POST', etiqueta));
+        },
+        deletarEtiqueta: function (id) {
+            return request(API_ETIQUETAS + '/' + id, { method: 'DELETE' });
         }
     };
 
@@ -229,6 +252,10 @@
             partes.push('semProjeto=true');
         } else if (state.projetoAtivo) {
             partes.push('projeto=' + state.projetoAtivo);
+        }
+
+        if (state.etiquetaAtiva) {
+            partes.push('etiqueta=' + state.etiquetaAtiva);
         }
 
         if (state.busca) {
@@ -273,7 +300,7 @@
         el.appView.hidden = false;
         el.authForm.reset();
         aplicarIdentidade();
-        carregarProjetos().then(carregar);
+        carregarOrganizacao().then(carregar);
     }
 
     function encerrarSessao(mensagem) {
@@ -283,9 +310,11 @@
 
         state.tarefas = [];
         state.projetos = [];
+        state.etiquetas = [];
         state.resumo = null;
         state.filtro = 'todas';
         state.projetoAtivo = null;
+        state.etiquetaAtiva = null;
         state.busca = '';
         state.percentualAnterior = null;
 
@@ -465,6 +494,17 @@
             chipPrioridade.hidden = false;
         }
 
+        var caixaEtiquetas = no.querySelector('.task__etiquetas');
+        (tarefa.etiquetas || []).forEach(function (etiqueta) {
+            var chip = document.createElement('span');
+            // Classe própria: visualmente igual ao rótulo de projeto, mas
+            // distinguível no DOM — projeto e etiqueta são coisas diferentes.
+            chip.className = 'chip chip--etiqueta';
+            chip.textContent = etiqueta.nome;
+            chip.style.setProperty('--ponto', corDoProjeto(etiqueta.cor));
+            caixaEtiquetas.appendChild(chip);
+        });
+
         var check = no.querySelector('.task__check');
         check.setAttribute('aria-pressed', tarefa.concluida ? 'true' : 'false');
         check.setAttribute('aria-label',
@@ -569,6 +609,85 @@
         novo.textContent = '+ Projeto';
         novo.addEventListener('click', abrirProjetos);
         el.projetosNav.appendChild(novo);
+    }
+
+    function renderizarBarraDeEtiquetas() {
+        el.etiquetasBarra.textContent = '';
+
+        if (state.etiquetas.length === 0) {
+            return;
+        }
+
+        [{ id: null, nome: 'Todas as etiquetas' }].concat(state.etiquetas).forEach(function (opcao) {
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'projeto-chip';
+            botao.classList.toggle('is-active', state.etiquetaAtiva === opcao.id);
+
+            if (opcao.cor) {
+                var ponto = document.createElement('span');
+                ponto.className = 'projeto-chip__ponto';
+                ponto.style.setProperty('--ponto', corDoProjeto(opcao.cor));
+                botao.appendChild(ponto);
+            }
+
+            botao.appendChild(document.createTextNode(opcao.nome));
+
+            if (opcao.tarefasPendentes) {
+                var contagem = document.createElement('span');
+                contagem.className = 'projeto-chip__contagem';
+                contagem.textContent = opcao.tarefasPendentes;
+                botao.appendChild(contagem);
+            }
+
+            botao.addEventListener('click', function () {
+                state.etiquetaAtiva = opcao.id;
+                renderizarBarraDeEtiquetas();
+                carregar();
+            });
+
+            el.etiquetasBarra.appendChild(botao);
+        });
+    }
+
+    /** Alternar chips em vez de um select múltiplo, que é desconfortável de usar. */
+    function montarEscolhaDeEtiquetas(container, campo, selecionadas) {
+        container.textContent = '';
+        campo.hidden = state.etiquetas.length === 0;
+
+        state.etiquetas.forEach(function (etiqueta) {
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'etiqueta-toggle';
+            botao.dataset.id = etiqueta.id;
+            botao.textContent = etiqueta.nome;
+            botao.style.setProperty('--ponto', corDoProjeto(etiqueta.cor));
+            botao.setAttribute('aria-pressed',
+                    selecionadas.indexOf(etiqueta.id) >= 0 ? 'true' : 'false');
+            botao.classList.toggle('is-active', selecionadas.indexOf(etiqueta.id) >= 0);
+
+            botao.addEventListener('click', function () {
+                var ativo = botao.classList.toggle('is-active');
+                botao.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+            });
+
+            container.appendChild(botao);
+        });
+    }
+
+    function limparEscolhaDeEtiquetas() {
+        Array.prototype.forEach.call(el.etiquetasEscolha.children, function (botao) {
+            botao.classList.remove('is-active');
+            botao.setAttribute('aria-pressed', 'false');
+        });
+    }
+
+    function etiquetasEscolhidas(container) {
+        return Array.prototype.filter
+                .call(container.children, function (botao) {
+                    return botao.classList.contains('is-active');
+                })
+                .map(function (botao) { return Number(botao.dataset.id); });
     }
 
     function preencherSelectDeProjetos(select, selecionado) {
@@ -704,15 +823,20 @@
 
     /* ------------------------------------------------------------- Ações */
 
-    function carregarProjetos() {
-        return api.projetos()
-            .then(function (projetos) {
-                state.projetos = Array.isArray(projetos) ? projetos : [];
+    function carregarOrganizacao() {
+        return Promise.all([api.projetos(), api.etiquetas()])
+            .then(function (respostas) {
+                state.projetos = Array.isArray(respostas[0]) ? respostas[0] : [];
+                state.etiquetas = Array.isArray(respostas[1]) ? respostas[1] : [];
+
                 renderizarProjetos();
+                renderizarBarraDeEtiquetas();
                 preencherSelectDeProjetos(el.projetoSelect, el.projetoSelect.value || null);
+                montarEscolhaDeEtiquetas(el.etiquetasEscolha, el.campoEtiquetas, []);
             })
             .catch(function () {
                 state.projetos = [];
+                state.etiquetas = [];
             });
     }
 
@@ -762,18 +886,22 @@
 
     /** Recarrega a página e o resumo depois de qualquer escrita. */
     function recarregar() {
-        return Promise.all([api.listar(0), api.resumo(), api.projetos()])
+        return Promise.all([api.listar(0), api.resumo(), api.projetos(), api.etiquetas()])
             .then(function (respostas) {
                 state.tarefas = respostas[0].content || [];
                 state.total = respostas[0].totalElements || 0;
                 state.paginaCarregada = 0;
                 state.resumo = respostas[1];
                 state.projetos = Array.isArray(respostas[2]) ? respostas[2] : [];
+                state.etiquetas = Array.isArray(respostas[3]) ? respostas[3] : [];
 
                 renderizar();
                 atualizarResumo();
                 renderizarProjetos();
+                renderizarBarraDeEtiquetas();
                 preencherSelectDeProjetos(el.projetoSelect, el.projetoSelect.value || null);
+                montarEscolhaDeEtiquetas(el.etiquetasEscolha, el.campoEtiquetas,
+                        etiquetasEscolhidas(el.etiquetasEscolha));
             })
             .catch(function (erro) {
                 if (erro.message !== 'Sessão expirada') {
@@ -803,6 +931,7 @@
             projetoId: el.projetoSelect.value ? Number(el.projetoSelect.value) : null,
             prazo: el.prazo.value || null,
             prioridade: el.prioridade.value,
+            etiquetaIds: etiquetasEscolhidas(el.etiquetasEscolha),
             concluida: false
         })
             .then(function () {
@@ -810,6 +939,10 @@
                 el.form.reset();
                 el.projetoSelect.value = projetoMantido;   // continuar no mesmo projeto
                 el.prioridade.value = 'MEDIA';
+                // As etiquetas, ao contrário do projeto, são escolhidas por
+                // tarefa: mantê-las marcadas faria a próxima herdá-las sem
+                // ninguém pedir.
+                limparEscolhaDeEtiquetas();
                 atualizarContador();
                 toast('Tarefa criada com sucesso', 'success');
                 el.titulo.focus();
@@ -892,6 +1025,7 @@
             projetoId: el.editProjeto.value ? Number(el.editProjeto.value) : null,
             prazo: el.editPrazo.value || null,
             prioridade: el.editPrioridade.value,
+            etiquetaIds: etiquetasEscolhidas(el.editEtiquetasEscolha),
             concluida: el.editConcluida.checked
         })
             .then(function () {
@@ -929,6 +1063,8 @@
         el.editPrioridade.value = tarefa.prioridade || 'MEDIA';
         el.editConcluida.checked = !!tarefa.concluida;
         preencherSelectDeProjetos(el.editProjeto, tarefa.projeto ? tarefa.projeto.id : null);
+        montarEscolhaDeEtiquetas(el.editEtiquetasEscolha, el.editCampoEtiquetas,
+                (tarefa.etiquetas || []).map(function (e) { return e.id; }));
         el.editTitulo.classList.remove('is-invalid');
         el.editTituloError.textContent = '';
 
@@ -1105,11 +1241,109 @@
         });
     }
 
+    var corDaNovaEtiqueta = 'rosa';
+
+    function montarCoresDeEtiqueta() {
+        window.Prefs.PALETA.forEach(function (cor) {
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'swatch';
+            botao.dataset.cor = cor.id;
+            botao.title = cor.nome;
+            botao.setAttribute('role', 'radio');
+            botao.setAttribute('aria-label', cor.nome);
+            botao.style.setProperty('--amostra',
+                'linear-gradient(140deg, hsl(' + cor.h + ' ' + cor.s + '% 56%), hsl('
+                    + (cor.h + 34) + ' ' + cor.s + '% 46%))');
+
+            botao.addEventListener('click', function () {
+                corDaNovaEtiqueta = cor.id;
+                marcarCorDeEtiqueta(cor.id);
+            });
+
+            el.etiquetaCores.appendChild(botao);
+        });
+        marcarCorDeEtiqueta(corDaNovaEtiqueta);
+    }
+
+    function marcarCorDeEtiqueta(id) {
+        Array.prototype.forEach.call(el.etiquetaCores.children, function (botao) {
+            var ativo = botao.dataset.cor === id;
+            botao.classList.toggle('is-active', ativo);
+            botao.setAttribute('aria-checked', ativo ? 'true' : 'false');
+        });
+    }
+
+    function renderizarListaDeEtiquetas() {
+        el.listaEtiquetas.textContent = '';
+
+        state.etiquetas.forEach(function (etiqueta) {
+            var item = document.createElement('li');
+            item.className = 'item-projeto';
+
+            var ponto = document.createElement('span');
+            ponto.className = 'item-projeto__ponto';
+            ponto.style.setProperty('--ponto', corDoProjeto(etiqueta.cor));
+
+            var nome = document.createElement('span');
+            nome.className = 'item-projeto__nome';
+            nome.textContent = etiqueta.nome;
+
+            var contagem = document.createElement('span');
+            contagem.className = 'item-projeto__contagem';
+            contagem.textContent = etiqueta.tarefasPendentes === 1
+                    ? '1 pendente'
+                    : etiqueta.tarefasPendentes + ' pendentes';
+
+            var excluir = document.createElement('button');
+            excluir.type = 'button';
+            excluir.className = 'icon-btn icon-btn--danger';
+            excluir.title = 'Excluir etiqueta';
+            excluir.setAttribute('aria-label', 'Excluir a etiqueta ' + etiqueta.nome);
+            excluir.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    + '<path d="M4 7h16M10 11v6M14 11v6"></path>'
+                    + '<path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"></path>'
+                    + '<path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>';
+
+            excluir.addEventListener('click', function () {
+                if (!window.confirm('Excluir a etiqueta "' + etiqueta.nome
+                        + '"? As tarefas continuam, apenas sem essa marcação.')) {
+                    return;
+                }
+
+                api.deletarEtiqueta(etiqueta.id)
+                    .then(function () {
+                        if (state.etiquetaAtiva === etiqueta.id) {
+                            state.etiquetaAtiva = null;
+                        }
+                        toast('Etiqueta excluída', 'success');
+                        return recarregar();
+                    })
+                    .then(renderizarListaDeEtiquetas)
+                    .catch(function (erro) {
+                        if (erro.message !== 'Sessão expirada') {
+                            toast(erro.message, 'error');
+                        }
+                    });
+            });
+
+            item.appendChild(ponto);
+            item.appendChild(nome);
+            item.appendChild(contagem);
+            item.appendChild(excluir);
+            el.listaEtiquetas.appendChild(item);
+        });
+    }
+
     function abrirProjetos() {
         focoAnterior = document.activeElement;
         el.projetoNome.value = '';
         el.projetoErro.textContent = '';
+        el.etiquetaNome.value = '';
+        el.etiquetaErro.textContent = '';
         renderizarListaDeProjetos();
+        renderizarListaDeEtiquetas();
         el.projetosModal.hidden = false;
         el.projetoNome.focus();
     }
@@ -1204,6 +1438,35 @@
         el.projetosModal.querySelectorAll('[data-close-projetos]'), function (botao) {
             botao.addEventListener('click', fecharProjetos);
         });
+
+    el.etiquetaForm.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+
+        var nome = el.etiquetaNome.value.trim();
+        if (!nome) {
+            el.etiquetaErro.textContent = 'Informe o nome da etiqueta.';
+            return;
+        }
+
+        el.etiquetaErro.textContent = '';
+        el.etiquetaSubmit.disabled = true;
+
+        api.criarEtiqueta({ nome: nome, cor: corDaNovaEtiqueta })
+            .then(function () {
+                el.etiquetaNome.value = '';
+                toast('Etiqueta criada', 'success');
+                return recarregar();
+            })
+            .then(renderizarListaDeEtiquetas)
+            .catch(function (erro) {
+                if (erro.message !== 'Sessão expirada') {
+                    el.etiquetaErro.textContent = erro.message;
+                }
+            })
+            .finally(function () {
+                el.etiquetaSubmit.disabled = false;
+            });
+    });
 
     el.projetoForm.addEventListener('submit', function (evento) {
         evento.preventDefault();
@@ -1352,6 +1615,7 @@
 
     montarAmostras();
     montarCoresDeProjeto();
+    montarCoresDeEtiqueta();
     atualizarContador();
     definirModo('login');
 

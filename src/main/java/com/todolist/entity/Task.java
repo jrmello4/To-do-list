@@ -1,9 +1,12 @@
 package com.todolist.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "tasks")
@@ -52,6 +55,24 @@ public class Task {
     /** Quando a tarefa passou a concluída. Base das métricas da fase seguinte. */
     @Column(name = "data_conclusao")
     private LocalDateTime dataConclusao;
+
+    /**
+     * Etiquetas da tarefa. Transversais aos projetos: uma tarefa pertence a um
+     * projeto só, mas pode ter várias etiquetas.
+     *
+     * LinkedHashSet e não List: o Set casa com a chave primária composta da
+     * tabela de junção, que já impede repetição.
+     */
+    @ManyToMany(fetch = FetchType.LAZY)
+    // Sem o BatchSize, montar uma página de 50 tarefas dispararia 50 consultas
+    // para carregar as etiquetas — uma por tarefa. Com ele, viram uma ou duas.
+    @BatchSize(size = 50)
+    @JoinTable(
+            name = "task_etiquetas",
+            joinColumns = @JoinColumn(name = "task_id"),
+            inverseJoinColumns = @JoinColumn(name = "etiqueta_id"))
+    @Builder.Default
+    private Set<Etiqueta> etiquetas = new LinkedHashSet<>();
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime dataCriacao;
