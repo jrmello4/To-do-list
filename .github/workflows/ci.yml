@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build:
+    name: Build e testes
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: maven
+
+      - name: Build e testes
+        # O runner do GitHub tem Docker, então MigrationsNoMySQLTest roda de
+        # verdade aqui — na máquina de quem não tem, ela é pulada.
+        run: mvn -B verify
+
+      - name: Publicar relatórios de teste
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-surefire
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+
+  imagem:
+    name: Imagem Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sem este passo o Dockerfile só seria exercitado quando alguém
+      # tentasse subir a aplicação — e falharia na hora errada.
+      - name: Construir a imagem
+        run: docker build -t todolist:ci .

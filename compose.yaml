@@ -1,0 +1,36 @@
+services:
+  banco:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: todolist
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - dados-mysql:/var/lib/mysql
+    healthcheck:
+      # A aplicação só sobe depois que o MySQL aceita conexões. Sem isto o
+      # Flyway tentaria migrar um banco que ainda está inicializando.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  app:
+    build: .
+    depends_on:
+      banco:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://banco:3306/todolist?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      # Sem valor definido, a aplicação gera uma chave aleatória a cada
+      # reinício — e todos os tokens emitidos antes deixam de valer.
+      JWT_SECRET: ${JWT_SECRET:-}
+    ports:
+      - "8080:8080"
+
+volumes:
+  dados-mysql:
