@@ -7,6 +7,7 @@ import com.todolist.exception.ResourceNotFoundException;
 import com.todolist.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
 
+    @Transactional
     public TaskResponse criar(TaskRequest request) {
         Task task = Task.builder()
                 .titulo(request.getTitulo())
@@ -26,6 +28,7 @@ public class TaskService {
         return toResponse(taskRepository.save(task));
     }
 
+    @Transactional(readOnly = true)
     public List<TaskResponse> listarTodas() {
         return taskRepository.findAll()
                 .stream()
@@ -33,12 +36,14 @@ public class TaskService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public TaskResponse buscarPorId(Long id) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tarefa", id));
         return toResponse(task);
     }
 
+    @Transactional
     public TaskResponse atualizar(Long id, TaskRequest request) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tarefa", id));
@@ -53,6 +58,7 @@ public class TaskService {
         return toResponse(taskRepository.save(task));
     }
 
+    @Transactional
     public void deletar(Long id) {
         if (!taskRepository.existsById(id)) {
             throw new ResourceNotFoundException("Tarefa", id);

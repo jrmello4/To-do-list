@@ -9,7 +9,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-20%20passando-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-26%20passando-success?style=flat-square)](#executar-testes)
 
 <img src="docs/screenshot.png" alt="Interface web da To-do List" width="640">
 
@@ -56,16 +56,23 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 CREATE DATABASE todolist;
 ```
 
-2. As credenciais padrão no `application.yml` são:
+2. A conexão é configurada por variáveis de ambiente, com valores padrão para
+desenvolvimento local (`root`/`root` em `localhost:3306`). Para usar outras credenciais,
+copie o modelo e ajuste:
 
-```yml
-spring:
-  datasource:
-    username: root
-    password: root
+```bash
+cp .env.example .env
 ```
 
-Altere em `src/main/resources/application.yml` conforme sua instalação.
+| Variável | Padrão |
+|----------|--------|
+| `DB_URL` | `jdbc:mysql://localhost:3306/todolist?...` |
+| `DB_USERNAME` | `root` |
+| `DB_PASSWORD` | `root` |
+| `SERVER_PORT` | `8080` |
+
+O `.env` é ignorado pelo Git. Nenhuma credencial precisa ser editada dentro do
+`application.yml`, o que permite publicar a aplicação sem alterar o código.
 
 ## Como Executar
 
@@ -219,11 +226,20 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-Os testes usam banco H2 em memória (não é necessário MySQL rodando). O projeto possui **20 testes**
+Os testes usam banco H2 em memória (não é necessário MySQL rodando). O projeto possui **26 testes**
 cobrindo:
 
 - **TaskService:** criação, listagem, busca por ID, atualização e exclusão
 - **TaskController:** validação de status HTTP, corpo de resposta e tratamento de erros
+- **SchemaMigrationTest:** as migrations do Flyway aplicam-se sem erro e produzem as colunas
+  que a entidade `Task` espera
+- **TaskRepositoryTest:** persistência real contra o schema criado pelo Flyway
+
+As duas últimas classes existem porque as demais não tocam no banco: `TaskService` é testado
+com mocks e `TaskController` numa fatia `@WebMvcTest`, que não carrega DataSource nem Flyway.
+O perfil de teste usa `ddl-auto: validate`, então o Hibernate confere as entidades contra o
+schema das migrations — uma migration quebrada, ou um campo sem migration correspondente,
+derruba o build.
 
 ## Estrutura do Projeto
 
@@ -248,5 +264,6 @@ src/
 └── test/
     └── java/com/todolist/
         ├── controller/      # Testes do controller (MockMvc)
+        ├── db/              # Migrations e persistência (Flyway + JPA)
         └── service/         # Testes do service (Mockito)
 ```
