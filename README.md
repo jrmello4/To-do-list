@@ -9,7 +9,9 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-26%20passando-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-43-success?style=flat-square)](#executar-testes)
+[![Segurança](https://img.shields.io/badge/auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](#autenticação)
+[![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)](#subir-com-docker)
 
 <img src="docs/screenshot.png" alt="Interface web da To-do List" width="640">
 
@@ -25,6 +27,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 
 | | |
 |---|---|
+| **Contas** | Cadastro e login com JWT; cada conta enxerga apenas as próprias tarefas |
 | **Interface web** | Criar, concluir, editar, excluir e filtrar tarefas, com anel de progresso e resumo do dia |
 | **Personalização** | Saudação com o seu nome, seis cores de destaque e tema claro/escuro/sistema |
 | **API REST** | Cinco endpoints em `/api/tarefas`, com validação de entrada e erros padronizados |
@@ -39,8 +42,69 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 - **Flyway** (migração de banco)
 - **SpringDoc OpenAPI / Swagger** (documentação)
 - **JUnit 5 + Mockito** (testes)
+- **Spring Security + JWT** (jjwt)
+- **Testcontainers** (testes contra MySQL real)
+- **Docker / Docker Compose**
 - **Maven 3.9.9**
 - **HTML, CSS e JavaScript puro** (interface web, sem framework nem build)
+
+## Subir com Docker
+
+O caminho mais curto: sobe aplicação e banco juntos, sem instalar Java nem MySQL.
+
+```bash
+cp .env.example .env    # ajuste DB_PASSWORD e JWT_SECRET
+docker compose up --build
+```
+
+A aplicação fica em `http://localhost:8080` e os dados do MySQL persistem no
+volume `dados-mysql`. A aplicação só inicia depois que o banco responde ao
+*healthcheck*, então o Flyway nunca tenta migrar um banco ainda subindo.
+
+## Autenticação
+
+<div align="center">
+<img src="docs/entrada.png" alt="Tela de entrada" width="420">
+</div>
+
+Todas as rotas de `/api/tarefas` exigem um token JWT.
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/auth/registrar` | Cria a conta e já devolve o token |
+| `POST` | `/api/auth/login` | Autentica e devolve o token |
+| `GET` | `/api/auth/eu` | Perfil da conta autenticada |
+
+```bash
+# cadastrar e guardar o token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/registrar \
+  -H 'Content-Type: application/json' \
+  -d '{"nome":"Ana","email":"ana@exemplo.com","senha":"senha-segura"}' \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+
+curl -s http://localhost:8080/api/tarefas -H "Authorization: Bearer $TOKEN"
+```
+
+No Swagger, clique em **Authorize** e cole apenas o token.
+
+### Isolamento entre contas
+
+Nenhuma consulta busca tarefa só por `id`: `TaskRepository` expõe
+`findByIdAndUsuarioId` e `findByUsuarioIdOrderByIdAsc`, e o `TaskService` chega
+a qualquer tarefa por um único caminho, que sempre recebe o dono. Pedir a tarefa
+de outra conta devolve **404**, e não 403 — um 403 confirmaria que aquele `id`
+existe.
+
+O comportamento é coberto por testes: trocar `findByIdAndUsuarioId` por
+`findById` derruba o build.
+
+### Chave dos tokens
+
+`JWT_SECRET` precisa ter no mínimo 32 caracteres. Se não for definida, a
+aplicação **gera uma chave aleatória a cada inicialização** e registra um aviso,
+em vez de cair num valor padrão embutido no código — que estaria neste
+repositório e permitiria forjar tokens de qualquer instalação. O efeito prático
+é que os tokens deixam de valer a cada reinício.
 
 ## Pré-requisitos
 
@@ -143,6 +207,9 @@ em **4,68:1**, acima do mínimo de 4,5:1 exigido pelo WCAG AA.
 
 ## Endpoints da API
 
+Todos exigem o cabeçalho `Authorization: Bearer <token>` e operam apenas sobre
+as tarefas da conta autenticada.
+
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | `POST` | `/api/tarefas` | Criar uma nova tarefa |
@@ -199,7 +266,18 @@ em **4,68:1**, acima do mínimo de 4,5:1 exigido pelo WCAG AA.
 }
 ```
 
-**404 Not Found**:
+**401 Unauthorized** (sem token ou token inválido):
+
+```json
+{
+  "status": 401,
+  "mensagem": "Autenticação necessária. Envie o cabeçalho Authorization: Bearer <token>.",
+  "timestamp": "2026-06-26T10:00:00",
+  "erros": []
+}
+```
+
+**404 Not Found** (inexistente — ou de outra conta):
 
 ```json
 {
@@ -226,20 +304,29 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-Os testes usam banco H2 em memória (não é necessário MySQL rodando). O projeto possui **26 testes**
-cobrindo:
+O projeto possui **43 testes**. A maioria roda contra H2 em memória, sem
+precisar de MySQL:
 
-- **TaskService:** criação, listagem, busca por ID, atualização e exclusão
-- **TaskController:** validação de status HTTP, corpo de resposta e tratamento de erros
-- **SchemaMigrationTest:** as migrations do Flyway aplicam-se sem erro e produzem as colunas
-  que a entidade `Task` espera
-- **TaskRepositoryTest:** persistência real contra o schema criado pelo Flyway
+| Classe | Cobre |
+|--------|-------|
+| `TaskServiceTest` | Regras de negócio com mocks |
+| `TaskControllerTest` | Status HTTP, corpo de resposta e as regras de segurança reais |
+| `SchemaMigrationTest` | As migrations aplicam e produzem as colunas que as entidades esperam |
+| `TaskRepositoryTest` | Persistência contra o schema criado pelo Flyway |
+| `AutenticacaoIntegrationTest` | Cadastro, login, token e **isolamento entre contas** |
+| `MigrationsNoMySQLTest` | As migrations contra **MySQL de verdade**, via Testcontainers |
 
-As duas últimas classes existem porque as demais não tocam no banco: `TaskService` é testado
-com mocks e `TaskController` numa fatia `@WebMvcTest`, que não carrega DataSource nem Flyway.
-O perfil de teste usa `ddl-auto: validate`, então o Hibernate confere as entidades contra o
-schema das migrations — uma migration quebrada, ou um campo sem migration correspondente,
-derruba o build.
+`MigrationsNoMySQLTest` é pulada automaticamente onde não há Docker, e executa
+no CI. As demais rodam sempre.
+
+O perfil de teste usa `ddl-auto: validate` com Flyway ligado: o schema vem das
+migrations e o Hibernate apenas confere as entidades contra ele. Uma migration
+quebrada, ou um campo sem migration correspondente, derruba o build.
+
+### Integração contínua
+
+`.github/workflows/ci.yml` roda `mvn verify` e constrói a imagem Docker a cada
+push e pull request.
 
 ## Estrutura do Projeto
 
@@ -253,6 +340,7 @@ src/
 │   │   ├── entity/          # Entidade JPA
 │   │   ├── exception/       # Tratamento global de erros
 │   │   ├── repository/      # Camada de dados
+│   │   ├── security/        # JWT, filtro e regras de acesso
 │   │   └── service/         # Lógica de negócio
 │   └── resources/
 │       ├── db/migration/    # Migrações Flyway
@@ -264,6 +352,7 @@ src/
 └── test/
     └── java/com/todolist/
         ├── controller/      # Testes do controller (MockMvc)
-        ├── db/              # Migrations e persistência (Flyway + JPA)
+        ├── db/              # Migrations e persistência (Flyway, JPA, Testcontainers)
+        ├── security/        # Autenticação e isolamento entre contas
         └── service/         # Testes do service (Mockito)
 ```
