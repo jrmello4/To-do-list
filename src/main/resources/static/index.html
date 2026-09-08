@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-do List - Produtividade & Kanban</title>
+  <meta name="description" content="Gerenciador avançado de tarefas com visão Kanban, prioridades, subtarefas e exportação CSV">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+          </div>
+          <div>
+            <h1>Minhas Tarefas</h1>
+            <p class="subtitle">Gestão ágil de tarefas, quadro Kanban e produtividade</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="btnExportCsv" class="btn btn-outline btn-sm" title="Exportar tarefas para CSV">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Exportar CSV
+          </button>
+          <button id="btnExportPdf" class="btn btn-outline btn-sm" title="Exportar Relatório Executivo em PDF">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Exportar PDF
+          </button>
+          <a href="/swagger-ui.html" target="_blank" class="btn btn-outline btn-sm" title="Abrir Swagger API">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            API Swagger
+          </a>
+
+          <!-- Central de Notificações -->
+          <div class="notification-container" id="notificationContainer">
+            <button type="button" id="btnNotification" class="btn-icon notification-btn" title="Central de Notificações" aria-label="Notificações">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span id="notificationBadge" class="notification-badge hidden">0</span>
+            </button>
+            <div id="notificationDropdown" class="notification-dropdown hidden">
+              <div class="notification-header">
+                <span class="notification-header-title">Alertas & Notificações</span>
+                <button type="button" id="btnRequestNotifyPerm" class="btn btn-xs btn-outline" title="Receber alertas nativos na área de trabalho">🔔 Alertas no Windows</button>
+              </div>
+              <div id="notificationList" class="notification-list">
+                <div class="notification-empty">Nenhum alerta pendente 🎉</div>
+              </div>
+            </div>
+          </div>
+          <button id="themeToggle" class="btn-icon" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+            <svg id="moonIcon" class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <svg id="sunIcon" class="icon hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+          
+          <!-- User Profile & Auth Controls -->
+          <div id="authContainer" class="auth-container" style="display: flex; gap: 8px;">
+            <button id="btnHeaderGuest" class="btn btn-outline btn-sm" title="Acessar como Convidado (Modo Demonstração)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <polyline points="17 11 19 13 23 9"></polyline>
+              </svg>
+              Convidado
+            </button>
+            <button id="btnLoginOpen" class="btn btn-primary btn-sm">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+              </svg>
+              Entrar
+            </button>
+            <div id="userProfile" class="user-profile hidden">
+              <div class="user-avatar" id="userAvatar" title="Usuário logado">U</div>
+              <div class="user-details">
+                <span class="user-name" id="userName">Usuário</span>
+                <span class="user-email" id="userEmail">user@email.com</span>
+              </div>
+              <button id="btnLogout" class="btn-icon btn-logout" title="Sair da conta" aria-label="Sair">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- View Switcher Tabs -->
+    <nav class="view-nav">
+      <div class="view-tabs">
+        <button class="view-tab-btn active" data-view="list">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          Lista de Tarefas
+        </button>
+        <button class="view-tab-btn" data-view="kanban">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="5" height="18" rx="1"></rect>
+            <rect x="10" y="3" width="5" height="12" rx="1"></rect>
+            <rect x="17" y="3" width="5" height="15" rx="1"></rect>
+          </svg>
+          Quadro Kanban
+        </button>
+        <button class="view-tab-btn" data-view="trash">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Lixeira <span class="tab-badge" id="trashCountBadge">0</span>
+        </button>
+        <button class="view-tab-btn" data-view="stats">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          Gráficos & Métricas
+        </button>
+      </div>
+    </nav>
+
+    <!-- Pomodoro Mode Widget -->
+    <section class="card pomodoro-card" id="pomodoroSection">
+      <div class="pomodoro-header">
+        <div class="pomodoro-title-group">
+          <span class="pomodoro-icon">🍅</span>
+          <div>
+            <h3>Modo Foco & Pomodoro</h3>
+            <p class="pomodoro-target" id="pomodoroTaskLabel">Nenhuma tarefa em foco (clique em "🍅 Focar" em um card)</p>
+          </div>
+        </div>
+        <div class="pomodoro-modes">
+          <button type="button" class="pomo-mode-btn active" data-mode="pomodoro" data-time="1500">Pomodoro (25m)</button>
+          <button type="button" class="pomo-mode-btn" data-mode="short" data-time="300">Pausa Curta (5m)</button>
+          <button type="button" class="pomo-mode-btn" data-mode="long" data-time="900">Pausa Longa (15m)</button>
+        </div>
+      </div>
+      <div class="pomodoro-timer-row">
+        <div class="pomodoro-timer-display" id="pomodoroDisplay">25:00</div>
+        <div class="pomodoro-controls">
+          <button type="button" class="btn btn-primary" id="btnPomoStart">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Iniciar
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnPomoPause" disabled>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            Pausar
+          </button>
+          <button type="button" class="btn btn-outline" id="btnPomoReset">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+            Reiniciar
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Metrics Dashboard -->
+    <section class="metrics-grid">
+      <div class="metric-card total">
+        <div class="metric-info">
+          <span class="metric-label">Total Ativas</span>
+          <span class="metric-value" id="metricTotal">0</span>
+        </div>
+        <div class="metric-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+        </div>
+      </div>
+
+      <div class="metric-card pending">
+        <div class="metric-info">
+          <span class="metric-label">Pendentes</span>
+          <span class="metric-value" id="metricPending">0</span>
+        </div>
+        <div class="metric-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <div class="metric-card overdue">
+        <div class="metric-info">
+          <span class="metric-label">Atrasadas</span>
+          <span class="metric-value" id="metricOverdue">0</span>
+        </div>
+        <div class="metric-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+      </div>
+
+      <div class="metric-card completed">
+        <div class="metric-info">
+          <span class="metric-label">Concluídas</span>
+          <span class="metric-value" id="metricCompleted">0</span>
+        </div>
+        <div class="metric-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress Bar -->
+    <div class="progress-section">
+      <div class="progress-header">
+        <span>Progresso Geral</span>
+        <span id="progressPercentage">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- Create Task Section -->
+    <section class="card create-card" id="createTaskSection">
+      <h2>Nova Tarefa</h2>
+      <form id="createTaskForm">
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="taskTitle">Título *</label>
+            <input type="text" id="taskTitle" name="titulo" placeholder="Ex: Criar apresentação do projeto" required maxlength="200" autocomplete="off">
+          </div>
+          <div class="form-group flex-1">
+            <label for="taskDueDate">Data de Vencimento</label>
+            <input type="date" id="taskDueDate" name="dataVencimento">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="taskPriority">Prioridade</label>
+            <select id="taskPriority" name="prioridade">
+              <option value="BAIXA">🟢 Baixa</option>
+              <option value="MEDIA" selected>🟡 Média</option>
+              <option value="ALTA">🟠 Alta</option>
+              <option value="URGENTE">🔴 Urgente</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="taskCategory">Categoria</label>
+            <select id="taskCategory" name="categoria">
+              <option value="GERAL" selected>📁 Geral</option>
+              <option value="TRABALHO">💼 Trabalho</option>
+              <option value="ESTUDOS">🎓 Estudos</option>
+              <option value="PESSOAL">🏠 Pessoal</option>
+              <option value="FINANCAS">💰 Finanças</option>
+              <option value="SAUDE">🏃 Saúde</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="taskInitialStatus">Status Inicial</label>
+            <select id="taskInitialStatus" name="status">
+              <option value="A_FAZER" selected>A Fazer</option>
+              <option value="EM_ANDAMENTO">Em Andamento</option>
+              <option value="CONCLUIDA">Concluída</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="taskRecurrence">Recorrência</label>
+            <select id="taskRecurrence" name="recorrencia">
+              <option value="NENHUMA" selected>Nenhuma</option>
+              <option value="DIARIA">🔁 Diária</option>
+              <option value="SEMANAL">🔁 Semanal</option>
+              <option value="MENSAL">🔁 Mensal</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="taskEstimatedPomodoros" title="Estimativa de blocos de foco de 25 min">🍅 Pomodoros</label>
+            <input type="number" id="taskEstimatedPomodoros" name="pomodorosEstimados" min="1" max="20" value="1">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="taskDescription">Descrição (opcional)</label>
+          <textarea id="taskDescription" name="descricao" rows="2" placeholder="Detalhes, anotações ou observações..." maxlength="1000"></textarea>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label-row">
+            <label>Tags / Etiquetas</label>
+            <button type="button" id="btnOpenCreateTag" class="btn-text-link">+ Nova Tag</button>
+          </div>
+          <div id="createTaskTagsList" class="tags-picker-container">
+            <span class="text-muted" style="font-size:0.82rem;">Carregando tags...</span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="btnSubmitTask">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Adicionar Tarefa
+        </button>
+      </form>
+    </section>
+
+    <!-- Toolbar: Search & Quick Filters -->
+    <section class="toolbar" id="mainToolbar">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Pesquisar por título ou descrição..." autocomplete="off">
+        <button type="button" id="clearSearchBtn" class="btn-clear hidden" title="Limpar pesquisa">&times;</button>
+      </div>
+
+      <div class="filter-controls">
+        <select id="categoryFilter" class="select-filter" aria-label="Filtrar por categoria">
+          <option value="">Todas as Categorias</option>
+          <option value="GERAL">📁 Geral</option>
+          <option value="TRABALHO">💼 Trabalho</option>
+          <option value="ESTUDOS">🎓 Estudos</option>
+          <option value="PESSOAL">🏠 Pessoal</option>
+          <option value="FINANCAS">💰 Finanças</option>
+          <option value="SAUDE">🏃 Saúde</option>
+        </select>
+
+        <select id="priorityFilter" class="select-filter" aria-label="Filtrar por prioridade">
+          <option value="">Todas as Prioridades</option>
+          <option value="URGENTE">🔴 Urgente</option>
+          <option value="ALTA">🟠 Alta</option>
+          <option value="MEDIA">🟡 Média</option>
+          <option value="BAIXA">🟢 Baixa</option>
+        </select>
+
+        <select id="tagFilter" class="select-filter" aria-label="Filtrar por etiqueta/tag">
+          <option value="">Todas as Tags</option>
+        </select>
+
+        <div class="filter-tabs" id="statusTabs">
+          <button class="filter-btn active" data-filter="all">Todas</button>
+          <button class="filter-btn" data-filter="pending">Pendentes</button>
+          <button class="filter-btn" data-filter="completed">Concluídas</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 1: LIST VIEW -->
+    <section class="view-content" id="listView">
+      <div id="taskList" class="task-list"></div>
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </div>
+        <h3>Nenhuma tarefa encontrada</h3>
+        <p id="emptyMessage">Você ainda não possui tarefas ativas. Crie uma nova tarefa acima!</p>
+      </div>
+    </section>
+
+    <!-- VIEW 2: KANBAN BOARD -->
+    <section class="view-content hidden" id="kanbanView">
+      <div class="kanban-board">
+        <!-- Column 1: A Fazer -->
+        <div class="kanban-column" data-status="A_FAZER">
+          <div class="kanban-header column-todo">
+            <div class="kanban-title">
+              <span class="status-dot dot-todo"></span>
+              <h3>A Fazer</h3>
+            </div>
+            <span class="kanban-count" id="countAFazer">0</span>
+          </div>
+          <div class="kanban-cards" id="cardsAFazer"></div>
+        </div>
+
+        <!-- Column 2: Em Andamento -->
+        <div class="kanban-column" data-status="EM_ANDAMENTO">
+          <div class="kanban-header column-progress">
+            <div class="kanban-title">
+              <span class="status-dot dot-progress"></span>
+              <h3>Em Andamento</h3>
+            </div>
+            <span class="kanban-count" id="countEmAndamento">0</span>
+          </div>
+          <div class="kanban-cards" id="cardsEmAndamento"></div>
+        </div>
+
+        <!-- Column 3: Concluída -->
+        <div class="kanban-column" data-status="CONCLUIDA">
+          <div class="kanban-header column-done">
+            <div class="kanban-title">
+              <span class="status-dot dot-done"></span>
+              <h3>Concluída</h3>
+            </div>
+            <span class="kanban-count" id="countConcluida">0</span>
+          </div>
+          <div class="kanban-cards" id="cardsConcluida"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: TRASH (LIXEIRA) -->
+    <section class="view-content hidden" id="trashView">
+      <div class="trash-header">
+        <div>
+          <h2>Lixeira</h2>
+          <p class="subtitle">Itens excluídos podem ser restaurados ou eliminados permanentemente</p>
+        </div>
+        <button id="btnEmptyTrash" class="btn btn-danger btn-sm">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Esvaziar Lixeira
+        </button>
+      </div>
+
+      <div id="trashList" class="task-list"></div>
+      <div id="emptyTrashState" class="empty-state hidden">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </div>
+        <h3>Lixeira Vazia</h3>
+        <p>Nenhuma tarefa na lixeira.</p>
+      </div>
+    </section>
+
+    <!-- VIEW 4: STATS & CHARTS -->
+    <section class="view-content hidden" id="statsView">
+      <div class="stats-header">
+        <div>
+          <h2>Painel de Produtividade & Métricas</h2>
+          <p class="subtitle">Estatísticas detalhadas sobre seu fluxo de trabalho, foco e pontualidade</p>
+        </div>
+        <button id="btnRefreshStats" class="btn btn-outline btn-sm" title="Atualizar dados dos gráficos">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Atualizar Gráficos
+        </button>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">Taxa de Entrega no Prazo</span>
+          <span class="kpi-value" id="kpiOnTimeRate">100%</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Pomodoros Finalizados</span>
+          <span class="kpi-value" id="kpiPomodorosDone">0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Tarefas com Recorrência</span>
+          <span class="kpi-value" id="kpiRecurringTasks">0</span>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h4>Distribuição por Categoria</h4>
+          <div class="chart-wrapper">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h4>Tarefas por Prioridade</h4>
+          <div class="chart-wrapper">
+            <canvas id="priorityChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card chart-card-wide">
+          <h4>Produtividade Semanal (Últimos 7 dias: Criadas vs Concluídas)</h4>
+          <div class="chart-wrapper chart-wide">
+            <canvas id="weeklyTrendChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Edit Task Modal -->
+  <div id="editModal" class="modal hidden">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Editar Tarefa</h3>
+        <button class="btn-close" id="btnCancelEdit" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="editTaskForm">
+        <input type="hidden" id="editTaskId">
+
+        <div class="form-group">
+          <label for="editTaskTitle">Título *</label>
+          <input type="text" id="editTaskTitle" required maxlength="200">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="editTaskDueDate">Data de Vencimento</label>
+            <input type="date" id="editTaskDueDate">
+          </div>
+          <div class="form-group flex-1">
+            <label for="editTaskPriority">Prioridade</label>
+            <select id="editTaskPriority">
+              <option value="BAIXA">🟢 Baixa</option>
+              <option value="MEDIA">🟡 Média</option>
+              <option value="ALTA">🟠 Alta</option>
+              <option value="URGENTE">🔴 Urgente</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="editTaskCategory">Categoria</label>
+            <select id="editTaskCategory">
+              <option value="GERAL">📁 Geral</option>
+              <option value="TRABALHO">💼 Trabalho</option>
+              <option value="ESTUDOS">🎓 Estudos</option>
+              <option value="PESSOAL">🏠 Pessoal</option>
+              <option value="FINANCAS">💰 Finanças</option>
+              <option value="SAUDE">🏃 Saúde</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="editTaskStatus">Status</label>
+            <select id="editTaskStatus">
+              <option value="A_FAZER">A Fazer</option>
+              <option value="EM_ANDAMENTO">Em Andamento</option>
+              <option value="CONCLUIDA">Concluída</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="editTaskRecurrence">Recorrência</label>
+            <select id="editTaskRecurrence">
+              <option value="NENHUMA">Nenhuma</option>
+              <option value="DIARIA">🔁 Diária</option>
+              <option value="SEMANAL">🔁 Semanal</option>
+              <option value="MENSAL">🔁 Mensal</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="editTaskEstimatedPomodoros">🍅 Pomodoros Estimados</label>
+            <input type="number" id="editTaskEstimatedPomodoros" min="1" max="20" value="1">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="editTaskDescription">Descrição</label>
+          <textarea id="editTaskDescription" rows="3" maxlength="1000"></textarea>
+        </div>
+
+        <!-- Tags / Etiquetas da Tarefa -->
+        <div class="form-group">
+          <label>Tags / Etiquetas</label>
+          <div id="editTaskTagsList" class="tags-picker-container">
+            <span class="text-muted" style="font-size:0.82rem;">Nenhuma tag cadastrada.</span>
+          </div>
+        </div>
+
+        <!-- Anexos da Tarefa -->
+        <div class="form-group">
+          <label>Anexos & Imagens</label>
+          <div id="editTaskAttachmentsList" class="attachments-modal-list"></div>
+          <div class="attachment-upload-box">
+            <input type="file" id="editAttachmentInput" class="hidden-file-input">
+            <label for="editAttachmentInput" class="btn btn-outline btn-sm">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+              </svg>
+              Escolher Arquivo
+            </label>
+            <span id="editAttachmentFileName" class="attachment-filename-hint">Nenhum arquivo selecionado</span>
+            <button type="button" id="btnUploadAttachment" class="btn btn-primary btn-sm hidden">Enviar Anexo</button>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnModalCancel">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Tag Modal -->
+  <div id="tagModal" class="modal hidden">
+    <div class="modal-backdrop" id="tagModalBackdrop"></div>
+    <div class="modal-dialog tag-dialog">
+      <div class="modal-header">
+        <h3>Nova Tag Personalizada</h3>
+        <button class="btn-close" id="btnCancelTag" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="createTagForm">
+        <div class="form-group">
+          <label for="newTagName">Nome da Tag *</label>
+          <input type="text" id="newTagName" placeholder="Ex: frontend, bug-crítico, release-v1" required maxlength="50">
+        </div>
+        <div class="form-group">
+          <label for="newTagColor">Cor da Tag</label>
+          <div class="tag-color-picker-row">
+            <input type="color" id="newTagColor" value="#6366f1" class="color-picker-input">
+            <div class="color-presets" id="tagColorPresets">
+              <span class="color-preset" style="background:#ef4444" data-color="#ef4444" title="Vermelho"></span>
+              <span class="color-preset" style="background:#f97316" data-color="#f97316" title="Laranja"></span>
+              <span class="color-preset" style="background:#f59e0b" data-color="#f59e0b" title="Amarelo"></span>
+              <span class="color-preset" style="background:#10b981" data-color="#10b981" title="Verde"></span>
+              <span class="color-preset" style="background:#06b6d4" data-color="#06b6d4" title="Ciano"></span>
+              <span class="color-preset" style="background:#3b82f6" data-color="#3b82f6" title="Azul"></span>
+              <span class="color-preset" style="background:#8b5cf6" data-color="#8b5cf6" title="Roxo"></span>
+              <span class="color-preset" style="background:#ec4899" data-color="#ec4899" title="Rosa"></span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnTagModalCancel">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Criar Tag</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Auth Modal (Login / Cadastro) -->
+  <div id="authModal" class="modal hidden">
+    <div class="modal-backdrop" id="authModalBackdrop"></div>
+    <div class="modal-dialog auth-dialog">
+      <div class="modal-header">
+        <h3 id="authModalTitle">Acessar Conta</h3>
+        <button class="btn-close" id="btnCancelAuth" aria-label="Fechar">&times;</button>
+      </div>
+
+      <!-- Tabs for Login / Register -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab-btn active" id="tabLogin">Entrar</button>
+        <button type="button" class="auth-tab-btn" id="tabRegister">Criar Conta</button>
+      </div>
+
+      <div id="authAlert" class="auth-alert hidden"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="loginEmail">E-mail *</label>
+          <input type="email" id="loginEmail" name="email" placeholder="seu@email.com" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Senha *</label>
+          <input type="password" id="loginPassword" name="senha" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <div class="modal-footer auth-footer">
+          <button type="submit" class="btn btn-primary btn-block" id="btnSubmitLogin">Entrar</button>
+        </div>
+      </form>
+
+      <!-- Register Form -->
+      <form id="registerForm" class="auth-form hidden">
+        <div class="form-group">
+          <label for="registerName">Nome Completo *</label>
+          <input type="text" id="registerName" name="nome" placeholder="Seu Nome" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="registerEmail">E-mail *</label>
+          <input type="email" id="registerEmail" name="email" placeholder="seu@email.com" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Senha (mínimo 6 caracteres) *</label>
+          <input type="password" id="registerPassword" name="senha" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+        </div>
+        <div class="modal-footer auth-footer">
+          <button type="submit" class="btn btn-primary btn-block" id="btnSubmitRegister">Criar Minha Conta</button>
+        </div>
+      </form>
+
+      <!-- Guest Login Quick Option -->
+      <div class="guest-login-divider">
+        <span>ou</span>
+      </div>
+      <div class="guest-login-box">
+        <button type="button" class="btn btn-guest btn-block" id="btnGuestLogin" title="Acesse imediatamente sem precisar preencher dados">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="8.5" cy="7" r="4"></circle>
+            <polyline points="17 11 19 13 23 9"></polyline>
+          </svg>
+          ⚡ Entrar como Convidado (Acesso Completo)
+        </button>
+        <span class="guest-login-hint">Modo teste imediato com tarefas, métricas e tags pré-carregadas</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

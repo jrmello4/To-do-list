@@ -12,3 +12,5 @@ target/
 .classpath
 .vscode/
 maven/
+uploads/
+*.tmp

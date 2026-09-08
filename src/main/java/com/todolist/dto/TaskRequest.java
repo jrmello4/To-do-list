@@ -1,8 +1,15 @@
 package com.todolist.dto;
 
+import com.todolist.entity.Categoria;
+import com.todolist.entity.Prioridade;
+import com.todolist.entity.Recorrencia;
+import com.todolist.entity.StatusTarefa;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -19,4 +26,20 @@ public class TaskRequest {
     private String descricao;
 
     private Boolean concluida;
+
+    private Prioridade prioridade;
+
+    private StatusTarefa status;
+
+    private Categoria categoria;
+
+    private LocalDate dataVencimento;
+
+    private Recorrencia recorrencia;
+
+    private Integer pomodorosEstimados;
+
+    private List<SubtaskRequest> subtarefas;
+
+    private List<Long> tagIds;
 }
