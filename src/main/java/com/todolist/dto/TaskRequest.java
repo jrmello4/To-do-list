@@ -1,5 +1,6 @@
 package com.todolist.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -9,14 +10,34 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(name = "TaskRequest", description = "Dados enviados para criar ou atualizar uma tarefa")
 public class TaskRequest {
 
     @NotBlank(message = "O título é obrigatório")
     @Size(max = 200, message = "O título deve ter no máximo 200 caracteres")
+    @Schema(
+            description = "Título da tarefa. Campo obrigatório.",
+            example = "Estudar Spring Boot",
+            maxLength = 200,
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
     private String titulo;
 
     @Size(max = 1000, message = "A descrição deve ter no máximo 1000 caracteres")
+    @Schema(
+            description = "Detalhamento opcional da tarefa.",
+            example = "Aprofundar em JPA e Flyway",
+            maxLength = 1000,
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
     private String descricao;
 
+    @Schema(
+            description = "Indica se a tarefa já foi concluída. Quando omitido, assume false na criação "
+                    + "e mantém o valor atual na atualização.",
+            example = "false",
+            defaultValue = "false",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
     private Boolean concluida;
 }
