@@ -56,7 +56,7 @@ class MigrationsNoMySQLTest {
                 .allSatisfy(migration -> assertThat(migration.getState().isFailed()).isFalse());
         assertThat(aplicadas)
                 .extracting(migration -> String.valueOf(migration.getVersion()))
-                .contains("1", "2", "3");
+                .contains("1", "2", "3", "4", "5");
     }
 
     @Test
@@ -90,10 +90,11 @@ class MigrationsNoMySQLTest {
             }
         }
 
-        assertThat(tabelas).contains("tasks", "usuarios");
+        assertThat(tabelas).contains("tasks", "usuarios", "projetos");
         assertThat(colunasDeTasks).containsExactlyInAnyOrder(
                 "id", "titulo", "descricao", "concluida",
-                "data_criacao", "data_atualizacao", "usuario_id");
+                "data_criacao", "data_atualizacao", "usuario_id",
+                "projeto_id", "prazo", "prioridade", "data_conclusao");
         assertThat(chavesEstrangeiras).contains("usuario_id -> usuarios");
     }
 }

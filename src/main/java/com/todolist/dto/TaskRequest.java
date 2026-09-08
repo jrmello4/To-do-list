@@ -1,9 +1,12 @@
 package com.todolist.dto;
 
+import com.todolist.entity.Prioridade;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -40,4 +43,27 @@ public class TaskRequest {
             requiredMode = Schema.RequiredMode.NOT_REQUIRED
     )
     private Boolean concluida;
+
+    @Schema(
+            description = "Projeto ao qual a tarefa pertence. Nulo coloca a tarefa na caixa de entrada.",
+            example = "1",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private Long projetoId;
+
+    @Schema(
+            description = "Data limite, no formato AAAA-MM-DD. Sem hora de propósito: prazo é uma "
+                    + "decisão sobre o dia.",
+            example = "2026-09-30",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private LocalDate prazo;
+
+    @Schema(
+            description = "Prioridade da tarefa",
+            example = "ALTA",
+            defaultValue = "MEDIA",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private Prioridade prioridade;
 }

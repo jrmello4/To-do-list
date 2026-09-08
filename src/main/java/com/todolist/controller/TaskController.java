@@ -1,8 +1,7 @@
 package com.todolist.controller;
 
-import com.todolist.dto.ErrorResponse;
-import com.todolist.dto.TaskRequest;
-import com.todolist.dto.TaskResponse;
+import com.todolist.dto.*;
+import com.todolist.entity.Prioridade;
 import com.todolist.security.UsuarioAutenticado;
 import com.todolist.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,12 +13,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/tarefas")
@@ -52,14 +55,66 @@ public class TaskController {
 
     @GetMapping
     @Operation(
-            summary = "Listar todas as tarefas",
-            description = "Retorna todas as tarefas cadastradas, concluídas e pendentes. "
-                    + "A lista vem vazia quando não há nenhuma tarefa."
+            summary = "Listar tarefas",
+            description = """
+                    Devolve uma página das tarefas da conta, com filtros combináveis.
+
+                    A resposta é paginada: o corpo é um objeto com `content`, `totalElements` e
+                    `totalPages` — não um array. Use `page`, `size` e `sort` para navegar
+                    (por exemplo `sort=prazo,asc`). Campos ordenáveis: `id`, `titulo`, `prazo`,
+                    `prioridade`, `dataCriacao`, `dataAtualizacao`.
+                    """
     )
-    @ApiResponse(responseCode = "200", description = "Lista de tarefas retornada com sucesso")
-    public ResponseEntity<List<TaskResponse>> listarTodas(
-            @AuthenticationPrincipal UsuarioAutenticado usuario) {
-        return ResponseEntity.ok(taskService.listarTodas(usuario.getId()));
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Página de tarefas"),
+            @ApiResponse(responseCode = "400", description = "Filtro ou ordenação inválidos",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Page<TaskResponse>> listar(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+
+            @Parameter(description = "Filtra por situação de conclusão")
+            @RequestParam(required = false) Boolean concluida,
+
+            @Parameter(description = "Filtra pelas tarefas de um projeto", example = "1")
+            @RequestParam(required = false) Long projeto,
+
+            @Parameter(description = "Apenas a caixa de entrada (tarefas sem projeto)")
+            @RequestParam(required = false) Boolean semProjeto,
+
+            @Parameter(description = "Filtra por prioridade", example = "ALTA")
+            @RequestParam(required = false) Prioridade prioridade,
+
+            @Parameter(description = "Apenas tarefas com prazo até esta data", example = "2026-09-30")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate prazoAte,
+
+            @Parameter(description = "Busca no título e na descrição", example = "flyway")
+            @RequestParam(required = false) String busca,
+
+            @PageableDefault(size = 50, sort = "id") Pageable paginacao) {
+
+        TaskFiltro filtro = new TaskFiltro(concluida, projeto, semProjeto, prioridade, prazoAte, busca);
+        return ResponseEntity.ok(taskService.listar(usuario.getId(), filtro, paginacao));
+    }
+
+    @GetMapping("/resumo")
+    @Operation(
+            summary = "Resumo das tarefas",
+            description = "Contagens calculadas no banco. Existe porque a listagem é paginada: "
+                    + "somar a página no cliente daria números errados."
+    )
+    public ResponseEntity<ResumoResponse> resumo(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+
+            @Parameter(description = "Data de referência para \"atrasada\" e \"vence hoje\". "
+                    + "Envie o hoje de quem usa; o do servidor pode ser outro.",
+                    example = "2026-09-08")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hoje) {
+
+        return ResponseEntity.ok(taskService.resumo(usuario.getId(), hoje));
     }
 
     @GetMapping("/{id}")
@@ -98,6 +153,30 @@ public class TaskController {
             @PathVariable Long id,
             @Valid @RequestBody TaskRequest request) {
         return ResponseEntity.ok(taskService.atualizar(usuario.getId(), id, request));
+    }
+
+    @PatchMapping("/{id}/conclusao")
+    @Operation(
+            summary = "Concluir ou reabrir uma tarefa",
+            description = "Rota própria porque alternar a situação não deveria exigir reenviar a "
+                    + "tarefa inteira. Registra e limpa a data de conclusão."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Situação alterada"),
+            @ApiResponse(responseCode = "400", description = "Corpo inválido",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Tarefa não encontrada",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<TaskResponse> definirConclusao(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+            @Parameter(description = "Identificador da tarefa", example = "1")
+            @PathVariable Long id,
+            @Valid @RequestBody ConclusaoRequest request) {
+        return ResponseEntity.ok(
+                taskService.definirConclusao(usuario.getId(), id, request.getConcluida()));
     }
 
     @DeleteMapping("/{id}")

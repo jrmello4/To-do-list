@@ -193,14 +193,14 @@ class AutenticacaoIntegrationTest {
 
         mockMvc.perform(get("/api/tarefas").header("Authorization", "Bearer " + ana))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].titulo").value("Primeira da Ana"))
-                .andExpect(jsonPath("$[1].titulo").value("Segunda da Ana"));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].titulo").value("Primeira da Ana"))
+                .andExpect(jsonPath("$.content[1].titulo").value("Segunda da Ana"));
 
         mockMvc.perform(get("/api/tarefas").header("Authorization", "Bearer " + bruno))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].titulo").value("Única do Bruno"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].titulo").value("Única do Bruno"));
     }
 
     /* ----------------------------------------------------------- auxiliares */

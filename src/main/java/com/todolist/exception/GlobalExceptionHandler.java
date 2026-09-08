@@ -4,7 +4,9 @@ import com.todolist.dto.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -52,6 +54,40 @@ public class GlobalExceptionHandler {
                         HttpStatus.CONFLICT.value(),
                         ex.getMessage()
                 ));
+    }
+
+    @ExceptionHandler(NomeDeProjetoEmUsoException.class)
+    public ResponseEntity<ErrorResponse> handleNomeDeProjeto(NomeDeProjetoEmUsoException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
+    /**
+     * ?sort=campoQueNaoExiste chegaria ao Spring Data e explodiria em 500.
+     * É erro de quem chama, não do servidor.
+     */
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ErrorResponse> handleOrdenacaoInvalida(PropertyReferenceException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(
+                        HttpStatus.BAD_REQUEST.value(),
+                        "Não é possível ordenar por \"" + ex.getPropertyName() + "\"",
+                        List.of("Campos ordenáveis: id, titulo, prazo, prioridade, "
+                                + "dataCriacao, dataAtualizacao")));
+    }
+
+    /** Prioridade ou data em formato inválido no parâmetro da URL. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleParametroInvalido(
+            MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(
+                        HttpStatus.BAD_REQUEST.value(),
+                        "Valor inválido para o parâmetro \"" + ex.getName() + "\"",
+                        List.of(String.valueOf(ex.getValue()))));
     }
 
     @ExceptionHandler(AuthenticationException.class)

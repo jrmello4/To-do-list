@@ -1,5 +1,5 @@
 /* ==========================================================================
-   To-do List — cliente da API REST (/api/tarefas)
+   To-do List — cliente da API REST
    Sem dependências externas: funciona offline, servido pelo próprio Spring Boot.
    ========================================================================== */
 
@@ -7,8 +7,10 @@
     'use strict';
 
     var API = '/api/tarefas';
+    var API_PROJETOS = '/api/projetos';
     var API_AUTH = '/api/auth';
     var CHAVE_TOKEN = 'todolist:token';
+    var TAMANHO_PAGINA = 50;
 
     /** Token e conta em uso. Sem token, a aplicação nem chega a ser exibida. */
     var sessao = {
@@ -16,10 +18,15 @@
         conta: null
     };
 
-    /** Estado da aplicação em memória. */
     var state = {
-        tarefas: [],
-        filtro: 'todas',
+        tarefas: [],          // acumuladas das páginas já carregadas
+        projetos: [],
+        resumo: null,
+        filtro: 'todas',      // todas | pendentes | concluidas
+        projetoAtivo: null,   // null = todos, 'nenhum' = caixa de entrada, id = projeto
+        busca: '',
+        paginaCarregada: 0,
+        total: 0,
         percentualAnterior: null
     };
 
@@ -29,11 +36,18 @@
         tituloError: document.getElementById('titulo-error'),
         descricao: document.getElementById('descricao'),
         descricaoCounter: document.getElementById('descricao-counter'),
+        projetoSelect: document.getElementById('projeto'),
+        prazo: document.getElementById('prazo'),
+        prioridade: document.getElementById('prioridade'),
         submitBtn: document.getElementById('submit-btn'),
         list: document.getElementById('task-list'),
         template: document.getElementById('task-template'),
         filtersNav: document.getElementById('filters'),
         filters: document.querySelectorAll('.filters__item'),
+        projetosNav: document.getElementById('projetos'),
+        busca: document.getElementById('busca'),
+        mais: document.getElementById('mais'),
+        maisBtn: document.getElementById('mais-btn'),
         loading: document.getElementById('state-loading'),
         empty: document.getElementById('state-empty'),
         emptyTitle: document.getElementById('empty-title'),
@@ -59,6 +73,9 @@
         editTitulo: document.getElementById('edit-titulo'),
         editTituloError: document.getElementById('edit-titulo-error'),
         editDescricao: document.getElementById('edit-descricao'),
+        editProjeto: document.getElementById('edit-projeto'),
+        editPrazo: document.getElementById('edit-prazo'),
+        editPrioridade: document.getElementById('edit-prioridade'),
         editConcluida: document.getElementById('edit-concluida'),
         settingsBtn: document.getElementById('settings-btn'),
         settingsModal: document.getElementById('settings-modal'),
@@ -79,15 +96,20 @@
         authErro: document.getElementById('auth-error'),
         authSubmit: document.getElementById('auth-submit'),
         authLinha: document.getElementById('auth-linha'),
-        logoutBtn: document.getElementById('logout-btn')
+        logoutBtn: document.getElementById('logout-btn'),
+        projetosModal: document.getElementById('projetos-modal'),
+        projetoForm: document.getElementById('projeto-form'),
+        projetoNome: document.getElementById('projeto-nome'),
+        projetoErro: document.getElementById('projeto-error'),
+        projetoCores: document.getElementById('projeto-cores'),
+        projetoSubmit: document.getElementById('projeto-submit'),
+        listaProjetos: document.getElementById('lista-projetos')
     };
 
     /* ---------------------------------------------------------------- HTTP */
 
-    /**
-     * Envolve o fetch tratando o corpo de erro padronizado pela API
-     * (ErrorResponse: status, mensagem, timestamp, erros).
-     */
+    var JSON_HEADERS = { 'Content-Type': 'application/json' };
+
     function request(url, options) {
         var config = options || {};
         var cabecalhos = {};
@@ -143,50 +165,78 @@
         return 'Erro inesperado (HTTP ' + status + ')';
     }
 
-    var JSON_HEADERS = { 'Content-Type': 'application/json' };
+    function corpoJson(metodo, dados) {
+        return { method: metodo, headers: JSON_HEADERS, body: JSON.stringify(dados) };
+    }
 
     var api = {
-        listar: function () {
-            return request(API);
+        listar: function (pagina) {
+            return request(API + parametrosDaListagem(pagina));
+        },
+        resumo: function () {
+            return request(API + '/resumo?hoje=' + hojeISO());
         },
         criar: function (tarefa) {
-            return request(API, {
-                method: 'POST',
-                headers: JSON_HEADERS,
-                body: JSON.stringify(tarefa)
-            });
+            return request(API, corpoJson('POST', tarefa));
         },
         atualizar: function (id, tarefa) {
-            return request(API + '/' + id, {
-                method: 'PUT',
-                headers: JSON_HEADERS,
-                body: JSON.stringify(tarefa)
-            });
+            return request(API + '/' + id, corpoJson('PUT', tarefa));
+        },
+        conclusao: function (id, concluida) {
+            return request(API + '/' + id + '/conclusao',
+                    corpoJson('PATCH', { concluida: concluida }));
         },
         deletar: function (id) {
             return request(API + '/' + id, { method: 'DELETE' });
+        },
+        projetos: function () {
+            return request(API_PROJETOS);
+        },
+        criarProjeto: function (projeto) {
+            return request(API_PROJETOS, corpoJson('POST', projeto));
+        },
+        deletarProjeto: function (id) {
+            return request(API_PROJETOS + '/' + id, { method: 'DELETE' });
         }
     };
 
     var auth = {
         registrar: function (dados) {
-            return request(API_AUTH + '/registrar', {
-                method: 'POST',
-                headers: JSON_HEADERS,
-                body: JSON.stringify(dados)
-            });
+            return request(API_AUTH + '/registrar', corpoJson('POST', dados));
         },
         login: function (dados) {
-            return request(API_AUTH + '/login', {
-                method: 'POST',
-                headers: JSON_HEADERS,
-                body: JSON.stringify(dados)
-            });
+            return request(API_AUTH + '/login', corpoJson('POST', dados));
         },
         eu: function () {
             return request(API_AUTH + '/eu');
         }
     };
+
+    /**
+     * A filtragem acontece no servidor. Com a listagem paginada, filtrar no
+     * cliente esconderia tudo o que está fora da página carregada.
+     */
+    function parametrosDaListagem(pagina) {
+        var partes = ['page=' + pagina, 'size=' + TAMANHO_PAGINA, 'sort=id,asc'];
+
+        if (state.filtro === 'pendentes') {
+            partes.push('concluida=false');
+        } else if (state.filtro === 'concluidas') {
+            partes.push('concluida=true');
+        }
+
+        if (state.projetoAtivo === 'nenhum') {
+            partes.push('semProjeto=true');
+        } else if (state.projetoAtivo) {
+            partes.push('projeto=' + state.projetoAtivo);
+        }
+
+        if (state.busca) {
+            partes.push('busca=' + encodeURIComponent(state.busca));
+        }
+
+        return '?' + partes.join('&');
+    }
 
     /* ------------------------------------------------------------- Sessão */
 
@@ -223,7 +273,7 @@
         el.appView.hidden = false;
         el.authForm.reset();
         aplicarIdentidade();
-        carregar();
+        carregarProjetos().then(carregar);
     }
 
     function encerrarSessao(mensagem) {
@@ -232,7 +282,11 @@
         gravarToken(null);
 
         state.tarefas = [];
+        state.projetos = [];
+        state.resumo = null;
         state.filtro = 'todas';
+        state.projetoAtivo = null;
+        state.busca = '';
         state.percentualAnterior = null;
 
         mostrarEntrada();
@@ -289,16 +343,40 @@
         }
     }
 
-    /* ------------------------------------------------------------ Render */
+    /* --------------------------------------------------------------- Datas */
 
-    function tarefasFiltradas() {
-        if (state.filtro === 'pendentes') {
-            return state.tarefas.filter(function (t) { return !t.concluida; });
+    /**
+     * Data de hoje no fuso de quem usa. toISOString() daria a data em UTC, que
+     * perto da meia-noite é outro dia — e "atrasada" passaria a mentir.
+     */
+    function hojeISO() {
+        var agora = new Date();
+        return agora.getFullYear()
+                + '-' + String(agora.getMonth() + 1).padStart(2, '0')
+                + '-' + String(agora.getDate()).padStart(2, '0');
+    }
+
+    function somarDias(iso, dias) {
+        var data = new Date(iso + 'T00:00:00');
+        data.setDate(data.getDate() + dias);
+        return data.getFullYear()
+                + '-' + String(data.getMonth() + 1).padStart(2, '0')
+                + '-' + String(data.getDate()).padStart(2, '0');
+    }
+
+    function formatarDia(iso) {
+        // 'T00:00:00' força leitura como data local; sem isso o navegador
+        // interpreta a string como UTC e exibe o dia anterior a oeste de Greenwich.
+        var data = new Date(iso + 'T00:00:00');
+        var opcoes = { day: '2-digit', month: 'short' };
+
+        // O ano só aparece quando não é o corrente: "15 de jan." de 2020 seria
+        // indistinguível de janeiro que vem.
+        if (data.getFullYear() !== new Date().getFullYear()) {
+            opcoes.year = 'numeric';
         }
-        if (state.filtro === 'concluidas') {
-            return state.tarefas.filter(function (t) { return t.concluida; });
-        }
-        return state.tarefas;
+
+        return data.toLocaleDateString('pt-BR', opcoes);
     }
 
     function formatarData(iso) {
@@ -320,6 +398,31 @@
         });
     }
 
+    /** Comparação lexicográfica: strings AAAA-MM-DD ordenam como datas. */
+    function rotuloDePrazo(prazo) {
+        var hoje = hojeISO();
+
+        if (prazo < hoje) {
+            return { texto: 'Atrasada · ' + formatarDia(prazo), classe: 'e-atrasada' };
+        }
+        if (prazo === hoje) {
+            return { texto: 'Vence hoje', classe: 'e-hoje' };
+        }
+        if (prazo === somarDias(hoje, 1)) {
+            return { texto: 'Amanhã', classe: '' };
+        }
+        return { texto: formatarDia(prazo), classe: '' };
+    }
+
+    var NOME_PRIORIDADE = {
+        BAIXA: 'Baixa',
+        MEDIA: 'Média',
+        ALTA: 'Alta',
+        URGENTE: 'Urgente'
+    };
+
+    /* ------------------------------------------------------------ Render */
+
     function montarTarefa(tarefa, indice) {
         var no = el.template.content.firstElementChild.cloneNode(true);
 
@@ -335,6 +438,33 @@
         no.querySelector('.badge').textContent = tarefa.concluida ? 'Concluída' : 'Pendente';
         no.querySelector('.task__date').textContent = formatarData(tarefa.dataCriacao);
 
+        var chipProjeto = no.querySelector('.chip--projeto');
+        if (tarefa.projeto) {
+            chipProjeto.textContent = tarefa.projeto.nome;
+            chipProjeto.style.setProperty('--ponto', corDoProjeto(tarefa.projeto.cor));
+            chipProjeto.hidden = false;
+        }
+
+        var chipPrazo = no.querySelector('.chip--prazo');
+        if (tarefa.prazo && !tarefa.concluida) {
+            var rotulo = rotuloDePrazo(tarefa.prazo);
+            chipPrazo.textContent = rotulo.texto;
+            chipPrazo.className = 'chip chip--prazo ' + rotulo.classe;
+            chipPrazo.hidden = false;
+        } else if (tarefa.prazo) {
+            chipPrazo.textContent = formatarDia(tarefa.prazo);
+            chipPrazo.className = 'chip chip--prazo';
+            chipPrazo.hidden = false;
+        }
+
+        // Só ALTA e URGENTE aparecem: marcar "média" em tudo é ruído visual.
+        var chipPrioridade = no.querySelector('.chip--prioridade');
+        if (tarefa.prioridade === 'ALTA' || tarefa.prioridade === 'URGENTE') {
+            chipPrioridade.textContent = NOME_PRIORIDADE[tarefa.prioridade];
+            chipPrioridade.className = 'chip chip--prioridade e-' + tarefa.prioridade.toLowerCase();
+            chipPrioridade.hidden = false;
+        }
+
         var check = no.querySelector('.task__check');
         check.setAttribute('aria-pressed', tarefa.concluida ? 'true' : 'false');
         check.setAttribute('aria-label',
@@ -343,48 +473,136 @@
         return no;
     }
 
-    function renderizar() {
-        var visiveis = tarefasFiltradas();
+    var CORES = {
+        indigo: 'hsl(245 72% 56%)',
+        violeta: 'hsl(276 66% 56%)',
+        azul: 'hsl(208 82% 56%)',
+        verde: 'hsl(152 62% 42%)',
+        ambar: 'hsl(34 88% 48%)',
+        rosa: 'hsl(335 75% 52%)'
+    };
 
+    function corDoProjeto(cor) {
+        return CORES[cor] || CORES.indigo;
+    }
+
+    function renderizar() {
         el.list.textContent = '';
 
         var fragmento = document.createDocumentFragment();
-        visiveis.forEach(function (tarefa, i) {
+        state.tarefas.forEach(function (tarefa, i) {
             fragmento.appendChild(montarTarefa(tarefa, i));
         });
         el.list.appendChild(fragmento);
 
-        el.empty.hidden = visiveis.length > 0;
+        el.empty.hidden = state.tarefas.length > 0;
 
-        if (visiveis.length === 0) {
-            if (state.tarefas.length === 0) {
-                el.emptyTitle.textContent = 'Nenhuma tarefa por aqui';
-                el.emptyText.textContent = 'Adicione sua primeira tarefa no formulário acima.';
+        if (state.tarefas.length === 0) {
+            if (state.busca) {
+                el.emptyTitle.textContent = 'Nada encontrado';
+                el.emptyText.textContent = 'Nenhuma tarefa corresponde a “' + state.busca + '”.';
             } else if (state.filtro === 'pendentes') {
                 el.emptyTitle.textContent = 'Tudo em dia!';
-                el.emptyText.textContent = 'Você não tem nenhuma tarefa pendente.';
-            } else {
+                el.emptyText.textContent = 'Você não tem nenhuma tarefa pendente aqui.';
+            } else if (state.filtro === 'concluidas') {
                 el.emptyTitle.textContent = 'Nada concluído ainda';
                 el.emptyText.textContent = 'Marque uma tarefa como concluída para vê-la aqui.';
+            } else {
+                el.emptyTitle.textContent = 'Nenhuma tarefa por aqui';
+                el.emptyText.textContent = 'Adicione sua primeira tarefa no formulário acima.';
             }
         }
 
-        atualizarResumo();
+        var restantes = state.total - state.tarefas.length;
+        el.mais.hidden = restantes <= 0;
+        el.maisBtn.textContent = 'Carregar mais ' + Math.min(restantes, TAMANHO_PAGINA)
+                + ' de ' + restantes;
+    }
+
+    function renderizarProjetos() {
+        el.projetosNav.textContent = '';
+
+        var opcoes = [{ id: null, nome: 'Todos' }, { id: 'nenhum', nome: 'Caixa de entrada' }]
+                .concat(state.projetos.map(function (projeto) {
+                    return {
+                        id: projeto.id,
+                        nome: projeto.nome,
+                        cor: projeto.cor,
+                        contagem: projeto.tarefasPendentes
+                    };
+                }));
+
+        opcoes.forEach(function (opcao) {
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'projeto-chip';
+            botao.classList.toggle('is-active', state.projetoAtivo === opcao.id);
+
+            if (opcao.cor) {
+                var ponto = document.createElement('span');
+                ponto.className = 'projeto-chip__ponto';
+                ponto.style.setProperty('--ponto', corDoProjeto(opcao.cor));
+                botao.appendChild(ponto);
+            }
+
+            botao.appendChild(document.createTextNode(opcao.nome));
+
+            if (opcao.contagem) {
+                var contagem = document.createElement('span');
+                contagem.className = 'projeto-chip__contagem';
+                contagem.textContent = opcao.contagem;
+                botao.appendChild(contagem);
+            }
+
+            botao.addEventListener('click', function () {
+                state.projetoAtivo = opcao.id;
+                renderizarProjetos();
+                carregar();
+            });
+
+            el.projetosNav.appendChild(botao);
+        });
+
+        var novo = document.createElement('button');
+        novo.type = 'button';
+        novo.className = 'projeto-chip projeto-chip--novo';
+        novo.textContent = '+ Projeto';
+        novo.addEventListener('click', abrirProjetos);
+        el.projetosNav.appendChild(novo);
+    }
+
+    function preencherSelectDeProjetos(select, selecionado) {
+        select.textContent = '';
+
+        var vazio = document.createElement('option');
+        vazio.value = '';
+        vazio.textContent = 'Caixa de entrada';
+        select.appendChild(vazio);
+
+        state.projetos.forEach(function (projeto) {
+            var opcao = document.createElement('option');
+            opcao.value = projeto.id;
+            opcao.textContent = projeto.nome;
+            select.appendChild(opcao);
+        });
+
+        select.value = selecionado == null ? '' : String(selecionado);
     }
 
     // Circunferência do anel (r = 52), casada com o stroke-dasharray no CSS.
     var CIRCUNFERENCIA = 2 * Math.PI * 52;
 
     function atualizarResumo() {
-        var total = state.tarefas.length;
-        var concluidas = state.tarefas.filter(function (t) { return t.concluida; }).length;
-        var pendentes = total - concluidas;
-        var percentual = total === 0 ? 0 : Math.round((concluidas / total) * 100);
+        var resumo = state.resumo || {
+            total: 0, pendentes: 0, concluidas: 0,
+            atrasadas: 0, vencemHoje: 0, percentualConcluido: 0
+        };
 
-        el.statTotal.textContent = total;
-        el.statPending.textContent = pendentes;
-        el.statDone.textContent = concluidas;
+        el.statTotal.textContent = resumo.total;
+        el.statPending.textContent = resumo.pendentes;
+        el.statDone.textContent = resumo.concluidas;
 
+        var percentual = resumo.percentualConcluido;
         el.ringValue.style.strokeDashoffset = CIRCUNFERENCIA * (1 - percentual / 100);
         el.ringLabel.firstChild.nodeValue = percentual;
         el.ring.setAttribute('role', 'progressbar');
@@ -393,26 +611,40 @@
         el.ring.setAttribute('aria-valuenow', percentual);
         el.ring.setAttribute('aria-label', 'Progresso: ' + percentual + '% concluído');
 
-        if (total === 0) {
-            el.summary.textContent = 'Sua lista está vazia. Que tal começar agora?';
-        } else if (pendentes === 0) {
-            el.summary.textContent = 'Tudo concluído. Aproveite o resto do dia!';
-        } else if (pendentes === 1) {
-            el.summary.textContent = 'Falta 1 tarefa para zerar o dia.';
-        } else {
-            el.summary.textContent = 'Faltam ' + pendentes + ' tarefas para zerar o dia.';
-        }
+        el.summary.textContent = frase(resumo);
 
         // Comemora só na transição para 100%, nunca no carregamento inicial.
-        var zerou = percentual === 100 && total > 0
+        var zerou = percentual === 100 && resumo.total > 0
             && state.percentualAnterior !== null && state.percentualAnterior < 100;
 
         if (zerou) {
             comemorar();
         }
 
-        el.ring.classList.toggle('is-complete', percentual === 100 && total > 0);
+        el.ring.classList.toggle('is-complete', percentual === 100 && resumo.total > 0);
         state.percentualAnterior = percentual;
+    }
+
+    function frase(resumo) {
+        if (resumo.total === 0) {
+            return 'Sua lista está vazia. Que tal começar agora?';
+        }
+        if (resumo.atrasadas > 0) {
+            return resumo.atrasadas === 1
+                    ? '1 tarefa passou do prazo.'
+                    : resumo.atrasadas + ' tarefas passaram do prazo.';
+        }
+        if (resumo.vencemHoje > 0) {
+            return resumo.vencemHoje === 1
+                    ? '1 tarefa vence hoje.'
+                    : resumo.vencemHoje + ' tarefas vencem hoje.';
+        }
+        if (resumo.pendentes === 0) {
+            return 'Tudo concluído. Aproveite o resto do dia!';
+        }
+        return resumo.pendentes === 1
+                ? 'Falta 1 tarefa para zerar o dia.'
+                : 'Faltam ' + resumo.pendentes + ' tarefas para zerar o dia.';
     }
 
     /* --------------------------------------------------------- Comemoração */
@@ -445,6 +677,7 @@
 
         if (nome !== 'pronto') {
             el.empty.hidden = true;
+            el.mais.hidden = true;
         }
     }
 
@@ -471,18 +704,81 @@
 
     /* ------------------------------------------------------------- Ações */
 
+    function carregarProjetos() {
+        return api.projetos()
+            .then(function (projetos) {
+                state.projetos = Array.isArray(projetos) ? projetos : [];
+                renderizarProjetos();
+                preencherSelectDeProjetos(el.projetoSelect, el.projetoSelect.value || null);
+            })
+            .catch(function () {
+                state.projetos = [];
+            });
+    }
+
     function carregar() {
         mostrarEstado('loading');
 
-        return api.listar()
-            .then(function (tarefas) {
-                state.tarefas = Array.isArray(tarefas) ? tarefas : [];
+        return Promise.all([api.listar(0), api.resumo()])
+            .then(function (respostas) {
+                var pagina = respostas[0];
+
+                // A resposta é um objeto Page, não um array: content, totalElements...
+                state.tarefas = pagina.content || [];
+                state.total = pagina.totalElements || 0;
+                state.paginaCarregada = 0;
+                state.resumo = respostas[1];
+
                 mostrarEstado('pronto');
+                renderizar();
+                atualizarResumo();
+            })
+            .catch(function (erro) {
+                if (erro.message === 'Sessão expirada') {
+                    return;
+                }
+                el.errorText.textContent = erro.message;
+                mostrarEstado('error');
+            });
+    }
+
+    function carregarMais() {
+        el.maisBtn.disabled = true;
+
+        api.listar(state.paginaCarregada + 1)
+            .then(function (pagina) {
+                state.paginaCarregada += 1;
+                state.tarefas = state.tarefas.concat(pagina.content || []);
+                state.total = pagina.totalElements || state.total;
                 renderizar();
             })
             .catch(function (erro) {
-                el.errorText.textContent = erro.message;
-                mostrarEstado('error');
+                toast(erro.message, 'error');
+            })
+            .finally(function () {
+                el.maisBtn.disabled = false;
+            });
+    }
+
+    /** Recarrega a página e o resumo depois de qualquer escrita. */
+    function recarregar() {
+        return Promise.all([api.listar(0), api.resumo(), api.projetos()])
+            .then(function (respostas) {
+                state.tarefas = respostas[0].content || [];
+                state.total = respostas[0].totalElements || 0;
+                state.paginaCarregada = 0;
+                state.resumo = respostas[1];
+                state.projetos = Array.isArray(respostas[2]) ? respostas[2] : [];
+
+                renderizar();
+                atualizarResumo();
+                renderizarProjetos();
+                preencherSelectDeProjetos(el.projetoSelect, el.projetoSelect.value || null);
+            })
+            .catch(function (erro) {
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
             });
     }
 
@@ -504,18 +800,25 @@
         api.criar({
             titulo: titulo,
             descricao: el.descricao.value.trim() || null,
+            projetoId: el.projetoSelect.value ? Number(el.projetoSelect.value) : null,
+            prazo: el.prazo.value || null,
+            prioridade: el.prioridade.value,
             concluida: false
         })
-            .then(function (criada) {
-                state.tarefas.push(criada);
+            .then(function () {
+                var projetoMantido = el.projetoSelect.value;
                 el.form.reset();
+                el.projetoSelect.value = projetoMantido;   // continuar no mesmo projeto
+                el.prioridade.value = 'MEDIA';
                 atualizarContador();
-                renderizar();
                 toast('Tarefa criada com sucesso', 'success');
                 el.titulo.focus();
+                return recarregar();
             })
             .catch(function (erro) {
-                toast(erro.message, 'error');
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
             })
             .finally(function () {
                 el.submitBtn.disabled = false;
@@ -530,19 +833,18 @@
 
         noDaTarefa.classList.add('is-busy');
 
-        api.atualizar(id, {
-            titulo: tarefa.titulo,
-            descricao: tarefa.descricao,
-            concluida: !tarefa.concluida
-        })
+        // PATCH na rota de conclusão: alternar a situação não deveria exigir
+        // reenviar título, descrição, projeto e prazo.
+        api.conclusao(id, !tarefa.concluida)
             .then(function (atualizada) {
-                substituirNoEstado(atualizada);
-                renderizar();
                 toast(atualizada.concluida ? 'Tarefa concluída' : 'Tarefa reaberta', 'success');
+                return recarregar();
             })
             .catch(function (erro) {
                 noDaTarefa.classList.remove('is-busy');
-                toast(erro.message, 'error');
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
             });
     }
 
@@ -560,13 +862,14 @@
 
         api.deletar(id)
             .then(function () {
-                state.tarefas = state.tarefas.filter(function (t) { return t.id !== id; });
-                renderizar();
                 toast('Tarefa excluída', 'success');
+                return recarregar();
             })
             .catch(function (erro) {
                 noDaTarefa.classList.remove('is-removing');
-                toast(erro.message, 'error');
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
             });
     }
 
@@ -586,27 +889,25 @@
         api.atualizar(id, {
             titulo: titulo,
             descricao: el.editDescricao.value.trim() || null,
+            projetoId: el.editProjeto.value ? Number(el.editProjeto.value) : null,
+            prazo: el.editPrazo.value || null,
+            prioridade: el.editPrioridade.value,
             concluida: el.editConcluida.checked
         })
-            .then(function (atualizada) {
-                substituirNoEstado(atualizada);
-                renderizar();
+            .then(function () {
                 fecharModal();
                 toast('Tarefa atualizada', 'success');
+                return recarregar();
             })
             .catch(function (erro) {
-                toast(erro.message, 'error');
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
             });
     }
 
     function buscarNoEstado(id) {
         return state.tarefas.filter(function (t) { return t.id === id; })[0];
-    }
-
-    function substituirNoEstado(tarefa) {
-        state.tarefas = state.tarefas.map(function (t) {
-            return t.id === tarefa.id ? tarefa : t;
-        });
     }
 
     /* -------------------------------------------------------------- Modais */
@@ -624,7 +925,10 @@
         el.editId.value = tarefa.id;
         el.editTitulo.value = tarefa.titulo;
         el.editDescricao.value = tarefa.descricao || '';
+        el.editPrazo.value = tarefa.prazo || '';
+        el.editPrioridade.value = tarefa.prioridade || 'MEDIA';
         el.editConcluida.checked = !!tarefa.concluida;
+        preencherSelectDeProjetos(el.editProjeto, tarefa.projeto ? tarefa.projeto.id : null);
         el.editTitulo.classList.remove('is-invalid');
         el.editTituloError.textContent = '';
 
@@ -704,6 +1008,117 @@
         });
     }
 
+    /* -------------------------------------------------- Painel de projetos */
+
+    var corDoNovoProjeto = 'indigo';
+
+    function montarCoresDeProjeto() {
+        window.Prefs.PALETA.forEach(function (cor) {
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'swatch';
+            botao.dataset.cor = cor.id;
+            botao.title = cor.nome;
+            botao.setAttribute('role', 'radio');
+            botao.setAttribute('aria-label', cor.nome);
+            botao.style.setProperty('--amostra',
+                'linear-gradient(140deg, hsl(' + cor.h + ' ' + cor.s + '% 56%), hsl('
+                    + (cor.h + 34) + ' ' + cor.s + '% 46%))');
+
+            botao.addEventListener('click', function () {
+                corDoNovoProjeto = cor.id;
+                marcarCorDeProjeto(cor.id);
+            });
+
+            el.projetoCores.appendChild(botao);
+        });
+        marcarCorDeProjeto(corDoNovoProjeto);
+    }
+
+    function marcarCorDeProjeto(id) {
+        Array.prototype.forEach.call(el.projetoCores.children, function (botao) {
+            var ativo = botao.dataset.cor === id;
+            botao.classList.toggle('is-active', ativo);
+            botao.setAttribute('aria-checked', ativo ? 'true' : 'false');
+        });
+    }
+
+    function renderizarListaDeProjetos() {
+        el.listaProjetos.textContent = '';
+
+        state.projetos.forEach(function (projeto) {
+            var item = document.createElement('li');
+            item.className = 'item-projeto';
+
+            var ponto = document.createElement('span');
+            ponto.className = 'item-projeto__ponto';
+            ponto.style.setProperty('--ponto', corDoProjeto(projeto.cor));
+
+            var nome = document.createElement('span');
+            nome.className = 'item-projeto__nome';
+            nome.textContent = projeto.nome;
+
+            var contagem = document.createElement('span');
+            contagem.className = 'item-projeto__contagem';
+            contagem.textContent = projeto.tarefasPendentes === 1
+                    ? '1 pendente'
+                    : projeto.tarefasPendentes + ' pendentes';
+
+            var excluir = document.createElement('button');
+            excluir.type = 'button';
+            excluir.className = 'icon-btn icon-btn--danger';
+            excluir.title = 'Excluir projeto';
+            excluir.setAttribute('aria-label', 'Excluir o projeto ' + projeto.nome);
+            excluir.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    + '<path d="M4 7h16M10 11v6M14 11v6"></path>'
+                    + '<path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"></path>'
+                    + '<path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>';
+
+            excluir.addEventListener('click', function () {
+                if (!window.confirm('Excluir o projeto "' + projeto.nome
+                        + '"? As tarefas dele voltam para a caixa de entrada.')) {
+                    return;
+                }
+
+                api.deletarProjeto(projeto.id)
+                    .then(function () {
+                        if (state.projetoAtivo === projeto.id) {
+                            state.projetoAtivo = null;
+                        }
+                        toast('Projeto excluído', 'success');
+                        return recarregar();
+                    })
+                    .then(renderizarListaDeProjetos)
+                    .catch(function (erro) {
+                        if (erro.message !== 'Sessão expirada') {
+                            toast(erro.message, 'error');
+                        }
+                    });
+            });
+
+            item.appendChild(ponto);
+            item.appendChild(nome);
+            item.appendChild(contagem);
+            item.appendChild(excluir);
+            el.listaProjetos.appendChild(item);
+        });
+    }
+
+    function abrirProjetos() {
+        focoAnterior = document.activeElement;
+        el.projetoNome.value = '';
+        el.projetoErro.textContent = '';
+        renderizarListaDeProjetos();
+        el.projetosModal.hidden = false;
+        el.projetoNome.focus();
+    }
+
+    function fecharProjetos() {
+        el.projetosModal.hidden = true;
+        devolverFoco();
+    }
+
     /* ---------------------------------------------------------- Auxiliares */
 
     function limparErroTitulo() {
@@ -720,12 +1135,24 @@
     el.form.addEventListener('submit', criar);
     el.editForm.addEventListener('submit', salvarEdicao);
     el.retryBtn.addEventListener('click', carregar);
+    el.maisBtn.addEventListener('click', carregarMais);
     el.titulo.addEventListener('input', limparErroTitulo);
     el.descricao.addEventListener('input', atualizarContador);
 
     el.editTitulo.addEventListener('input', function () {
         el.editTitulo.classList.remove('is-invalid');
         el.editTituloError.textContent = '';
+    });
+
+    // Busca com espera: a consulta vai ao servidor, então disparar a cada tecla
+    // seria uma requisição por letra digitada.
+    var esperaDaBusca = null;
+    el.busca.addEventListener('input', function () {
+        clearTimeout(esperaDaBusca);
+        esperaDaBusca = setTimeout(function () {
+            state.busca = el.busca.value.trim();
+            carregar();
+        }, 320);
     });
 
     // Delegação de eventos: a lista é recriada a cada render.
@@ -758,7 +1185,7 @@
 
             // Move o indicador deslizante para a opção escolhida.
             el.filtersNav.style.setProperty('--indice', indice);
-            renderizar();
+            carregar();
         });
     });
 
@@ -772,6 +1199,40 @@
         });
 
     el.settingsBtn.addEventListener('click', abrirAjustes);
+
+    Array.prototype.forEach.call(
+        el.projetosModal.querySelectorAll('[data-close-projetos]'), function (botao) {
+            botao.addEventListener('click', fecharProjetos);
+        });
+
+    el.projetoForm.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+
+        var nome = el.projetoNome.value.trim();
+        if (!nome) {
+            el.projetoErro.textContent = 'Informe o nome do projeto.';
+            return;
+        }
+
+        el.projetoErro.textContent = '';
+        el.projetoSubmit.disabled = true;
+
+        api.criarProjeto({ nome: nome, cor: corDoNovoProjeto })
+            .then(function () {
+                el.projetoNome.value = '';
+                toast('Projeto criado', 'success');
+                return recarregar();
+            })
+            .then(renderizarListaDeProjetos)
+            .catch(function (erro) {
+                if (erro.message !== 'Sessão expirada') {
+                    el.projetoErro.textContent = erro.message;
+                }
+            })
+            .finally(function () {
+                el.projetoSubmit.disabled = false;
+            });
+    });
 
     el.settingsForm.addEventListener('submit', function (evento) {
         evento.preventDefault();
@@ -809,6 +1270,8 @@
             fecharModal();
         } else if (!el.settingsModal.hidden) {
             fecharAjustes();
+        } else if (!el.projetosModal.hidden) {
+            fecharProjetos();
         }
     });
 
@@ -861,7 +1324,8 @@
         el.authErro.textContent = '';
         el.authSubmit.disabled = true;
 
-        var promessa = modoAuth === 'registrar'
+        var cadastro = modoAuth === 'registrar';
+        var promessa = cadastro
                 ? auth.registrar({ nome: nome, email: email, senha: senha })
                 : auth.login({ email: email, senha: senha });
 
@@ -870,8 +1334,7 @@
                 sessao.token = resposta.token;
                 gravarToken(resposta.token);
                 entrarNaAplicacao(resposta.usuario);
-                toast(modoAuth === 'registrar' ? 'Conta criada. Boas-vindas!' : 'Bem-vindo de volta',
-                        'success');
+                toast(cadastro ? 'Conta criada. Boas-vindas!' : 'Bem-vindo de volta', 'success');
             })
             .catch(function (erro) {
                 el.authErro.textContent = erro.message;
@@ -888,6 +1351,7 @@
     /* ------------------------------------------------------------- Início */
 
     montarAmostras();
+    montarCoresDeProjeto();
     atualizarContador();
     definirModo('login');
 

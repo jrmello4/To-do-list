@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -119,13 +120,15 @@ class TaskControllerTest {
     @Test
     @DisplayName("GET /api/tarefas - Deve listar todas as tarefas")
     void deveListarTarefas() throws Exception {
-        when(taskService.listarTodas(USUARIO_ID)).thenReturn(List.of(taskResponse));
+        when(taskService.listar(eq(USUARIO_ID), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(taskResponse)));
 
         mockMvc.perform(get("/api/tarefas")
                         .with(user(AUTENTICADO)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].titulo").value("Estudar Java"))
-                .andExpect(jsonPath("$[0].concluida").value(false));
+                .andExpect(jsonPath("$.content[0].titulo").value("Estudar Java"))
+                .andExpect(jsonPath("$.content[0].concluida").value(false))
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test

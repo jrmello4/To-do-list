@@ -6,6 +6,8 @@ import com.todolist.entity.Task;
 import com.todolist.exception.ResourceNotFoundException;
 import com.todolist.entity.Usuario;
 import com.todolist.repository.TaskRepository;
+import com.todolist.dto.TaskFiltro;
+import com.todolist.repository.ProjetoRepository;
 import com.todolist.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +19,11 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,6 +31,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +45,9 @@ class TaskServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private ProjetoRepository projetoRepository;
 
     @InjectMocks
     private TaskService taskService;
@@ -127,25 +138,32 @@ class TaskServiceTest {
     @DisplayName("Listagem de tarefas")
     class Listar {
 
+        private static final TaskFiltro SEM_FILTRO =
+                new TaskFiltro(null, null, null, null, null, null);
+        private static final Pageable PRIMEIRA_PAGINA = PageRequest.of(0, 50);
+
         @Test
-        @DisplayName("Deve listar todas as tarefas")
+        @DisplayName("Deve devolver uma página com as tarefas")
         void deveListarTodas() {
-            when(taskRepository.findByUsuarioIdOrderByIdAsc(USUARIO_ID)).thenReturn(List.of(task));
+            when(taskRepository.findAll(any(Specification.class), eq(PRIMEIRA_PAGINA)))
+                    .thenReturn(new PageImpl<>(List.of(task), PRIMEIRA_PAGINA, 1));
 
-            List<TaskResponse> responses = taskService.listarTodas(USUARIO_ID);
+            Page<TaskResponse> pagina = taskService.listar(USUARIO_ID, SEM_FILTRO, PRIMEIRA_PAGINA);
 
-            assertThat(responses).hasSize(1);
-            assertThat(responses.get(0).getTitulo()).isEqualTo("Estudar Java");
+            assertThat(pagina.getTotalElements()).isEqualTo(1);
+            assertThat(pagina.getContent().get(0).getTitulo()).isEqualTo("Estudar Java");
         }
 
         @Test
-        @DisplayName("Deve retornar lista vazia quando não houver tarefas")
+        @DisplayName("Deve devolver página vazia quando não houver tarefas")
         void deveRetornarListaVazia() {
-            when(taskRepository.findByUsuarioIdOrderByIdAsc(USUARIO_ID)).thenReturn(List.of());
+            when(taskRepository.findAll(any(Specification.class), eq(PRIMEIRA_PAGINA)))
+                    .thenReturn(new PageImpl<>(List.of(), PRIMEIRA_PAGINA, 0));
 
-            List<TaskResponse> responses = taskService.listarTodas(USUARIO_ID);
+            Page<TaskResponse> pagina = taskService.listar(USUARIO_ID, SEM_FILTRO, PRIMEIRA_PAGINA);
 
-            assertThat(responses).isEmpty();
+            assertThat(pagina).isEmpty();
+            assertThat(pagina.getTotalElements()).isZero();
         }
     }
 

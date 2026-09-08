@@ -9,7 +9,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-43-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-61-success?style=flat-square)](#executar-testes)
 [![Segurança](https://img.shields.io/badge/auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](#autenticação)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)](#subir-com-docker)
 
@@ -28,6 +28,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 | | |
 |---|---|
 | **Contas** | Cadastro e login com JWT; cada conta enxerga apenas as próprias tarefas |
+| **Organização** | Projetos coloridos, prazos, prioridade e busca — filtrados no servidor |
 | **Interface web** | Criar, concluir, editar, excluir e filtrar tarefas, com anel de progresso e resumo do dia |
 | **Personalização** | Saudação com o seu nome, seis cores de destaque e tema claro/escuro/sistema |
 | **API REST** | Cinco endpoints em `/api/tarefas`, com validação de entrada e erros padronizados |
@@ -179,7 +180,9 @@ endpoints REST documentados abaixo e traz:
 - Anel de progresso e resumo contextual ("faltam 3 tarefas para zerar o dia")
 - Formulário de criação com validação e contador de caracteres
 - Lista com conclusão em um clique, edição em modal e exclusão com confirmação
-- Filtros por situação, com indicador deslizante
+- Projetos coloridos, com contagem de pendentes e painel para criar e excluir
+- Prazo com destaque para atrasadas e para as que vencem hoje, e prioridade
+- Busca e filtros resolvidos no servidor, com "carregar mais" paginado
 - Mensagens de erro vindas da API exibidas na tela
 - Layout responsivo e animações que respeitam `prefers-reduced-motion`
 
@@ -210,13 +213,54 @@ em **4,68:1**, acima do mínimo de 4,5:1 exigido pelo WCAG AA.
 Todos exigem o cabeçalho `Authorization: Bearer <token>` e operam apenas sobre
 as tarefas da conta autenticada.
 
+### Tarefas
+
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | `POST` | `/api/tarefas` | Criar uma nova tarefa |
-| `GET` | `/api/tarefas` | Listar todas as tarefas |
+| `GET` | `/api/tarefas` | Listar tarefas — **paginado e filtrável** |
+| `GET` | `/api/tarefas/resumo` | Contagens da conta |
 | `GET` | `/api/tarefas/{id}` | Buscar tarefa por ID |
 | `PUT` | `/api/tarefas/{id}` | Atualizar uma tarefa |
+| `PATCH` | `/api/tarefas/{id}/conclusao` | Concluir ou reabrir |
 | `DELETE` | `/api/tarefas/{id}` | Deletar uma tarefa |
+
+### Projetos
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/projetos` | Listar, com a contagem de pendentes de cada um |
+| `POST` | `/api/projetos` | Criar projeto |
+| `GET` | `/api/projetos/{id}` | Buscar projeto por ID |
+| `PUT` | `/api/projetos/{id}` | Atualizar projeto |
+| `DELETE` | `/api/projetos/{id}` | Excluir — as tarefas voltam à caixa de entrada |
+
+### Filtros da listagem
+
+Combináveis, resolvidos no banco:
+
+| Parâmetro | Exemplo | O que faz |
+|-----------|---------|-----------|
+| `concluida` | `true` | Filtra por situação |
+| `projeto` | `3` | Tarefas de um projeto |
+| `semProjeto` | `true` | Apenas a caixa de entrada |
+| `prioridade` | `ALTA` | `BAIXA`, `MEDIA`, `ALTA` ou `URGENTE` |
+| `prazoAte` | `2026-09-30` | Vencem até a data (sem prazo fica de fora) |
+| `busca` | `flyway` | Título e descrição, sem diferenciar maiúsculas |
+| `page` / `size` / `sort` | `0` / `50` / `prazo,asc` | Paginação e ordenação |
+
+```bash
+curl -s "http://localhost:8080/api/tarefas?prioridade=ALTA&concluida=false&sort=prazo,asc" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**A listagem é paginada.** A resposta é um objeto com `content`, `totalElements` e
+`totalPages` — não um array. É também por isso que existe `/api/tarefas/resumo`:
+com a lista paginada, somar a página no cliente daria contagens erradas.
+
+`prazo` é uma data (`AAAA-MM-DD`), sem hora, porque prazo é uma decisão sobre o
+dia. O cálculo de "atrasada" usa a data enviada em `?hoje=`, e não a do
+servidor — quem usa pode estar em outro fuso.
 
 ### Exemplos de Requisição
 
@@ -304,7 +348,7 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-O projeto possui **43 testes**. A maioria roda contra H2 em memória, sem
+O projeto possui **61 testes**. A maioria roda contra H2 em memória, sem
 precisar de MySQL:
 
 | Classe | Cobre |
@@ -314,6 +358,7 @@ precisar de MySQL:
 | `SchemaMigrationTest` | As migrations aplicam e produzem as colunas que as entidades esperam |
 | `TaskRepositoryTest` | Persistência contra o schema criado pelo Flyway |
 | `AutenticacaoIntegrationTest` | Cadastro, login, token e **isolamento entre contas** |
+| `PlanejamentoIntegrationTest` | Projetos, prazos, prioridade, filtros, paginação e resumo |
 | `MigrationsNoMySQLTest` | As migrations contra **MySQL de verdade**, via Testcontainers |
 
 `MigrationsNoMySQLTest` é pulada automaticamente onde não há Docker, e executa

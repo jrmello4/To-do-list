@@ -1,22 +1,30 @@
 package com.todolist.service;
 
-import com.todolist.dto.TaskRequest;
-import com.todolist.dto.TaskResponse;
+import com.todolist.dto.*;
+import com.todolist.entity.Prioridade;
+import com.todolist.entity.Projeto;
 import com.todolist.entity.Task;
 import com.todolist.exception.ResourceNotFoundException;
+import com.todolist.repository.ProjetoRepository;
 import com.todolist.repository.TaskRepository;
+import com.todolist.repository.TaskSpecifications;
 import com.todolist.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class TaskService {
 
     private final TaskRepository taskRepository;
+    private final ProjetoRepository projetoRepository;
     private final UsuarioRepository usuarioRepository;
 
     @Transactional
@@ -25,26 +33,64 @@ public class TaskService {
                 // getReferenceById devolve uma referência preguiçosa: grava a
                 // chave estrangeira sem ir ao banco buscar o usuário inteiro.
                 .usuario(usuarioRepository.getReferenceById(usuarioId))
+                .projeto(resolverProjeto(usuarioId, request.getProjetoId()))
                 .titulo(request.getTitulo())
                 .descricao(request.getDescricao())
-                .concluida(request.getConcluida() != null && request.getConcluida())
+                .prazo(request.getPrazo())
+                .prioridade(request.getPrioridade() != null ? request.getPrioridade() : Prioridade.MEDIA)
+                .concluida(false)
                 .build();
+
+        if (Boolean.TRUE.equals(request.getConcluida())) {
+            aplicarConclusao(task, true);
+        }
 
         return toResponse(taskRepository.save(task));
     }
 
     @Transactional(readOnly = true)
-    public List<TaskResponse> listarTodas(Long usuarioId) {
-        return taskRepository.findByUsuarioIdOrderByIdAsc(usuarioId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<TaskResponse> listar(Long usuarioId, TaskFiltro filtro, Pageable paginacao) {
+        // A especificação do dono vem primeiro e não é opcional: é ela que
+        // mantém o isolamento entre contas também nesta rota.
+        Specification<Task> criterios = Specification.allOf(
+                TaskSpecifications.doUsuario(usuarioId),
+                TaskSpecifications.concluida(filtro.concluida()),
+                TaskSpecifications.doProjeto(filtro.projetoId()),
+                TaskSpecifications.semProjeto(filtro.semProjeto()),
+                TaskSpecifications.comPrioridade(filtro.prioridade()),
+                TaskSpecifications.prazoAte(filtro.prazoAte()),
+                TaskSpecifications.busca(filtro.busca()));
+
+        return taskRepository.findAll(criterios, paginacao).map(TaskService::toResponse);
+    }
+
+    /**
+     * Contagens vindas do banco, e não de somar a lista no cliente: com a
+     * listagem paginada, o cliente só enxerga uma página por vez.
+     *
+     * A data de referência vem de fora porque "atrasada" depende do hoje de
+     * quem usa, que pode não ser o do servidor.
+     */
+    @Transactional(readOnly = true)
+    public ResumoResponse resumo(Long usuarioId, LocalDate referencia) {
+        LocalDate hoje = referencia != null ? referencia : LocalDate.now();
+
+        long total = taskRepository.countByUsuarioId(usuarioId);
+        long concluidas = taskRepository.countByUsuarioIdAndConcluidaTrue(usuarioId);
+
+        return ResumoResponse.builder()
+                .total(total)
+                .concluidas(concluidas)
+                .pendentes(total - concluidas)
+                .atrasadas(taskRepository.countByUsuarioIdAndConcluidaFalseAndPrazoBefore(usuarioId, hoje))
+                .vencemHoje(taskRepository.countByUsuarioIdAndConcluidaFalseAndPrazo(usuarioId, hoje))
+                .percentualConcluido(total == 0 ? 0 : Math.round(concluidas * 100f / total))
+                .build();
     }
 
     @Transactional(readOnly = true)
     public TaskResponse buscarPorId(Long usuarioId, Long id) {
-        Task task = buscarDoUsuario(usuarioId, id);
-        return toResponse(task);
+        return toResponse(buscarDoUsuario(usuarioId, id));
     }
 
     @Transactional
@@ -53,11 +99,23 @@ public class TaskService {
 
         task.setTitulo(request.getTitulo());
         task.setDescricao(request.getDescricao());
+        task.setProjeto(resolverProjeto(usuarioId, request.getProjetoId()));
+        task.setPrazo(request.getPrazo());
 
+        if (request.getPrioridade() != null) {
+            task.setPrioridade(request.getPrioridade());
+        }
         if (request.getConcluida() != null) {
-            task.setConcluida(request.getConcluida());
+            aplicarConclusao(task, request.getConcluida());
         }
 
+        return toResponse(taskRepository.save(task));
+    }
+
+    @Transactional
+    public TaskResponse definirConclusao(Long usuarioId, Long id, boolean concluida) {
+        Task task = buscarDoUsuario(usuarioId, id);
+        aplicarConclusao(task, concluida);
         return toResponse(taskRepository.save(task));
     }
 
@@ -76,12 +134,45 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tarefa", id));
     }
 
-    private TaskResponse toResponse(Task task) {
+    /**
+     * O projeto também é validado contra o dono. Sem isto, bastaria enviar o
+     * projetoId de outra conta no corpo da requisição para pendurar uma tarefa
+     * lá dentro — a tarefa é sua, mas o projeto não.
+     */
+    private Projeto resolverProjeto(Long usuarioId, Long projetoId) {
+        if (projetoId == null) {
+            return null;
+        }
+        return projetoRepository.findByIdAndUsuarioId(projetoId, usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Projeto", projetoId));
+    }
+
+    /** Mantém dataConclusao coerente com concluida, sem mexer no que não mudou. */
+    private void aplicarConclusao(Task task, boolean concluida) {
+        if (concluida == Boolean.TRUE.equals(task.getConcluida())) {
+            return;
+        }
+
+        task.setConcluida(concluida);
+        task.setDataConclusao(concluida ? LocalDateTime.now() : null);
+    }
+
+    private static TaskResponse toResponse(Task task) {
+        Projeto projeto = task.getProjeto();
+
         return TaskResponse.builder()
                 .id(task.getId())
                 .titulo(task.getTitulo())
                 .descricao(task.getDescricao())
                 .concluida(task.getConcluida())
+                .projeto(projeto == null ? null : ProjetoResumoResponse.builder()
+                        .id(projeto.getId())
+                        .nome(projeto.getNome())
+                        .cor(projeto.getCor())
+                        .build())
+                .prazo(task.getPrazo())
+                .prioridade(task.getPrioridade())
+                .dataConclusao(task.getDataConclusao())
                 .dataCriacao(task.getDataCriacao())
                 .dataAtualizacao(task.getDataAtualizacao())
                 .build();
