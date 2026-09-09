@@ -11,6 +11,7 @@
     var API_ETIQUETAS = '/api/etiquetas';
     var API_HABITOS = '/api/habitos';
     var API_PAINEL = '/api/painel';
+    var API_DADOS = '/api/dados';
     var API_AUTH = '/api/auth';
     var CHAVE_TOKEN = 'todolist:token';
     var TAMANHO_PAGINA = 50;
@@ -150,7 +151,11 @@
         barrasPrioridade: document.getElementById('barras-prioridade'),
         vazioPrioridade: document.getElementById('vazio-prioridade'),
         barrasHabitos: document.getElementById('barras-habitos'),
-        vazioHabitos: document.getElementById('vazio-habitos')
+        vazioHabitos: document.getElementById('vazio-habitos'),
+        exportarBtn: document.getElementById('exportar-btn'),
+        importarBtn: document.getElementById('importar-btn'),
+        importarArquivo: document.getElementById('importar-arquivo'),
+        dadosErro: document.getElementById('dados-error')
     };
 
     /* ---------------------------------------------------------------- HTTP */
@@ -273,6 +278,12 @@
         },
         painel: function () {
             return request(API_PAINEL + '?hoje=' + hojeISO() + '&dias=30');
+        },
+        exportar: function () {
+            return request(API_DADOS + '/exportar');
+        },
+        importar: function (dados) {
+            return request(API_DADOS + '/importar', corpoJson('POST', dados));
         }
     };
 
@@ -1594,6 +1605,138 @@
         el.verNumeros.textContent = mostrando ? 'Ocultar números' : 'Ver números';
     });
 
+    /* --------------------------------------------------- Exportar/importar */
+
+    el.exportarBtn.addEventListener('click', function () {
+        el.dadosErro.textContent = '';
+        el.exportarBtn.disabled = true;
+
+        api.exportar()
+            .then(function (dados) {
+                var texto = JSON.stringify(dados, null, 2);
+                var url = URL.createObjectURL(
+                        new Blob([texto], { type: 'application/json' }));
+
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'todolist-' + hojeISO() + '.json';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                // Liberar depois do clique: revogar antes cancelaria o download.
+                setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+
+                toast('Arquivo gerado', 'success');
+            })
+            .catch(function (erro) {
+                if (erro.message !== 'Sessão expirada') {
+                    el.dadosErro.textContent = erro.message;
+                }
+            })
+            .finally(function () {
+                el.exportarBtn.disabled = false;
+            });
+    });
+
+    el.importarBtn.addEventListener('click', function () {
+        el.dadosErro.textContent = '';
+        el.importarArquivo.click();
+    });
+
+    el.importarArquivo.addEventListener('change', function () {
+        var arquivo = el.importarArquivo.files && el.importarArquivo.files[0];
+        if (!arquivo) {
+            return;
+        }
+
+        var leitor = new FileReader();
+
+        leitor.onload = function () {
+            var dados;
+            try {
+                dados = JSON.parse(leitor.result);
+            } catch (e) {
+                el.dadosErro.textContent = 'O arquivo não é um JSON válido.';
+                el.importarArquivo.value = '';
+                return;
+            }
+
+            el.importarBtn.disabled = true;
+
+            api.importar(dados)
+                .then(function (resultado) {
+                    var partes = [];
+                    if (resultado.tarefas) { partes.push(resultado.tarefas + ' tarefas'); }
+                    if (resultado.projetos) { partes.push(resultado.projetos + ' projetos'); }
+                    if (resultado.etiquetas) { partes.push(resultado.etiquetas + ' etiquetas'); }
+                    if (resultado.habitos) { partes.push(resultado.habitos + ' hábitos'); }
+
+                    toast(partes.length ? 'Importado: ' + partes.join(', ')
+                            : 'Nada novo para importar', 'success');
+
+                    if (resultado.reaproveitados && resultado.reaproveitados.length) {
+                        el.dadosErro.textContent = 'Já existiam e foram reaproveitados: '
+                                + resultado.reaproveitados.join(', ');
+                    }
+
+                    return recarregar();
+                })
+                .catch(function (erro) {
+                    if (erro.message !== 'Sessão expirada') {
+                        el.dadosErro.textContent = erro.message;
+                    }
+                })
+                .finally(function () {
+                    el.importarBtn.disabled = false;
+                    // Zera o campo para o mesmo arquivo poder ser escolhido de novo.
+                    el.importarArquivo.value = '';
+                });
+        };
+
+        leitor.readAsText(arquivo);
+    });
+
+    /* ---------------------------------------------------- Atalhos de teclado */
+
+    function digitando(alvo) {
+        if (!alvo) {
+            return false;
+        }
+        var etiqueta = alvo.tagName;
+        return etiqueta === 'INPUT' || etiqueta === 'TEXTAREA' || etiqueta === 'SELECT'
+                || alvo.isContentEditable;
+    }
+
+    function algumModalAberto() {
+        return !el.modal.hidden || !el.settingsModal.hidden || !el.projetosModal.hidden;
+    }
+
+    document.addEventListener('keydown', function (evento) {
+        // Nunca sequestra teclas de quem está escrevendo, nem com modal aberto,
+        // nem com combinação de modificadores (que pertencem ao navegador).
+        if (digitando(evento.target) || algumModalAberto()
+                || evento.ctrlKey || evento.metaKey || evento.altKey) {
+            return;
+        }
+        if (el.appView.hidden) {
+            return;
+        }
+
+        var atalhos = {
+            n: function () { trocarAba('tarefas'); el.titulo.focus(); },
+            '/': function () { trocarAba('tarefas'); el.busca.focus(); },
+            1: function () { trocarAba('tarefas'); },
+            2: function () { trocarAba('habitos'); },
+            3: function () { trocarAba('painel'); }
+        };
+
+        var acao = atalhos[evento.key];
+        if (acao) {
+            evento.preventDefault();
+            acao();
+        }
+    });
+
     /* --------------------------------------------------------------- Abas */
 
     function trocarAba(nome) {
@@ -2092,6 +2235,16 @@
     });
 
     /* ------------------------------------------------------------- Início */
+
+    // Instalável e abrível sem rede. Falhar aqui não pode derrubar a aplicação:
+    // service worker é melhoria, não requisito.
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js').catch(function () {
+                // Sem service worker o aplicativo funciona igual, só não offline.
+            });
+        });
+    }
 
     montarAmostras();
     montarCoresDeProjeto();

@@ -36,8 +36,11 @@ public class SecurityConfig {
                         // como obter o primeiro token.
                         .requestMatchers("/api/auth/registrar", "/api/auth/login").permitAll()
                         // A interface web também: sem ela não se chega à tela de entrada.
+                        // sw.js e manifest ficam na raiz: sem estarem aqui, o
+                        // service worker nem chega a registrar.
                         .requestMatchers(HttpMethod.GET,
-                                "/", "/index.html", "/favicon.svg", "/css/**", "/js/**")
+                                "/", "/index.html", "/favicon.svg", "/css/**", "/js/**",
+                                "/sw.js", "/manifest.webmanifest")
                         .permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**")
                         .permitAll()

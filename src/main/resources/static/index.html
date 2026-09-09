@@ -7,6 +7,8 @@
     <meta name="theme-color" content="#4f46e5">
     <title>To-do List</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="favicon.svg">
     <link rel="stylesheet" href="css/style.css">
     <script src="js/prefs.js"></script>
 </head>
@@ -477,6 +479,30 @@
                     <button class="btn btn--primary" type="submit">Salvar</button>
                 </div>
             </form>
+
+            <hr class="divisor">
+
+            <span class="field__label">Seus dados</span>
+            <p class="modal__hint" style="margin-top: 6px">
+                O arquivo traz projetos, etiquetas, tarefas e hábitos. Importar soma ao que já
+                existe — nomes repetidos são reaproveitados, não duplicados.
+            </p>
+            <div class="acoes-dados">
+                <button class="btn btn--ghost" type="button" id="exportar-btn">Exportar tudo</button>
+                <button class="btn btn--ghost" type="button" id="importar-btn">Importar arquivo</button>
+                <input type="file" id="importar-arquivo" accept="application/json,.json" hidden>
+            </div>
+            <span class="field__error" id="dados-error" role="alert"></span>
+
+            <hr class="divisor">
+
+            <span class="field__label">Atalhos de teclado</span>
+            <dl class="atalhos">
+                <div><dt><kbd>n</kbd></dt><dd>nova tarefa</dd></div>
+                <div><dt><kbd>/</kbd></dt><dd>buscar</dd></div>
+                <div><dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>tarefas, hábitos, painel</dd></div>
+                <div><dt><kbd>Esc</kbd></dt><dd>fechar</dd></div>
+            </dl>
         </div>
     </div>
 

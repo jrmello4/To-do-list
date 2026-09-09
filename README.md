@@ -9,7 +9,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-93-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-100-success?style=flat-square)](#executar-testes)
 [![Segurança](https://img.shields.io/badge/auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](#autenticação)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)](#subir-com-docker)
 
@@ -31,6 +31,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 | **Organização** | Projetos, etiquetas, prazos, prioridade e busca — filtrados no servidor |
 | **Hábitos** | Rotina recorrente com sequências e grade dos últimos 14 dias |
 | **Painel** | Série de conclusões, distribuição por projeto e prioridade, tempo médio |
+| **Seus dados** | Exportar e importar tudo em JSON; instalável no celular |
 | **Interface web** | Criar, concluir, editar, excluir e filtrar tarefas, com anel de progresso e resumo do dia |
 | **Personalização** | Saudação com o seu nome, seis cores de destaque e tema claro/escuro/sistema |
 | **API REST** | Cinco endpoints em `/api/tarefas`, com validação de entrada e erros padronizados |
@@ -182,7 +183,7 @@ endpoints REST documentados abaixo e traz:
 - Anel de progresso e resumo contextual ("faltam 3 tarefas para zerar o dia")
 - Formulário de criação com validação e contador de caracteres
 - Lista com conclusão em um clique, edição em modal e exclusão com confirmação
-- Abas de tarefas, hábitos e painel
+- Abas de tarefas, hábitos e painel, com atalhos de teclado
 - Projetos e etiquetas coloridos, com contagem de pendentes e painel para criar e excluir
 - Etiquetas escolhidas por chips alternáveis, em vez de um select múltiplo
 - Prazo com destaque para atrasadas e para as que vencem hoje, e prioridade
@@ -304,6 +305,44 @@ conjunto); as de sequência, pelo **máximo** (o que interessa é qual é a maio
 A série diária tem tooltip por barra e um botão que revela a tabela com os
 números.
 
+### Exportar e importar
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/dados/exportar` | Baixa projetos, etiquetas, tarefas e hábitos num JSON |
+| `POST` | `/api/dados/importar` | Importa um arquivo exportado |
+
+Projetos e etiquetas são referenciados **por nome**, não por id: ids só valem
+dentro do banco de origem, e por nome o arquivo pode ser importado noutra
+instalação ou noutra conta — que é o ponto de existir uma exportação.
+
+A importação **soma** ao que já existe, em vez de substituir. Substituir
+exigiria apagar tudo antes, e um arquivo errado levaria a conta inteira junto.
+Nomes já existentes de projeto, etiqueta e hábito são reaproveitados e voltam
+listados em `reaproveitados`; tarefas são sempre criadas, porque não há como
+saber se uma de mesmo título é a mesma ou outra parecida.
+
+### Instalável no celular
+
+`manifest.webmanifest` e `sw.js` deixam a aplicação instalável e abrível sem
+rede. O service worker usa **rede primeiro, cache como reserva**: cache primeiro
+serviria a interface antiga depois de cada deploy, e uma interface velha
+conversando com uma API nova quebra de formas difíceis de diagnosticar. Chamadas
+de `/api/` nunca vêm do cache — uma lista de tarefas velha apresentada como
+atual é pior do que um erro de rede honesto.
+
+### Atalhos de teclado
+
+| Tecla | Ação |
+|-------|------|
+| `n` | Nova tarefa |
+| `/` | Buscar |
+| `1` `2` `3` | Tarefas, hábitos, painel |
+| `Esc` | Fechar o que estiver aberto |
+
+Ignorados enquanto se digita num campo, com um modal aberto, ou em combinação
+com Ctrl/Cmd/Alt — essas pertencem ao navegador.
+
 ### Filtros da listagem
 
 Combináveis, resolvidos no banco:
@@ -418,7 +457,7 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-O projeto possui **93 testes**. A maioria roda contra H2 em memória, sem
+O projeto possui **100 testes**. A maioria roda contra H2 em memória, sem
 precisar de MySQL:
 
 | Classe | Cobre |
@@ -432,6 +471,7 @@ precisar de MySQL:
 | `CalculoDeSequenciaTest` | Casos de borda das sequências de hábitos |
 | `HabitosIntegrationTest` | Hábitos, registros, dias da semana e isolamento |
 | `PainelIntegrationTest` | Agregações do painel, série contínua e isolamento |
+| `DadosIntegrationTest` | Exportar, importar, viagem de ida e volta entre contas |
 | `MigrationsNoMySQLTest` | As migrations contra **MySQL de verdade**, via Testcontainers |
 
 `MigrationsNoMySQLTest` é pulada automaticamente onde não há Docker, e executa

@@ -139,6 +139,17 @@ class AutenticacaoIntegrationTest {
                 .andExpect(jsonPath("$.nome").value("Ana Ribeiro"));
     }
 
+    @Test
+    @DisplayName("a interface e os arquivos do PWA continuam públicos")
+    void arquivosPublicos() throws Exception {
+        for (String caminho : new String[]{
+                "/", "/index.html", "/css/style.css", "/js/app.js", "/js/prefs.js",
+                "/favicon.svg", "/sw.js", "/manifest.webmanifest"}) {
+            mockMvc.perform(get(caminho))
+                    .andExpect(status().isOk());
+        }
+    }
+
     /* -------------------------------------------- isolamento entre contas */
 
     @Test

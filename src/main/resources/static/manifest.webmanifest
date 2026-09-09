@@ -1,0 +1,14 @@
+{
+  "name": "To-do List",
+  "short_name": "To-do",
+  "description": "Hub de produtividade pessoal: tarefas, projetos, etiquetas e hábitos",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f3f8",
+  "theme_color": "#4f46e5",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
