@@ -316,7 +316,70 @@
             </div>
         </div>
 
-        <div id="aba-painel" hidden></div>
+        <div id="aba-painel" hidden>
+            <section class="tiles">
+                <article class="tile">
+                    <span class="tile__rotulo">Atrasadas</span>
+                    <span class="tile__valor" id="tile-atrasadas">0</span>
+                    <span class="tile__nota">passaram do prazo</span>
+                </article>
+                <article class="tile">
+                    <span class="tile__rotulo">Vencem hoje</span>
+                    <span class="tile__valor" id="tile-hoje">0</span>
+                    <span class="tile__nota">para fechar o dia</span>
+                </article>
+                <article class="tile">
+                    <span class="tile__rotulo">Tempo médio</span>
+                    <span class="tile__valor" id="tile-tempo">—</span>
+                    <span class="tile__nota">de criar até concluir</span>
+                </article>
+            </section>
+
+            <section class="card grafico">
+                <div class="grafico__topo">
+                    <h2 class="card__title" id="titulo-serie">Concluídas nos últimos 30 dias</h2>
+                    <button class="btn btn--ghost grafico__alternar" type="button" id="ver-numeros"
+                            aria-expanded="false" aria-controls="tabela-serie">Ver números</button>
+                </div>
+
+                <div class="serie" id="serie" role="img" aria-labelledby="titulo-serie"
+                     aria-describedby="resumo-serie"></div>
+                <p class="visualmente-oculto" id="resumo-serie"></p>
+
+                <div class="serie__eixo">
+                    <span id="serie-inicio"></span>
+                    <span id="serie-fim"></span>
+                </div>
+
+                <div class="rolagem" id="tabela-serie" hidden>
+                    <table>
+                        <caption class="visualmente-oculto">Tarefas concluídas por dia</caption>
+                        <thead><tr><th>Dia</th><th>Concluídas</th></tr></thead>
+                        <tbody id="tabela-serie-corpo"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">Pendentes por projeto</h2>
+                <div class="barras" id="barras-projeto"></div>
+                <p class="vazio-inline" id="vazio-projeto" hidden>Nenhuma tarefa pendente.</p>
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">Pendentes por prioridade</h2>
+                <div class="barras" id="barras-prioridade"></div>
+                <p class="vazio-inline" id="vazio-prioridade" hidden>Nenhuma tarefa pendente.</p>
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">Sequências dos hábitos</h2>
+                <div class="barras" id="barras-habitos"></div>
+                <p class="vazio-inline" id="vazio-habitos" hidden>
+                    Nenhum hábito cadastrado ainda.
+                </p>
+            </section>
+        </div>
 
         <footer class="footer">
             <span>To-do List API &middot; Spring Boot 3.4.1</span>

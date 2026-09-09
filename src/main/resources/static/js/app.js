@@ -10,6 +10,7 @@
     var API_PROJETOS = '/api/projetos';
     var API_ETIQUETAS = '/api/etiquetas';
     var API_HABITOS = '/api/habitos';
+    var API_PAINEL = '/api/painel';
     var API_AUTH = '/api/auth';
     var CHAVE_TOKEN = 'todolist:token';
     var TAMANHO_PAGINA = 50;
@@ -133,7 +134,23 @@
         habitoSubmit: document.getElementById('habito-submit'),
         listaHabitos: document.getElementById('lista-habitos'),
         habitosVazio: document.getElementById('habitos-vazio'),
-        habitoTemplate: document.getElementById('habito-template')
+        habitoTemplate: document.getElementById('habito-template'),
+        tileAtrasadas: document.getElementById('tile-atrasadas'),
+        tileHoje: document.getElementById('tile-hoje'),
+        tileTempo: document.getElementById('tile-tempo'),
+        serie: document.getElementById('serie'),
+        serieInicio: document.getElementById('serie-inicio'),
+        serieFim: document.getElementById('serie-fim'),
+        resumoSerie: document.getElementById('resumo-serie'),
+        verNumeros: document.getElementById('ver-numeros'),
+        tabelaSerie: document.getElementById('tabela-serie'),
+        tabelaSerieCorpo: document.getElementById('tabela-serie-corpo'),
+        barrasProjeto: document.getElementById('barras-projeto'),
+        vazioProjeto: document.getElementById('vazio-projeto'),
+        barrasPrioridade: document.getElementById('barras-prioridade'),
+        vazioPrioridade: document.getElementById('vazio-prioridade'),
+        barrasHabitos: document.getElementById('barras-habitos'),
+        vazioHabitos: document.getElementById('vazio-habitos')
     };
 
     /* ---------------------------------------------------------------- HTTP */
@@ -253,6 +270,9 @@
         desmarcarHabito: function (id, data) {
             return request(API_HABITOS + '/' + id + '/registros/' + data + '?hoje=' + hojeISO(),
                     { method: 'DELETE' });
+        },
+        painel: function () {
+            return request(API_PAINEL + '?hoje=' + hojeISO() + '&dias=30');
         }
     };
 
@@ -1399,6 +1419,181 @@
         });
     }
 
+    /* ------------------------------------------------------------- Painel */
+
+    var NOME_DA_PRIORIDADE = {
+        BAIXA: 'Baixa', MEDIA: 'Média', ALTA: 'Alta', URGENTE: 'Urgente'
+    };
+
+    /**
+     * Barra horizontal com nome e valor sempre visíveis.
+     *
+     * A escolha da forma veio da validação da paleta: seis tons de acento
+     * escolhidos pelo usuário não passam numa checagem de todos os pares —
+     * sempre há um par que alguma forma de daltonismo colapsa. Aqui a
+     * identidade vem da posição e do texto, e a cor é só reforço. Por isso
+     * também não há legenda: não existe cor para casar com nome.
+     */
+    function montarBarra(nome, valor, base, cor, sufixo) {
+        var linha = document.createElement('div');
+        linha.className = 'barra';
+
+        var rotulo = document.createElement('span');
+        rotulo.className = 'barra__nome';
+        rotulo.textContent = nome;
+
+        var numero = document.createElement('span');
+        numero.className = 'barra__valor';
+        numero.textContent = valor + (sufixo || '');
+
+        var trilha = document.createElement('div');
+        trilha.className = 'barra__trilha';
+
+        var preenchimento = document.createElement('div');
+        preenchimento.className = 'barra__preenchimento';
+        preenchimento.style.width = (base > 0 ? (valor / base) * 100 : 0) + '%';
+        if (cor) {
+            preenchimento.style.setProperty('--ponto', corDoProjeto(cor));
+        }
+
+        trilha.appendChild(preenchimento);
+        linha.appendChild(rotulo);
+        linha.appendChild(numero);
+        linha.appendChild(trilha);
+        return linha;
+    }
+
+    /**
+     * O denominador da barra depende da pergunta que o gráfico responde.
+     *
+     * 'total' para distribuições — "onde está o meu trabalho?" — em que a
+     * barra é a fatia do conjunto. Normalizar pelo máximo aqui encheria as
+     * três barras quando os valores fossem iguais, e à primeira vista pareceria
+     * que tudo está no limite.
+     *
+     * 'maximo' para comparação de grandeza, como as sequências de hábitos, em
+     * que o que interessa é qual é a maior.
+     */
+    function preencherBarras(container, vazio, itens, modo, sufixo) {
+        container.textContent = '';
+        vazio.hidden = itens.length > 0;
+
+        var base = modo === 'total'
+                ? itens.reduce(function (soma, item) { return soma + item.valor; }, 0)
+                : itens.reduce(function (maior, item) {
+                    return Math.max(maior, item.valor);
+                }, 0);
+
+        itens.forEach(function (item) {
+            container.appendChild(montarBarra(item.nome, item.valor, base, item.cor, sufixo));
+        });
+    }
+
+    function renderizarSerie(pontos) {
+        el.serie.textContent = '';
+        el.tabelaSerieCorpo.textContent = '';
+
+        var maximo = pontos.reduce(function (maior, ponto) {
+            return Math.max(maior, ponto.quantidade);
+        }, 0);
+        var total = pontos.reduce(function (soma, ponto) {
+            return soma + ponto.quantidade;
+        }, 0);
+
+        pontos.forEach(function (ponto) {
+            var barra = document.createElement('div');
+            barra.className = 'serie__barra' + (ponto.quantidade === 0 ? ' e-zero' : '');
+            // Altura mínima de 2px também no zero: um dia sem conclusão é
+            // informação, e sumir do gráfico esconderia o intervalo.
+            barra.style.height = maximo > 0
+                    ? Math.max((ponto.quantidade / maximo) * 100, 1.5) + '%'
+                    : '2px';
+            barra.tabIndex = 0;
+            barra.dataset.dica = formatarDia(ponto.data) + ': '
+                    + ponto.quantidade + (ponto.quantidade === 1 ? ' tarefa' : ' tarefas');
+            barra.setAttribute('aria-label', barra.dataset.dica);
+            el.serie.appendChild(barra);
+
+            var linha = document.createElement('tr');
+            var dia = document.createElement('td');
+            dia.textContent = formatarDia(ponto.data);
+            var quantidade = document.createElement('td');
+            quantidade.textContent = ponto.quantidade;
+            linha.appendChild(dia);
+            linha.appendChild(quantidade);
+            el.tabelaSerieCorpo.appendChild(linha);
+        });
+
+        if (pontos.length > 0) {
+            el.serieInicio.textContent = formatarDia(pontos[0].data);
+            el.serieFim.textContent = formatarDia(pontos[pontos.length - 1].data);
+        }
+
+        el.resumoSerie.textContent = total + ' tarefas concluídas em '
+                + pontos.length + ' dias, com pico de ' + maximo + ' num único dia.';
+    }
+
+    function carregarPainel() {
+        return api.painel()
+            .then(function (painel) {
+                var resumo = painel.resumo;
+
+                el.tileAtrasadas.textContent = resumo.atrasadas;
+                el.tileAtrasadas.classList.toggle('e-alerta', resumo.atrasadas > 0);
+                el.tileHoje.textContent = resumo.vencemHoje;
+                el.tileHoje.classList.toggle('e-atencao', resumo.vencemHoje > 0);
+
+                el.tileTempo.textContent = painel.horasMediasParaConcluir === null
+                        || painel.horasMediasParaConcluir === undefined
+                        ? '—'
+                        : formatarDuracao(painel.horasMediasParaConcluir);
+
+                renderizarSerie(painel.concluidasPorDia || []);
+
+                preencherBarras(el.barrasProjeto, el.vazioProjeto,
+                        (painel.pendentesPorProjeto || []).map(function (c) {
+                            return { nome: c.rotulo, valor: c.quantidade, cor: c.cor };
+                        }), 'total');
+
+                preencherBarras(el.barrasPrioridade, el.vazioPrioridade,
+                        (painel.pendentesPorPrioridade || []).map(function (c) {
+                            return {
+                                nome: NOME_DA_PRIORIDADE[c.rotulo] || c.rotulo,
+                                valor: c.quantidade,
+                                cor: c.cor
+                            };
+                        }), 'total');
+
+                preencherBarras(el.barrasHabitos, el.vazioHabitos,
+                        (painel.habitos || []).map(function (h) {
+                            return { nome: h.nome, valor: h.atual, cor: h.cor };
+                        }), 'maximo', ' d');
+            })
+            .catch(function (erro) {
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
+            });
+    }
+
+    /** Horas viram dias quando passam de 48: "72 h" diz menos que "3 dias". */
+    function formatarDuracao(horas) {
+        if (horas < 1) {
+            return Math.round(horas * 60) + ' min';
+        }
+        if (horas < 48) {
+            return (Math.round(horas * 10) / 10) + ' h';
+        }
+        return (Math.round(horas / 24 * 10) / 10) + ' dias';
+    }
+
+    el.verNumeros.addEventListener('click', function () {
+        var mostrando = el.tabelaSerie.hidden;
+        el.tabelaSerie.hidden = !mostrando;
+        el.verNumeros.setAttribute('aria-expanded', mostrando ? 'true' : 'false');
+        el.verNumeros.textContent = mostrando ? 'Ocultar números' : 'Ver números';
+    });
+
     /* --------------------------------------------------------------- Abas */
 
     function trocarAba(nome) {
@@ -1418,6 +1613,8 @@
         // de hábitos.
         if (nome === 'habitos') {
             carregarHabitos();
+        } else if (nome === 'painel') {
+            carregarPainel();
         }
     }
 

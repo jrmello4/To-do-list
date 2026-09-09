@@ -9,7 +9,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-85-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-93-success?style=flat-square)](#executar-testes)
 [![Segurança](https://img.shields.io/badge/auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](#autenticação)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)](#subir-com-docker)
 
@@ -30,6 +30,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 | **Contas** | Cadastro e login com JWT; cada conta enxerga apenas as próprias tarefas |
 | **Organização** | Projetos, etiquetas, prazos, prioridade e busca — filtrados no servidor |
 | **Hábitos** | Rotina recorrente com sequências e grade dos últimos 14 dias |
+| **Painel** | Série de conclusões, distribuição por projeto e prioridade, tempo médio |
 | **Interface web** | Criar, concluir, editar, excluir e filtrar tarefas, com anel de progresso e resumo do dia |
 | **Personalização** | Saudação com o seu nome, seis cores de destaque e tema claro/escuro/sistema |
 | **API REST** | Cinco endpoints em `/api/tarefas`, com validação de entrada e erros padronizados |
@@ -181,7 +182,7 @@ endpoints REST documentados abaixo e traz:
 - Anel de progresso e resumo contextual ("faltam 3 tarefas para zerar o dia")
 - Formulário de criação com validação e contador de caracteres
 - Lista com conclusão em um clique, edição em modal e exclusão com confirmação
-- Abas de tarefas e hábitos
+- Abas de tarefas, hábitos e painel
 - Projetos e etiquetas coloridos, com contagem de pendentes e painel para criar e excluir
 - Etiquetas escolhidas por chips alternáveis, em vez de um select múltiplo
 - Prazo com destaque para atrasadas e para as que vencem hoje, e prioridade
@@ -278,6 +279,30 @@ não acabou, então não tê-lo cumprido não quebra a sequência.
 
 Marcar e desmarcar são idempotentes; a existência da linha em
 `habito_registros` é o registro, e desmarcar apaga a linha.
+
+### Painel
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/painel` | Números agregados da conta (`?dias=30&hoje=...`) |
+
+Tudo agregado no banco, em vez de mandar as tarefas todas e somar no navegador
+— o que funciona com 50 tarefas e derrete com 5 mil. A série de conclusões vem
+contínua: dias sem conclusão aparecem com zero, para o gráfico não comprimir os
+intervalos vazios.
+
+**Sobre os gráficos.** A paleta de acento do app foi submetida ao validador de
+daltonismo, e seis tons escolhidos pelo usuário não passam numa checagem de
+todos os pares — sempre há um par que alguma forma de daltonismo colapsa. Como
+mexer na paleta para agradar um gráfico seria a troca errada, o painel usa
+formas em que **cor não é canal de identidade**: barras horizontais, uma por
+linha, com nome e valor sempre visíveis. Não há legenda nem gráfico de pizza,
+porque não existe cor para casar com nome.
+
+As barras de distribuição são normalizadas pelo **total** (a barra é a fatia do
+conjunto); as de sequência, pelo **máximo** (o que interessa é qual é a maior).
+A série diária tem tooltip por barra e um botão que revela a tabela com os
+números.
 
 ### Filtros da listagem
 
@@ -393,7 +418,7 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-O projeto possui **85 testes**. A maioria roda contra H2 em memória, sem
+O projeto possui **93 testes**. A maioria roda contra H2 em memória, sem
 precisar de MySQL:
 
 | Classe | Cobre |
@@ -406,6 +431,7 @@ precisar de MySQL:
 | `PlanejamentoIntegrationTest` | Projetos, etiquetas, prazos, prioridade, filtros, paginação e resumo |
 | `CalculoDeSequenciaTest` | Casos de borda das sequências de hábitos |
 | `HabitosIntegrationTest` | Hábitos, registros, dias da semana e isolamento |
+| `PainelIntegrationTest` | Agregações do painel, série contínua e isolamento |
 | `MigrationsNoMySQLTest` | As migrations contra **MySQL de verdade**, via Testcontainers |
 
 `MigrationsNoMySQLTest` é pulada automaticamente onde não há Docker, e executa

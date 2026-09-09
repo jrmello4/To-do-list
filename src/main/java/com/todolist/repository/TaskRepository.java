@@ -3,9 +3,12 @@ package com.todolist.repository;
 import com.todolist.entity.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,4 +43,44 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     long countByUsuarioIdAndConcluidaFalseAndPrazoBefore(Long usuarioId, LocalDate data);
 
     long countByUsuarioIdAndConcluidaFalseAndPrazo(Long usuarioId, LocalDate data);
+
+    /**
+     * Concluídas por dia. Agrupado com year/month/day em vez de um CAST para
+     * date: são funções que o Hibernate traduz para qualquer banco, e o CAST
+     * teria sintaxe diferente em H2 e MySQL.
+     */
+    @Query("""
+            SELECT YEAR(t.dataConclusao), MONTH(t.dataConclusao), DAY(t.dataConclusao), COUNT(t)
+            FROM Task t
+            WHERE t.usuario.id = :usuarioId
+              AND t.concluida = true
+              AND t.dataConclusao >= :desde
+            GROUP BY YEAR(t.dataConclusao), MONTH(t.dataConclusao), DAY(t.dataConclusao)
+            """)
+    List<Object[]> contarConcluidasPorDia(@Param("usuarioId") Long usuarioId,
+                                          @Param("desde") LocalDateTime desde);
+
+    @Query("""
+            SELECT t.prioridade, COUNT(t)
+            FROM Task t
+            WHERE t.usuario.id = :usuarioId AND t.concluida = false
+            GROUP BY t.prioridade
+            """)
+    List<Object[]> contarPendentesPorPrioridade(@Param("usuarioId") Long usuarioId);
+
+    /**
+     * Pares (criação, conclusão) das últimas concluídas. A média é calculada
+     * em Java: diferença entre instantes tem sintaxe própria em cada banco, e
+     * fazer isso portátil em HQL custa mais do que ganha.
+     */
+    @Query("""
+            SELECT t.dataCriacao, t.dataConclusao
+            FROM Task t
+            WHERE t.usuario.id = :usuarioId
+              AND t.concluida = true
+              AND t.dataConclusao IS NOT NULL
+            ORDER BY t.dataConclusao DESC
+            """)
+    List<Object[]> buscarTemposDeConclusao(@Param("usuarioId") Long usuarioId,
+                                           org.springframework.data.domain.Pageable limite);
 }
