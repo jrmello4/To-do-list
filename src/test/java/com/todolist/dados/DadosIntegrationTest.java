@@ -169,6 +169,61 @@ class DadosIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    @DisplayName("os passos viajam aninhados na tarefa e chegam na ordem")
+    void passosNaViagemDeIdaEVolta() throws Exception {
+        String origem = registrar("origem@exemplo.com");
+        long tarefa = criarTarefa(origem, TaskRequest.builder().titulo("Escrever o artigo").build());
+        novoPasso(origem, tarefa, "Levantar as referências", true);
+        novoPasso(origem, tarefa, "Escrever o rascunho", false);
+
+        String arquivo = mockMvc.perform(get("/api/dados/exportar")
+                        .header("Authorization", "Bearer " + origem))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tarefas[0].subtarefas", hasSize(2)))
+                .andExpect(jsonPath("$.tarefas[0].subtarefas[0].titulo")
+                        .value("Levantar as referências"))
+                .andExpect(jsonPath("$.tarefas[0].subtarefas[0].concluida").value(true))
+                .andReturn().getResponse().getContentAsString();
+
+        String destino = registrar("destino@exemplo.com");
+        mockMvc.perform(post("/api/dados/importar")
+                        .header("Authorization", "Bearer " + destino)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(arquivo))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/tarefas").header("Authorization", "Bearer " + destino))
+                .andExpect(jsonPath("$.content[0].subtarefas", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].subtarefas[0].titulo")
+                        .value("Levantar as referências"))
+                .andExpect(jsonPath("$.content[0].subtarefas[1].titulo").value("Escrever o rascunho"))
+                .andExpect(jsonPath("$.content[0].passosConcluidos").value(1))
+                .andExpect(jsonPath("$.content[0].totalDePassos").value(2));
+    }
+
+    @Test
+    @DisplayName("arquivo antigo, sem o campo de passos, continua entrando")
+    void arquivoSemOCampoDePassos() throws Exception {
+        String destino = registrar("destino@exemplo.com");
+
+        // Foi por isso que a versão do formato não mudou: o campo é novo, mas
+        // a ausência dele tem leitura óbvia — a tarefa não tem passo nenhum.
+        String antigo = """
+                {"versao":"1","tarefas":[{"titulo":"Tarefa de um arquivo antigo"}]}""";
+
+        mockMvc.perform(post("/api/dados/importar")
+                        .header("Authorization", "Bearer " + destino)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(antigo))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tarefas").value(1));
+
+        mockMvc.perform(get("/api/tarefas").header("Authorization", "Bearer " + destino))
+                .andExpect(jsonPath("$.content[0].subtarefas", hasSize(0)))
+                .andExpect(jsonPath("$.content[0].totalDePassos").value(0));
+    }
+
     /* ----------------------------------------------------------- auxiliares */
 
     private String registrar(String email) throws Exception {
@@ -205,6 +260,16 @@ class DadosIntegrationTest {
                         .content(json(request)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString());
+    }
+
+    private void novoPasso(String token, long tarefa, String titulo, boolean concluida)
+            throws Exception {
+        mockMvc.perform(post("/api/tarefas/" + tarefa + "/subtarefas")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(SubtarefaRequest.builder()
+                                .titulo(titulo).concluida(concluida).build())))
+                .andExpect(status().isCreated());
     }
 
     private long idDe(String corpo) throws Exception {

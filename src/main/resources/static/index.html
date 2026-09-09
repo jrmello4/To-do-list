@@ -441,6 +441,24 @@
                     <button class="btn btn--primary" type="submit">Salvar alterações</button>
                 </div>
             </form>
+
+            <hr class="divisor">
+
+            <span class="field__label">Passos</span>
+            <p class="modal__hint" style="margin-top: 6px">
+                Cada passo é salvo na hora — o botão acima vale para os campos, não para
+                a lista aqui embaixo.
+            </p>
+
+            <div class="passos passos--modal" id="edit-passos">
+                <ul class="passos__lista"></ul>
+                <form class="passos__form">
+                    <input class="passos__input" type="text" maxlength="200"
+                           placeholder="Adicionar um passo" aria-label="Novo passo">
+                    <button class="passos__add" type="submit" aria-label="Adicionar passo">+</button>
+                </form>
+            </div>
+            <span class="field__error" id="edit-passos-error" role="alert"></span>
         </div>
     </div>
 
@@ -612,6 +630,21 @@
         </li>
     </template>
 
+    <template id="passo-template">
+        <li class="passo">
+            <button class="passo__check" type="button" data-action="passo-toggle"
+                    aria-pressed="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 12.5 10 17.5 19 7"></path>
+                </svg>
+            </button>
+            <span class="passo__titulo"></span>
+            <button class="passo__remover" type="button" data-action="passo-remover"
+                    title="Remover passo" aria-label="Remover passo">×</button>
+        </li>
+    </template>
+
     <template id="task-template">
         <li class="task">
             <button class="task__check" type="button" data-action="toggle" aria-pressed="false">
@@ -623,6 +656,28 @@
             <div class="task__body">
                 <p class="task__title"></p>
                 <p class="task__desc"></p>
+                <button class="passos__toggle" type="button" data-action="passos"
+                        aria-expanded="false" hidden>
+                    <svg class="passos__seta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <path d="m9 6 6 6-6 6"></path>
+                    </svg>
+                    <span class="passos__barra" aria-hidden="true">
+                        <span class="passos__preenchida"></span>
+                    </span>
+                    <span class="passos__contagem"></span>
+                </button>
+
+                <div class="passos" hidden>
+                    <ul class="passos__lista"></ul>
+                    <form class="passos__form">
+                        <input class="passos__input" type="text" maxlength="200"
+                               placeholder="Adicionar um passo" aria-label="Novo passo">
+                        <button class="passos__add" type="submit" aria-label="Adicionar passo">+</button>
+                    </form>
+                </div>
+
                 <div class="task__meta">
                     <span class="badge"></span>
                     <span class="chip chip--projeto" hidden></span>

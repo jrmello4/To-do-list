@@ -5,7 +5,9 @@ import org.hibernate.annotations.BatchSize;
 import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -73,6 +75,22 @@ public class Task {
             inverseJoinColumns = @JoinColumn(name = "etiqueta_id"))
     @Builder.Default
     private Set<Etiqueta> etiquetas = new LinkedHashSet<>();
+
+    /**
+     * Passos da tarefa, em ordem.
+     *
+     * List e não Set: aqui a ordem é informação, não acidente — passo 2 vem
+     * depois do passo 1. E cascade + orphanRemoval porque a subtarefa não
+     * existe fora da tarefa; o ON DELETE CASCADE da migration é a rede de
+     * baixo, para quem apagar por SQL direto. Confiar só nele já custou caro
+     * neste projeto: o banco apaga a linha, mas a sessão do Hibernate segue
+     * com o objeto na mão.
+     */
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("ordem ASC, id ASC")
+    @BatchSize(size = 50)
+    @Builder.Default
+    private List<Subtarefa> subtarefas = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime dataCriacao;

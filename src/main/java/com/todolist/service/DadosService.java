@@ -75,6 +75,12 @@ public class DadosService {
                 .prioridade(task.getPrioridade() == null ? null : task.getPrioridade().name())
                 .dataCriacao(task.getDataCriacao())
                 .dataConclusao(task.getDataConclusao())
+                .subtarefas(task.getSubtarefas().stream()
+                        .map(passo -> DadosExportados.SubtarefaExportada.builder()
+                                .titulo(passo.getTitulo())
+                                .concluida(passo.getConcluida())
+                                .build())
+                        .toList())
                 .build();
     }
 
@@ -263,11 +269,46 @@ public class DadosService {
                     .dataConclusao(vinda.getDataConclusao())
                     .build();
 
+            importarPassos(task, vinda.getSubtarefas());
+
             taskRepository.save(task);
             criadas++;
         }
 
         return criadas;
+    }
+
+    /**
+     * Passos entram junto com a tarefa, pelo cascade. A ordem vem da posição
+     * no arquivo: é a única que o arquivo carrega, e é a que quem exportou
+     * estava vendo.
+     */
+    private void importarPassos(Task task, List<DadosExportados.SubtarefaExportada> vindos) {
+        if (vindos == null) {
+            return;
+        }
+
+        // O mesmo teto da API, e não o de 5000 dos outros tipos: um arquivo
+        // não pode criar uma tarefa que a própria API recusaria montar.
+        if (vindos.size() > Subtarefa.LIMITE_POR_TAREFA) {
+            throw new IllegalArgumentException(
+                    "A tarefa \"" + task.getTitulo() + "\" traz " + vindos.size()
+                            + " passos; o máximo é " + Subtarefa.LIMITE_POR_TAREFA);
+        }
+
+        int ordem = 0;
+        for (DadosExportados.SubtarefaExportada vindo : vindos) {
+            if (vindo.getTitulo() == null || vindo.getTitulo().isBlank()) {
+                continue;
+            }
+
+            task.getSubtarefas().add(Subtarefa.builder()
+                    .task(task)
+                    .titulo(vindo.getTitulo().trim())
+                    .concluida(Boolean.TRUE.equals(vindo.getConcluida()))
+                    .ordem(ordem++)
+                    .build());
+        }
     }
 
     private int[] importarHabitos(Long usuarioId, Usuario usuario,

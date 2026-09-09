@@ -183,6 +183,80 @@ public class TaskController {
                 taskService.definirConclusao(usuario.getId(), id, request.getConcluida()));
     }
 
+    /* --------------------------------------------------------- Subtarefas */
+
+    /*
+     * Os três endpoints devolvem a tarefa inteira, e não o passo mexido.
+     *
+     * O passo sozinho obrigaria o cliente a recalcular "2 de 5" por conta
+     * própria, e aí a regra de contagem existiria em dois lugares. Devolvendo
+     * a mãe, o cliente recebe o estado já coerente numa viagem só.
+     */
+
+    @PostMapping("/{id}/subtarefas")
+    @Operation(
+            summary = "Adicionar um passo à tarefa",
+            description = "O passo entra no fim da lista. Passo é um degrau dentro da tarefa: "
+                    + "não tem prazo, prioridade, projeto nem etiqueta próprios."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Passo adicionado"),
+            @ApiResponse(responseCode = "400", description = "Título vazio ou limite de passos atingido",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Tarefa não encontrada",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<TaskResponse> adicionarSubtarefa(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+            @Parameter(description = "Identificador da tarefa", example = "1")
+            @PathVariable Long id,
+            @Valid @RequestBody SubtarefaRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(taskService.adicionarSubtarefa(usuario.getId(), id, request));
+    }
+
+    @PatchMapping("/{id}/subtarefas/{subtarefaId}")
+    @Operation(
+            summary = "Alterar um passo",
+            description = "Muda o texto, a situação, ou os dois. Campo omitido fica como está."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Passo alterado"),
+            @ApiResponse(responseCode = "404", description = "Tarefa ou passo não encontrado",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<TaskResponse> atualizarSubtarefa(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+            @Parameter(description = "Identificador da tarefa", example = "1")
+            @PathVariable Long id,
+            @Parameter(description = "Identificador do passo", example = "1")
+            @PathVariable Long subtarefaId,
+            @Valid @RequestBody SubtarefaRequest request) {
+        return ResponseEntity.ok(
+                taskService.atualizarSubtarefa(usuario.getId(), id, subtarefaId, request));
+    }
+
+    @DeleteMapping("/{id}/subtarefas/{subtarefaId}")
+    @Operation(summary = "Remover um passo", description = "Apaga o passo da tarefa.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Passo removido"),
+            @ApiResponse(responseCode = "404", description = "Tarefa ou passo não encontrado",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<TaskResponse> removerSubtarefa(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+            @Parameter(description = "Identificador da tarefa", example = "1")
+            @PathVariable Long id,
+            @Parameter(description = "Identificador do passo", example = "1")
+            @PathVariable Long subtarefaId) {
+        return ResponseEntity.ok(
+                taskService.removerSubtarefa(usuario.getId(), id, subtarefaId));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Deletar uma tarefa", description = "Remove definitivamente a tarefa informada.")
     @ApiResponses({

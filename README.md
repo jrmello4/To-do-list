@@ -9,7 +9,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-121-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-137-success?style=flat-square)](#executar-testes)
 [![Segurança](https://img.shields.io/badge/auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](#autenticação)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)](#subir-com-docker)
 
@@ -29,6 +29,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 |---|---|
 | **Contas** | Cadastro e login com JWT; cada conta enxerga apenas as próprias tarefas |
 | **Organização** | Projetos, etiquetas, prazos, prioridade e busca — filtrados no servidor |
+| **Passos** | Uma tarefa se abre em subtarefas, com progresso "2 de 5" |
 | **Hábitos** | Rotina recorrente com sequências e grade dos últimos 14 dias |
 | **Painel** | Série de conclusões, distribuição por projeto e prioridade, tempo médio |
 | **Lembretes** | Resumo diário por e-mail, na hora local de cada conta |
@@ -188,6 +189,7 @@ endpoints REST documentados abaixo e traz:
 - Abas de tarefas, hábitos e painel, com atalhos de teclado
 - Projetos e etiquetas coloridos, com contagem de pendentes e painel para criar e excluir
 - Etiquetas escolhidas por chips alternáveis, em vez de um select múltiplo
+- Passos por tarefa, com "2 de 5" que expande a lista na própria linha
 - Prazo com destaque para atrasadas e para as que vencem hoje, e prioridade
 - Busca e filtros resolvidos no servidor, com "carregar mais" paginado
 - Mensagens de erro vindas da API exibidas na tela
@@ -256,6 +258,50 @@ mas pode ter várias etiquetas. Em `POST`/`PUT` de tarefa, `etiquetaIds`
 **substitui** as etiquetas atuais — lista vazia remove todas, campo omitido
 mantém as que já existem.
 
+### Passos (subtarefas)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/tarefas/{id}/subtarefas` | Adiciona um passo no fim da lista |
+| `PATCH` | `/api/tarefas/{id}/subtarefas/{subId}` | Muda o texto, a situação, ou os dois |
+| `DELETE` | `/api/tarefas/{id}/subtarefas/{subId}` | Remove o passo |
+
+**Um passo é um degrau dentro da tarefa, não uma tarefa menor** — e essa
+escolha resolve o problema que adiou a funcionalidade. Se a subtarefa fosse
+uma linha em `tasks` apontando para a mãe, ela entraria na listagem, que é
+paginada e ordenada no servidor: uma filha poderia cair numa página diferente
+da mãe, ou sumir num filtro que a mãe atende. Em tabela própria, ela nunca é
+linha da listagem — viaja junto da mãe, sempre.
+
+Pelo mesmo motivo o passo não tem prazo, prioridade, projeto nem etiqueta: um
+passo com projeto diferente do da tarefa não quer dizer nada, e um passo com
+prazo próprio apareceria em "atrasadas" contando duas vezes o mesmo
+compromisso. As contagens do resumo e do painel seguem contando **tarefas**.
+
+**Não existe `SubtarefaRepository`, e a ausência é o desenho.** Com um
+repositório, mais cedo ou mais tarde alguém escreveria `findById(subId)` e o
+passo de outra conta estaria a um id de distância. Aqui o único caminho até um
+passo é a tarefa mãe, encontrada por `findByIdAndUsuarioId`. O `Subtarefa`
+também não tem coluna `usuario_id`: o dono é o da tarefa, e sem essa coluna não
+há atalho a construir. Um teste confirma que um passo não é alcançável nem pela
+outra tarefa da mesma conta.
+
+Concluir a tarefa **não** marca os passos pendentes. Marcar tudo por baixo
+destruiria informação: depois de reabrir a tarefa não haveria como saber quais
+passos tinham sido feitos mesmo. Apagar a tarefa, sim, leva os passos junto —
+por `orphanRemoval` no Hibernate e `ON DELETE CASCADE` no banco, porque
+confiar só no segundo já custou caro aqui: o banco apaga a linha, mas a sessão
+do Hibernate segue com o objeto na mão.
+
+Teto de **50 passos por tarefa**, na entidade e não em quem escreve: a API e a
+importação precisam concordar, senão um arquivo cria uma tarefa que a própria
+API teria recusado.
+
+Na interface, o primeiro passo se cria pela edição da tarefa — numa lista onde
+a maioria das tarefas não tem passo nenhum, um controle por linha seria ruído.
+A partir do primeiro, a linha ganha um "2 de 5" que expande a lista ali mesmo,
+com marcar, remover e adicionar sem sair do lugar.
+
 ### Hábitos
 
 | Método | Rota | Descrição |
@@ -313,6 +359,11 @@ números.
 |--------|------|-----------|
 | `GET` | `/api/dados/exportar` | Baixa projetos, etiquetas, tarefas e hábitos num JSON |
 | `POST` | `/api/dados/importar` | Importa um arquivo exportado |
+
+Os passos vêm **aninhados na tarefa**, e não numa lista à parte com referência
+cruzada: passo não existe fora da tarefa, e uma lista separada permitiria um
+arquivo com passos órfãos. O campo é novo, mas a versão do formato não mudou —
+a ausência dele tem leitura óbvia, e um arquivo antigo continua entrando.
 
 Projetos e etiquetas são referenciados **por nome**, não por id: ids só valem
 dentro do banco de origem, e por nome o arquivo pode ser importado noutra
@@ -509,7 +560,7 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-O projeto possui **121 testes**. A maioria roda contra H2 em memória, sem
+O projeto possui **137 testes**. A maioria roda contra H2 em memória, sem
 precisar de MySQL:
 
 | Classe | Cobre |
@@ -524,6 +575,7 @@ precisar de MySQL:
 | `HabitosIntegrationTest` | Hábitos, registros, dias da semana e isolamento |
 | `PainelIntegrationTest` | Agregações do painel, série contínua e isolamento |
 | `DadosIntegrationTest` | Exportar, importar, viagem de ida e volta entre contas |
+| `SubtarefasIntegrationTest` | Passos: ordem, contagem, teto e **isolamento entre contas** |
 | `LembreteServiceTest` | Quando o lembrete sai: fuso de cada conta, uma vez por dia, falha isolada |
 | `EscolhaDoEnviadorTest` | Sem SMTP configurado, o enviador ativo é o que só registra no log |
 | `AgendadorDeLembretesTest` | A varredura só é agendada com `LEMBRETES_ATIVOS=true` |
@@ -550,7 +602,7 @@ src/
 │   │   ├── config/          # Configurações (Swagger/OpenAPI)
 │   │   ├── controller/      # Endpoints REST
 │   │   ├── dto/             # Objetos de requisição/resposta
-│   │   ├── entity/          # Entidade JPA
+│   │   ├── entity/          # Entidades JPA
 │   │   ├── exception/       # Tratamento global de erros
 │   │   ├── lembretes/       # Quando e como o resumo diário sai
 │   │   ├── repository/      # Camada de dados

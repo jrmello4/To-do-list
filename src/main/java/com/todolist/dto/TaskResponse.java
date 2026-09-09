@@ -34,6 +34,20 @@ public class TaskResponse {
     @Schema(description = "Etiquetas aplicadas à tarefa")
     private List<EtiquetaResumoResponse> etiquetas;
 
+    @Schema(description = "Passos da tarefa, em ordem")
+    private List<SubtarefaResponse> subtarefas;
+
+    /**
+     * Contagens vindas prontas do servidor. O cliente poderia somar a lista
+     * acima, mas então dois lugares saberiam a mesma regra — e o dia em que a
+     * regra mudar, só um deles muda.
+     */
+    @Schema(description = "Quantos passos a tarefa tem", example = "5")
+    private Integer totalDePassos;
+
+    @Schema(description = "Quantos passos já foram cumpridos", example = "2")
+    private Integer passosConcluidos;
+
     @Schema(description = "Data limite. Nula quando a tarefa não tem prazo.", example = "2026-09-30")
     private LocalDate prazo;
 

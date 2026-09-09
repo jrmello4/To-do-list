@@ -4,6 +4,7 @@ import com.todolist.dto.*;
 import com.todolist.entity.Prioridade;
 import com.todolist.entity.Etiqueta;
 import com.todolist.entity.Projeto;
+import com.todolist.entity.Subtarefa;
 import com.todolist.entity.Task;
 import com.todolist.exception.ResourceNotFoundException;
 import com.todolist.repository.EtiquetaRepository;
@@ -130,6 +131,91 @@ public class TaskService {
         return toResponse(taskRepository.save(task));
     }
 
+    /* --------------------------------------------------------- Subtarefas */
+
+    /*
+     * Não existe SubtarefaRepository, e a ausência é o desenho.
+     *
+     * Com um repositório, mais cedo ou mais tarde alguém escreveria
+     * findById(subId) e o passo de outra conta estaria a um id de distância.
+     * Aqui o único caminho até um passo é a tarefa mãe, e a tarefa mãe só é
+     * encontrada por buscarDoUsuario — que sempre recebe o dono. A falha não
+     * é evitada por disciplina: ela não tem como ser escrita.
+     */
+
+    @Transactional
+    public TaskResponse adicionarSubtarefa(Long usuarioId, Long tarefaId, SubtarefaRequest request) {
+        Task task = buscarDoUsuario(usuarioId, tarefaId);
+
+        if (request.getTitulo() == null || request.getTitulo().isBlank()) {
+            throw new IllegalArgumentException("O passo precisa de um título");
+        }
+        // Sem teto, a subtarefa viaja junto da mãe em toda resposta e uma
+        // página de 50 tarefas carregaria dezenas de milhares de linhas.
+        if (task.getSubtarefas().size() >= Subtarefa.LIMITE_POR_TAREFA) {
+            throw new IllegalArgumentException(
+                    "Uma tarefa comporta no máximo " + Subtarefa.LIMITE_POR_TAREFA + " passos");
+        }
+
+        task.getSubtarefas().add(Subtarefa.builder()
+                .task(task)
+                .titulo(request.getTitulo().trim())
+                .concluida(Boolean.TRUE.equals(request.getConcluida()))
+                .ordem(proximaOrdem(task))
+                .build());
+
+        return toResponse(taskRepository.save(task));
+    }
+
+    @Transactional
+    public TaskResponse atualizarSubtarefa(Long usuarioId, Long tarefaId, Long subtarefaId,
+                                           SubtarefaRequest request) {
+        Task task = buscarDoUsuario(usuarioId, tarefaId);
+        Subtarefa passo = passoDaTarefa(task, subtarefaId);
+
+        if (request.getTitulo() != null && !request.getTitulo().isBlank()) {
+            passo.setTitulo(request.getTitulo().trim());
+        }
+        if (request.getConcluida() != null) {
+            passo.setConcluida(request.getConcluida());
+        }
+
+        return toResponse(taskRepository.save(task));
+    }
+
+    @Transactional
+    public TaskResponse removerSubtarefa(Long usuarioId, Long tarefaId, Long subtarefaId) {
+        Task task = buscarDoUsuario(usuarioId, tarefaId);
+        Subtarefa passo = passoDaTarefa(task, subtarefaId);
+
+        // Tirar da coleção da mãe é o que apaga: com orphanRemoval, o
+        // Hibernate emite o DELETE. Apagar por um repositório à parte deixaria
+        // o objeto vivo na sessão — foi assim que a exclusão de etiqueta
+        // quebrou antes.
+        task.getSubtarefas().remove(passo);
+
+        return toResponse(taskRepository.save(task));
+    }
+
+    /**
+     * Procura o passo dentro da tarefa que já foi validada contra o dono, e
+     * não no banco inteiro. Um id de outra tarefa dá o mesmo 404 de sempre.
+     */
+    private Subtarefa passoDaTarefa(Task task, Long subtarefaId) {
+        return task.getSubtarefas().stream()
+                .filter(passo -> passo.getId().equals(subtarefaId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Passo", subtarefaId));
+    }
+
+    /** Novo passo vai para o fim da lista, que é onde quem escreve espera. */
+    private static int proximaOrdem(Task task) {
+        return task.getSubtarefas().stream()
+                .mapToInt(passo -> passo.getOrdem() == null ? 0 : passo.getOrdem())
+                .max()
+                .orElse(-1) + 1;
+    }
+
     @Transactional
     public void deletar(Long usuarioId, Long id) {
         taskRepository.delete(buscarDoUsuario(usuarioId, id));
@@ -208,6 +294,18 @@ public class TaskService {
                                 .cor(etiqueta.getCor())
                                 .build())
                         .toList())
+                .subtarefas(task.getSubtarefas().stream()
+                        .map(passo -> SubtarefaResponse.builder()
+                                .id(passo.getId())
+                                .titulo(passo.getTitulo())
+                                .concluida(passo.getConcluida())
+                                .ordem(passo.getOrdem())
+                                .build())
+                        .toList())
+                .totalDePassos(task.getSubtarefas().size())
+                .passosConcluidos((int) task.getSubtarefas().stream()
+                        .filter(passo -> Boolean.TRUE.equals(passo.getConcluida()))
+                        .count())
                 .prazo(task.getPrazo())
                 .prioridade(task.getPrioridade())
                 .dataConclusao(task.getDataConclusao())

@@ -1819,6 +1819,239 @@ svg {
     color: var(--text-muted);
 }
 
+/* ---------- Passos (subtarefas) ---------- */
+
+.passos__toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 3px 8px 3px 2px;
+    background: none;
+    border: 0;
+    border-radius: 999px;
+    color: var(--text-soft);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.passos__toggle:hover {
+    background: var(--surface-alt);
+    color: var(--text);
+}
+
+.passos__seta {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    transition: transform .2s ease;
+}
+
+.passos__toggle[aria-expanded="true"] .passos__seta {
+    transform: rotate(90deg);
+}
+
+/* A barra é reforço do número ao lado, não a informação em si: quem não
+   distingue a cor lê "2 de 5" do mesmo jeito. */
+.passos__barra {
+    width: 44px;
+    height: 4px;
+    flex: none;
+    border-radius: 999px;
+    background: var(--surface-alt);
+    overflow: hidden;
+}
+
+.passos__preenchida {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width .25s ease;
+}
+
+.passos__contagem {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.passos {
+    margin: 6px 0 2px;
+    padding-left: 4px;
+}
+
+.passos__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.passo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 4px;
+    border-radius: 8px;
+}
+
+.passo:hover {
+    background: var(--surface-alt);
+}
+
+.passo__check {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 5px;
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.passo__check svg {
+    width: 11px;
+    height: 11px;
+}
+
+.passo__check[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+
+.passo__titulo {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+    word-break: break-word;
+}
+
+.passo__check[aria-pressed="true"] + .passo__titulo {
+    color: var(--text-soft);
+    text-decoration: line-through;
+}
+
+.passo__remover {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: none;
+    color: var(--text-soft);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    /* Escondido até o ponteiro chegar, mas nunca para quem navega por teclado
+       ou leitor de tela: opacity mantém o botão focável e anunciado. */
+    opacity: 0;
+    transition: opacity .15s ease, color .15s ease, background-color .15s ease;
+}
+
+.passo:hover .passo__remover,
+.passo__remover:focus-visible {
+    opacity: 1;
+}
+
+.passo__remover:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+/* Onde não existe ponteiro que paira, esconder no hover é esconder para
+   sempre: num celular não haveria como remover um passo. */
+@media (hover: none) {
+    .passo__remover {
+        opacity: 1;
+    }
+}
+
+/* No modal a lista não é um detalhe que se expande: é a seção inteira, e
+   ganha respiro para não colar no divisor. */
+.passos--modal {
+    margin: 10px 0 0;
+    padding-left: 0;
+}
+
+.passos--modal .passos__input {
+    border-color: var(--border);
+    background: var(--surface-alt);
+}
+
+.passos__form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    padding-left: 4px;
+}
+
+.passos__input {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+.passos__input::placeholder {
+    color: var(--text-soft);
+}
+
+.passos__input:focus {
+    outline: none;
+    background: var(--surface-alt);
+    border-color: var(--border-strong);
+}
+
+.passos__add {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: var(--surface-alt);
+    color: var(--text-soft);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.passos__add:hover {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+/* Numa tarefa concluída os passos ficam com o mesmo apagado do resto do
+   cartão, em vez de continuarem em destaque como se ainda houvesse o que fazer. */
+.task.is-done .passos__toggle,
+.task.is-done .passo__titulo {
+    color: var(--text-soft);
+}
+
 /* ---------- Lembretes ---------- */
 
 .switch {

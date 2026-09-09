@@ -73,6 +73,25 @@ public class DadosExportados {
         private String prioridade;
         private LocalDateTime dataCriacao;
         private LocalDateTime dataConclusao;
+
+        /**
+         * Os passos vêm aninhados na tarefa, e não numa lista à parte com
+         * referência cruzada: passo não existe fora da tarefa, e uma lista
+         * separada permitiria um arquivo com passos órfãos.
+         *
+         * Ausente nos arquivos gerados antes dos passos existirem, e por isso
+         * a versão do formato não mudou — um arquivo antigo continua entrando,
+         * só que sem passo nenhum.
+         */
+        @Schema(description = "Passos da tarefa, em ordem")
+        private List<SubtarefaExportada> subtarefas;
+    }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    @Schema(name = "SubtarefaExportada")
+    public static class SubtarefaExportada {
+        private String titulo;
+        private Boolean concluida;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

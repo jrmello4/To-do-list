@@ -76,6 +76,9 @@
         toasts: document.getElementById('toasts'),
         confetti: document.getElementById('confetti'),
         modal: document.getElementById('edit-modal'),
+        passoTemplate: document.getElementById('passo-template'),
+        editPassos: document.getElementById('edit-passos'),
+        editPassosErro: document.getElementById('edit-passos-error'),
         editForm: document.getElementById('edit-form'),
         editId: document.getElementById('edit-id'),
         editTitulo: document.getElementById('edit-titulo'),
@@ -247,6 +250,19 @@
         },
         deletar: function (id) {
             return request(API + '/' + id, { method: 'DELETE' });
+        },
+        // As três devolvem a tarefa inteira, já com a contagem recalculada:
+        // somar aqui faria a mesma regra existir nos dois lados.
+        adicionarPasso: function (id, titulo) {
+            return request(API + '/' + id + '/subtarefas',
+                    corpoJson('POST', { titulo: titulo }));
+        },
+        alterarPasso: function (id, passoId, dados) {
+            return request(API + '/' + id + '/subtarefas/' + passoId,
+                    corpoJson('PATCH', dados));
+        },
+        removerPasso: function (id, passoId) {
+            return request(API + '/' + id + '/subtarefas/' + passoId, { method: 'DELETE' });
         },
         projetos: function () {
             return request(API_PROJETOS);
@@ -527,6 +543,45 @@
 
     /* ------------------------------------------------------------ Render */
 
+    /* ---------------------------------------------------------------- Passos */
+
+    /*
+     * Quais tarefas estão com os passos abertos. Fica no estado, e não no DOM,
+     * porque a lista é redesenhada inteira a cada carregamento: guardado só no
+     * nó, o que estava aberto fecharia sozinho a cada mudança.
+     */
+    var passosAbertos = {};
+
+    function montarPasso(tarefa, passo) {
+        var no = el.passoTemplate.content.firstElementChild.cloneNode(true);
+
+        no.dataset.passoId = passo.id;
+
+        var check = no.querySelector('.passo__check');
+        check.setAttribute('aria-pressed', passo.concluida ? 'true' : 'false');
+        check.setAttribute('aria-label',
+            (passo.concluida ? 'Desmarcar' : 'Marcar') + ' passo: ' + passo.titulo);
+
+        // textContent, e não innerHTML: o texto vem do banco.
+        no.querySelector('.passo__titulo').textContent = passo.titulo;
+        no.querySelector('.passo__remover').setAttribute(
+            'aria-label', 'Remover passo: ' + passo.titulo);
+
+        return no;
+    }
+
+    /** Preenche uma caixa .passos (a da listagem ou a do modal) com a tarefa. */
+    function preencherPassos(caixa, tarefa) {
+        var lista = caixa.querySelector('.passos__lista');
+        lista.textContent = '';
+
+        var fragmento = document.createDocumentFragment();
+        (tarefa.subtarefas || []).forEach(function (passo) {
+            fragmento.appendChild(montarPasso(tarefa, passo));
+        });
+        lista.appendChild(fragmento);
+    }
+
     function montarTarefa(tarefa, indice) {
         var no = el.template.content.firstElementChild.cloneNode(true);
 
@@ -579,6 +634,27 @@
             chip.style.setProperty('--ponto', corDoProjeto(etiqueta.cor));
             caixaEtiquetas.appendChild(chip);
         });
+
+        var total = tarefa.totalDePassos || 0;
+        var feitos = tarefa.passosConcluidos || 0;
+        var alternador = no.querySelector('.passos__toggle');
+        var caixaPassos = no.querySelector('.passos');
+
+        // O alternador só existe quando há passos. Numa lista onde a maioria
+        // das tarefas não tem nenhum, um controle por linha seria ruído; o
+        // primeiro passo se cria pela edição, que é onde já se mexe na tarefa.
+        if (total > 0) {
+            var aberto = passosAbertos[tarefa.id] === true;
+
+            alternador.hidden = false;
+            alternador.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+            no.querySelector('.passos__contagem').textContent = feitos + ' de ' + total;
+            no.querySelector('.passos__preenchida').style.width =
+                Math.round(feitos * 100 / total) + '%';
+
+            preencherPassos(caixaPassos, tarefa);
+            caixaPassos.hidden = !aberto;
+        }
 
         var check = no.querySelector('.task__check');
         check.setAttribute('aria-pressed', tarefa.concluida ? 'true' : 'false');
@@ -1056,6 +1132,103 @@
             });
     }
 
+    /**
+     * Troca a tarefa no estado e redesenha só o nó dela.
+     *
+     * Recarregar a lista inteira a cada passo marcado custaria uma ida ao
+     * servidor e faria a página piscar no meio de uma sequência de cliques.
+     */
+    function redesenharTarefa(atualizada, focar) {
+        for (var i = 0; i < state.tarefas.length; i++) {
+            if (state.tarefas[i].id !== atualizada.id) {
+                continue;
+            }
+
+            state.tarefas[i] = atualizada;
+
+            var antigo = el.list.querySelector('.task[data-id="' + atualizada.id + '"]');
+            if (antigo) {
+                var novo = montarTarefa(atualizada, 0);
+                // Sem isto a tarefa refaz a animação de entrada a cada clique.
+                novo.style.animation = 'none';
+                antigo.replaceWith(novo);
+
+                if (focar) {
+                    novo.querySelector('.passos__input').focus();
+                }
+            }
+            return;
+        }
+    }
+
+    /**
+     * Aplica a resposta nos dois lugares que mostram passos: a linha da
+     * listagem e, se estiver aberto na mesma tarefa, o modal de edição.
+     */
+    function aplicarPassos(atualizada, focarNaLista) {
+        redesenharTarefa(atualizada, focarNaLista);
+
+        if (!el.modal.hidden && Number(el.editId.value) === atualizada.id) {
+            preencherPassos(el.editPassos, atualizada);
+        }
+    }
+
+    function erroDePasso(erro, noModal) {
+        if (erro.message === 'Sessão expirada') {
+            return;
+        }
+        if (noModal) {
+            el.editPassosErro.textContent = erro.message;
+        } else {
+            toast(erro.message, 'error');
+        }
+    }
+
+    function adicionarPasso(id, titulo, noModal) {
+        if (!titulo) {
+            return;
+        }
+
+        el.editPassosErro.textContent = '';
+
+        api.adicionarPasso(id, titulo)
+            .then(function (atualizada) {
+                aplicarPassos(atualizada, !noModal);
+                if (noModal) {
+                    el.editPassos.querySelector('.passos__input').focus();
+                }
+            })
+            .catch(function (erro) {
+                erroDePasso(erro, noModal);
+            });
+    }
+
+    function alternarPasso(id, passoId, concluida, noModal) {
+        api.alterarPasso(id, passoId, { concluida: concluida })
+            .then(function (atualizada) {
+                aplicarPassos(atualizada, false);
+            })
+            .catch(function (erro) {
+                erroDePasso(erro, noModal);
+            });
+    }
+
+    function removerPasso(id, passoId, noModal) {
+        api.removerPasso(id, passoId)
+            .then(function (atualizada) {
+                // O último passo removido fecha a seção junto: sem passos, o
+                // alternador some, e deixar a marca de "aberto" faria a tarefa
+                // reabrir sozinha ao ganhar um passo novo.
+                if ((atualizada.totalDePassos || 0) === 0) {
+                    delete passosAbertos[id];
+                }
+                aplicarPassos(atualizada, false);
+            })
+            .catch(function (erro) {
+                erroDePasso(erro, noModal);
+            });
+    }
+
     function deletar(id, noDaTarefa) {
         var tarefa = buscarNoEstado(id);
         if (!tarefa) {
@@ -1142,6 +1315,9 @@
                 (tarefa.etiquetas || []).map(function (e) { return e.id; }));
         el.editTitulo.classList.remove('is-invalid');
         el.editTituloError.textContent = '';
+        el.editPassosErro.textContent = '';
+        el.editPassos.querySelector('.passos__input').value = '';
+        preencherPassos(el.editPassos, tarefa);
 
         el.modal.hidden = false;
         el.editTitulo.focus();
@@ -2079,6 +2255,65 @@
             abrirModal(id);
         } else if (acao === 'delete') {
             deletar(id, noDaTarefa);
+        } else if (acao === 'passos') {
+            var abrindo = botao.getAttribute('aria-expanded') !== 'true';
+            passosAbertos[id] = abrindo;
+            botao.setAttribute('aria-expanded', abrindo ? 'true' : 'false');
+            noDaTarefa.querySelector('.passos').hidden = !abrindo;
+        } else if (acao === 'passo-toggle') {
+            var alvo = botao.getAttribute('aria-pressed') !== 'true';
+            // Marca na hora e deixa a resposta confirmar: o clique num passo
+            // precisa responder na hora, não depois da viagem ao servidor.
+            botao.setAttribute('aria-pressed', alvo ? 'true' : 'false');
+            alternarPasso(id, Number(botao.closest('.passo').dataset.passoId), alvo, false);
+        } else if (acao === 'passo-remover') {
+            removerPasso(id, Number(botao.closest('.passo').dataset.passoId), false);
+        }
+    });
+
+    // O formulário de passo é um <form> dentro da linha da tarefa, então o
+    // submit precisa ser capturado por delegação como o clique.
+    el.list.addEventListener('submit', function (evento) {
+        var formulario = evento.target.closest('.passos__form');
+        if (!formulario) {
+            return;
+        }
+
+        evento.preventDefault();
+
+        var entrada = formulario.querySelector('.passos__input');
+        var id = Number(formulario.closest('.task').dataset.id);
+        var titulo = entrada.value.trim();
+
+        entrada.value = '';
+        adicionarPasso(id, titulo, false);
+    });
+
+    el.editPassos.querySelector('.passos__form').addEventListener('submit', function (evento) {
+        evento.preventDefault();
+
+        var entrada = el.editPassos.querySelector('.passos__input');
+        var titulo = entrada.value.trim();
+
+        entrada.value = '';
+        adicionarPasso(Number(el.editId.value), titulo, true);
+    });
+
+    el.editPassos.addEventListener('click', function (evento) {
+        var botao = evento.target.closest('[data-action]');
+        if (!botao) {
+            return;
+        }
+
+        var id = Number(el.editId.value);
+        var passoId = Number(botao.closest('.passo').dataset.passoId);
+
+        if (botao.dataset.action === 'passo-toggle') {
+            var alvo = botao.getAttribute('aria-pressed') !== 'true';
+            botao.setAttribute('aria-pressed', alvo ? 'true' : 'false');
+            alternarPasso(id, passoId, alvo, true);
+        } else if (botao.dataset.action === 'passo-remover') {
+            removerPasso(id, passoId, true);
         }
     });
 
