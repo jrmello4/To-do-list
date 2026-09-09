@@ -54,6 +54,14 @@ public class Task {
     @Builder.Default
     private Prioridade prioridade = Prioridade.MEDIA;
 
+    /**
+     * Posição na lista da conta. Empates são desfeitos pelo id, então a ordem
+     * é sempre total mesmo que dois valores coincidam.
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer ordem = 0;
+
     /** Quando a tarefa passou a concluída. Base das métricas da fase seguinte. */
     @Column(name = "data_conclusao")
     private LocalDateTime dataConclusao;

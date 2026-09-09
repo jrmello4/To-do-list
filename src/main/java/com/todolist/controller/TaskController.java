@@ -183,6 +183,30 @@ public class TaskController {
                 taskService.definirConclusao(usuario.getId(), id, request.getConcluida()));
     }
 
+    @PatchMapping("/{id}/posicao")
+    @Operation(
+            summary = "Mover a tarefa na lista",
+            description = "A posição é dita por um vizinho — antesDe ou depoisDe —, e não por um "
+                    + "número. Com a lista paginada e filtrada, um índice da tela não corresponde "
+                    + "a lugar nenhum da conta; um vizinho é o mesmo em qualquer filtro."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Tarefa movida"),
+            @ApiResponse(responseCode = "400", description = "Nenhum vizinho informado, ou a própria tarefa",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Tarefa ou vizinho não encontrado",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<TaskResponse> mover(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+            @Parameter(description = "Identificador da tarefa", example = "1")
+            @PathVariable Long id,
+            @Valid @RequestBody PosicaoRequest request) {
+        return ResponseEntity.ok(taskService.mover(usuario.getId(), id, request));
+    }
+
     /* --------------------------------------------------------- Subtarefas */
 
     /*

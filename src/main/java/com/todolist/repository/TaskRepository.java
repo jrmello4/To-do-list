@@ -3,6 +3,7 @@ package com.todolist.repository;
 import com.todolist.entity.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,6 +28,26 @@ import java.util.Optional;
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
     List<Task> findByUsuarioIdOrderByIdAsc(Long usuarioId);
+
+    /** A ordem que a conta arrumou, que é a que a exportação deve preservar. */
+    List<Task> findByUsuarioIdOrderByOrdemAscIdAsc(Long usuarioId);
+
+    @Query("SELECT COALESCE(MAX(t.ordem), -1) FROM Task t WHERE t.usuario.id = :usuarioId")
+    int maiorOrdem(@Param("usuarioId") Long usuarioId);
+
+    /**
+     * Abre espaço em uma posição, empurrando para baixo tudo o que já estava
+     * dali para a frente.
+     *
+     * Um único UPDATE, e não uma reescrita de todas as posições: mexer numa
+     * tarefa não deveria custar uma linha alterada por tarefa da conta. O
+     * preço é que as posições ficam esparsas com o tempo — o que não importa,
+     * porque o que a listagem usa é a ordem relativa, nunca o valor.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Task t SET t.ordem = t.ordem + 1 "
+            + "WHERE t.usuario.id = :usuarioId AND t.ordem >= :apartirDe")
+    void abrirEspaco(@Param("usuarioId") Long usuarioId, @Param("apartirDe") int apartirDe);
 
     Optional<Task> findByIdAndUsuarioId(Long id, Long usuarioId);
 

@@ -49,6 +49,7 @@
         prioridade: document.getElementById('prioridade'),
         submitBtn: document.getElementById('submit-btn'),
         list: document.getElementById('task-list'),
+        aviso: document.getElementById('aviso'),
         template: document.getElementById('task-template'),
         filtersNav: document.getElementById('filters'),
         filters: document.querySelectorAll('.filters__item'),
@@ -251,6 +252,11 @@
         deletar: function (id) {
             return request(API + '/' + id, { method: 'DELETE' });
         },
+        // A posição vai como vizinho, não como índice: a lista é paginada e
+        // filtrada, então o terceiro da tela não é o terceiro da conta.
+        mover: function (id, destino) {
+            return request(API + '/' + id + '/posicao', corpoJson('PATCH', destino));
+        },
         // As três devolvem a tarefa inteira, já com a contagem recalculada:
         // somar aqui faria a mesma regra existir nos dois lados.
         adicionarPasso: function (id, titulo) {
@@ -330,7 +336,7 @@
      * cliente esconderia tudo o que está fora da página carregada.
      */
     function parametrosDaListagem(pagina) {
-        var partes = ['page=' + pagina, 'size=' + TAMANHO_PAGINA, 'sort=id,asc'];
+        var partes = ['page=' + pagina, 'size=' + TAMANHO_PAGINA, 'sort=ordem,asc', 'sort=id,asc'];
 
         if (state.filtro === 'pendentes') {
             partes.push('concluida=false');
@@ -582,6 +588,92 @@
         lista.appendChild(fragmento);
     }
 
+    /* ---------------------------------------------------- Reordenar a lista */
+
+    /**
+     * Manda para o servidor a posição em que a tarefa acabou, lida do DOM.
+     *
+     * O vizinho vem do próprio DOM depois do arraste, e não de um índice
+     * guardado: é ele que descreve o resultado sem depender de a lista estar
+     * filtrada, paginada, ou as duas coisas.
+     */
+    function salvarPosicao(no) {
+        var id = Number(no.dataset.id);
+        var anterior = no.previousElementSibling;
+        var seguinte = no.nextElementSibling;
+        var destino;
+
+        if (anterior) {
+            destino = { depoisDe: Number(anterior.dataset.id) };
+        } else if (seguinte) {
+            destino = { antesDe: Number(seguinte.dataset.id) };
+        } else {
+            return Promise.resolve();
+        }
+
+        return api.mover(id, destino)
+            .then(function () {
+                // Reordena o estado igual ao DOM, para o próximo desenho não
+                // desfazer o que acabou de ser arrastado.
+                sincronizarEstadoComALista();
+            })
+            .catch(function (erro) {
+                if (erro.message !== 'Sessão expirada') {
+                    toast(erro.message, 'error');
+                }
+                // A ordem do servidor é a verdadeira: se o pedido falhou, o
+                // que está na tela está errado e precisa voltar.
+                recarregar();
+            });
+    }
+
+    function sincronizarEstadoComALista() {
+        var porId = {};
+        state.tarefas.forEach(function (tarefa) {
+            porId[tarefa.id] = tarefa;
+        });
+
+        var novas = [];
+        Array.prototype.forEach.call(el.list.children, function (no) {
+            var tarefa = porId[Number(no.dataset.id)];
+            if (tarefa) {
+                novas.push(tarefa);
+            }
+        });
+        state.tarefas = novas;
+    }
+
+    function moverPorTeclado(no, paraCima) {
+        var vizinho = paraCima ? no.previousElementSibling : no.nextElementSibling;
+        if (!vizinho) {
+            return;
+        }
+
+        if (paraCima) {
+            el.list.insertBefore(no, vizinho);
+        } else {
+            el.list.insertBefore(vizinho, no);
+        }
+
+        // O foco vive no botão que acabou de se mover junto com o cartão.
+        no.querySelector('.task__handle').focus();
+
+        var posicao = Array.prototype.indexOf.call(el.list.children, no) + 1;
+        anunciar(no.querySelector('.task__title').textContent
+                + ', posição ' + posicao + ' de ' + el.list.children.length);
+
+        salvarPosicao(no);
+    }
+
+    /**
+     * A lista tem aria-live="polite", mas redesenhá-la inteira não anuncia
+     * "moveu para a posição 3" — anuncia a lista toda. Este parágrafo diz só
+     * o que mudou.
+     */
+    function anunciar(texto) {
+        el.aviso.textContent = texto;
+    }
+
     function montarTarefa(tarefa, indice) {
         var no = el.template.content.firstElementChild.cloneNode(true);
 
@@ -655,6 +747,9 @@
             preencherPassos(caixaPassos, tarefa);
             caixaPassos.hidden = !aberto;
         }
+
+        no.querySelector('.task__handle').setAttribute('aria-label',
+            'Mover a tarefa ' + tarefa.titulo + '. Use as setas para cima e para baixo.');
 
         var check = no.querySelector('.task__check');
         check.setAttribute('aria-pressed', tarefa.concluida ? 'true' : 'false');
@@ -2239,6 +2334,95 @@
     });
 
     // Delegação de eventos: a lista é recriada a cada render.
+    /*
+     * Arraste com Pointer Events, e não com a API de drag-and-drop do HTML.
+     * A nativa não vale no toque, e reordenar tarefa só no desktop seria meia
+     * funcionalidade. Aqui o mesmo código atende mouse, dedo e caneta.
+     *
+     * A tarefa arrastada não é deslocada por transform: ela é reinserida no
+     * DOM ao cruzar cada vizinho, e a lista reflui por baixo do dedo. É a
+     * própria prévia do resultado, sem posição fantasma para reconciliar.
+     */
+    var arrasto = null;
+
+    el.list.addEventListener('pointerdown', function (evento) {
+        var alca = evento.target.closest('.task__handle');
+        if (!alca || evento.button !== 0) {
+            return;
+        }
+
+        var no = alca.closest('.task');
+        arrasto = { no: no, comecouEm: no.nextElementSibling, ponteiro: evento.pointerId };
+
+        // Captura o ponteiro na alça: sem isso, mover rápido tira o cursor de
+        // cima do elemento e o arraste morre no meio.
+        alca.setPointerCapture(evento.pointerId);
+        no.classList.add('is-dragging');
+        el.list.classList.add('esta-arrastando');
+        evento.preventDefault();
+    });
+
+    el.list.addEventListener('pointermove', function (evento) {
+        if (!arrasto || evento.pointerId !== arrasto.ponteiro) {
+            return;
+        }
+
+        // Compara a altura do ponteiro com a caixa de cada vizinho, em vez de
+        // perguntar ao navegador quem está sob o cursor: os vizinhos ficam com
+        // pointer-events desligado durante o arraste, e elementFromPoint
+        // simplesmente não os enxergaria.
+        var filhos = el.list.children;
+
+        for (var i = 0; i < filhos.length; i++) {
+            var alvo = filhos[i];
+            if (alvo === arrasto.no) {
+                continue;
+            }
+
+            var caixa = alvo.getBoundingClientRect();
+            if (evento.clientY < caixa.top || evento.clientY > caixa.bottom) {
+                continue;
+            }
+
+            // Metade de baixo do vizinho: entra depois dele; metade de cima: antes.
+            var depois = evento.clientY > caixa.top + caixa.height / 2;
+            el.list.insertBefore(arrasto.no, depois ? alvo.nextElementSibling : alvo);
+            break;
+        }
+    });
+
+    function encerrarArrasto() {
+        if (!arrasto) {
+            return;
+        }
+
+        var no = arrasto.no;
+        var mudou = no.nextElementSibling !== arrasto.comecouEm;
+
+        no.classList.remove('is-dragging');
+        el.list.classList.remove('esta-arrastando');
+        arrasto = null;
+
+        // Soltar no mesmo lugar não é uma alteração: não vale uma requisição.
+        if (mudou) {
+            salvarPosicao(no);
+        }
+    }
+
+    el.list.addEventListener('pointerup', encerrarArrasto);
+    el.list.addEventListener('pointercancel', encerrarArrasto);
+
+    el.list.addEventListener('keydown', function (evento) {
+        var alca = evento.target.closest('.task__handle');
+        if (!alca || (evento.key !== 'ArrowUp' && evento.key !== 'ArrowDown')) {
+            return;
+        }
+
+        // Sem isto a seta rolaria a página junto.
+        evento.preventDefault();
+        moverPorTeclado(alca.closest('.task'), evento.key === 'ArrowUp');
+    });
+
     el.list.addEventListener('click', function (evento) {
         var botao = evento.target.closest('[data-action]');
         if (!botao) {

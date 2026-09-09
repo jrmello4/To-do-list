@@ -34,6 +34,9 @@ public class TaskResponse {
     @Schema(description = "Etiquetas aplicadas à tarefa")
     private List<EtiquetaResumoResponse> etiquetas;
 
+    @Schema(description = "Posição manual na lista da conta", example = "3")
+    private Integer ordem;
+
     @Schema(description = "Passos da tarefa, em ordem")
     private List<SubtarefaResponse> subtarefas;
 

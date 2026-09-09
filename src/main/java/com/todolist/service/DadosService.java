@@ -57,7 +57,9 @@ public class DadosService {
                                 .cor(etiqueta.getCor())
                                 .build())
                         .toList())
-                .tarefas(taskRepository.findByUsuarioIdOrderByIdAsc(usuarioId).stream()
+                // Na ordem que a conta arrumou, não na de criação: a arrumação
+                // é trabalho de quem usa, e um backup que a perde não é backup.
+                .tarefas(taskRepository.findByUsuarioIdOrderByOrdemAscIdAsc(usuarioId).stream()
                         .map(DadosService::exportarTarefa)
                         .toList())
                 .habitos(exportarHabitos(usuarioId))
@@ -244,6 +246,11 @@ public class DadosService {
         }
 
         int criadas = 0;
+        // A posição vem da sequência do arquivo, e não de um campo gravado:
+        // é a mesma ordem que a exportação escreveu, e continua válida mesmo
+        // importando para uma conta que já tem tarefas.
+        int ordem = taskRepository.maiorOrdem(usuario.getId()) + 1;
+
         for (DadosExportados.TarefaExportada vinda : vindas) {
             if (vinda.getTitulo() == null || vinda.getTitulo().isBlank()) {
                 continue;
@@ -267,6 +274,7 @@ public class DadosService {
                     .prazo(vinda.getPrazo())
                     .prioridade(prioridadeOu(vinda.getPrioridade()))
                     .dataConclusao(vinda.getDataConclusao())
+                    .ordem(ordem++)
                     .build();
 
             importarPassos(task, vinda.getSubtarefas());

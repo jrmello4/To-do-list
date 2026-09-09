@@ -1819,6 +1819,85 @@ svg {
     color: var(--text-muted);
 }
 
+/* Fora da tela, mas lido: display:none ou visibility:hidden tirariam o texto
+   também do leitor de tela, que é justamente quem precisa dele. */
+.apenas-leitor {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- Alça de reordenação ---------- */
+
+.task__handle {
+    flex: none;
+    align-self: flex-start;
+    width: 22px;
+    height: 26px;
+    margin-left: -6px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--text-soft);
+    cursor: grab;
+    /* Sem isto, arrastar com o dedo rola a página em vez de mover a tarefa. */
+    touch-action: none;
+    opacity: 0;
+    transition: opacity .15s ease, color .15s ease, background-color .15s ease;
+}
+
+.task__handle svg {
+    width: 16px;
+    height: 16px;
+}
+
+.task:hover .task__handle,
+.task__handle:focus-visible {
+    opacity: 1;
+}
+
+.task__handle:hover {
+    background: var(--surface-alt);
+    color: var(--text-muted);
+}
+
+/* Onde não há ponteiro que paira, a alça precisa estar sempre visível — senão
+   no celular não existe reordenação nenhuma. */
+@media (hover: none) {
+    .task__handle {
+        opacity: 1;
+    }
+}
+
+.task.is-dragging {
+    /* Levanta o cartão sem tirá-lo do fluxo: a lista reflui por baixo e mostra
+       ao vivo onde a tarefa vai cair. */
+    position: relative;
+    z-index: 2;
+    box-shadow: var(--shadow-lg);
+    opacity: 0.9;
+    cursor: grabbing;
+}
+
+.task.is-dragging .task__handle {
+    opacity: 1;
+    cursor: grabbing;
+}
+
+/* Enquanto arrasta, nada mais na lista deve responder ao ponteiro. */
+.task-list.esta-arrastando .task:not(.is-dragging) {
+    pointer-events: none;
+}
+
 /* ---------- Passos (subtarefas) ---------- */
 
 .passos__toggle {

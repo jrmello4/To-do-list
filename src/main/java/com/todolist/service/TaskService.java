@@ -47,6 +47,9 @@ public class TaskService {
                 .prioridade(request.getPrioridade() != null ? request.getPrioridade() : Prioridade.MEDIA)
                 .concluida(false)
                 .etiquetas(resolverEtiquetas(usuarioId, request.getEtiquetaIds()))
+                // Nova tarefa entra no fim, que é onde estava antes de existir
+                // ordem manual (a listagem era por id crescente).
+                .ordem(taskRepository.maiorOrdem(usuarioId) + 1)
                 .build();
 
         if (Boolean.TRUE.equals(request.getConcluida())) {
@@ -129,6 +132,46 @@ public class TaskService {
         Task task = buscarDoUsuario(usuarioId, id);
         aplicarConclusao(task, concluida);
         return toResponse(taskRepository.save(task));
+    }
+
+    /**
+     * Move a tarefa para imediatamente antes ou depois de outra.
+     *
+     * A posição é dita por um vizinho porque a lista é paginada e filtrada:
+     * um índice numérico da tela não corresponde a lugar nenhum da conta. Com
+     * um vizinho, o resultado é o mesmo esteja a lista filtrada por pendentes,
+     * por projeto ou inteira — o que muda é só quem está visível entre os dois.
+     *
+     * As demais tarefas mantêm a ordem relativa entre si. Quem foi arrastado
+     * é o único que muda de lugar.
+     */
+    @Transactional
+    public TaskResponse mover(Long usuarioId, Long id, PosicaoRequest request) {
+        boolean depois = request.getDepoisDe() != null;
+        Long referenciaId = depois ? request.getDepoisDe() : request.getAntesDe();
+
+        if (referenciaId == null) {
+            throw new IllegalArgumentException("Informe antesDe ou depoisDe");
+        }
+        if (referenciaId.equals(id)) {
+            throw new IllegalArgumentException("Uma tarefa não pode ser posicionada em relação a si mesma");
+        }
+
+        Task tarefa = buscarDoUsuario(usuarioId, id);
+        Task referencia = buscarDoUsuario(usuarioId, referenciaId);
+
+        int destino = referencia.getOrdem() + (depois ? 1 : 0);
+
+        // Abre espaço primeiro e só depois grava: fazer o contrário empurraria
+        // a própria tarefa junto com as outras.
+        taskRepository.abrirEspaco(usuarioId, destino);
+
+        // O UPDATE em massa não passa pela sessão, então a entidade em mãos
+        // está desatualizada: busca de novo antes de gravar a posição.
+        Task movida = buscarDoUsuario(usuarioId, id);
+        movida.setOrdem(destino);
+
+        return toResponse(taskRepository.save(movida));
     }
 
     /* --------------------------------------------------------- Subtarefas */
@@ -308,6 +351,7 @@ public class TaskService {
                         .count())
                 .prazo(task.getPrazo())
                 .prioridade(task.getPrioridade())
+                .ordem(task.getOrdem())
                 .dataConclusao(task.getDataConclusao())
                 .dataCriacao(task.getDataCriacao())
                 .dataAtualizacao(task.getDataAtualizacao())

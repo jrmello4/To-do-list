@@ -603,6 +603,9 @@
         </div>
     </div>
 
+    <!-- Só para leitor de tela: diz o que mudou ao reordenar pelo teclado. -->
+    <p class="apenas-leitor" id="aviso" role="status" aria-live="polite"></p>
+
     <div class="toasts" id="toasts" aria-live="assertive"></div>
     <div class="confetti" id="confetti" aria-hidden="true"></div>
 
@@ -647,6 +650,13 @@
 
     <template id="task-template">
         <li class="task">
+            <button class="task__handle" type="button" aria-label="Mover tarefa">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="9" cy="6" r="1.6"></circle><circle cx="15" cy="6" r="1.6"></circle>
+                    <circle cx="9" cy="12" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle>
+                    <circle cx="9" cy="18" r="1.6"></circle><circle cx="15" cy="18" r="1.6"></circle>
+                </svg>
+            </button>
             <button class="task__check" type="button" data-action="toggle" aria-pressed="false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"
                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

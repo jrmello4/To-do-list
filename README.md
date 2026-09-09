@@ -9,7 +9,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-137-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-150-success?style=flat-square)](#executar-testes)
 [![Segurança](https://img.shields.io/badge/auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](#autenticação)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)](#subir-com-docker)
 
@@ -30,6 +30,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 | **Contas** | Cadastro e login com JWT; cada conta enxerga apenas as próprias tarefas |
 | **Organização** | Projetos, etiquetas, prazos, prioridade e busca — filtrados no servidor |
 | **Passos** | Uma tarefa se abre em subtarefas, com progresso "2 de 5" |
+| **Ordem própria** | A lista se arrasta na ordem que fizer sentido, com mouse, dedo ou teclado |
 | **Hábitos** | Rotina recorrente com sequências e grade dos últimos 14 dias |
 | **Painel** | Série de conclusões, distribuição por projeto e prioridade, tempo médio |
 | **Lembretes** | Resumo diário por e-mail, na hora local de cada conta |
@@ -190,6 +191,7 @@ endpoints REST documentados abaixo e traz:
 - Projetos e etiquetas coloridos, com contagem de pendentes e painel para criar e excluir
 - Etiquetas escolhidas por chips alternáveis, em vez de um select múltiplo
 - Passos por tarefa, com "2 de 5" que expande a lista na própria linha
+- Reordenação por arraste (mouse e toque) ou pelas setas do teclado
 - Prazo com destaque para atrasadas e para as que vencem hoje, e prioridade
 - Busca e filtros resolvidos no servidor, com "carregar mais" paginado
 - Mensagens de erro vindas da API exibidas na tela
@@ -232,6 +234,7 @@ as tarefas da conta autenticada.
 | `GET` | `/api/tarefas/{id}` | Buscar tarefa por ID |
 | `PUT` | `/api/tarefas/{id}` | Atualizar uma tarefa |
 | `PATCH` | `/api/tarefas/{id}/conclusao` | Concluir ou reabrir |
+| `PATCH` | `/api/tarefas/{id}/posicao` | Mover na lista, relativo a outra tarefa |
 | `DELETE` | `/api/tarefas/{id}` | Deletar uma tarefa |
 
 ### Projetos
@@ -257,6 +260,48 @@ Etiquetas são transversais aos projetos: uma tarefa pertence a um projeto só,
 mas pode ter várias etiquetas. Em `POST`/`PUT` de tarefa, `etiquetaIds`
 **substitui** as etiquetas atuais — lista vazia remove todas, campo omitido
 mantém as que já existem.
+
+### Ordem manual
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `PATCH` | `/api/tarefas/{id}/posicao` | Corpo: `{"antesDe": 12}` ou `{"depoisDe": 12}` |
+
+**A posição é dita por um vizinho, e não por um número.** "Posição 7" não
+significaria nada estável: a listagem é paginada e filtrada, então o sétimo da
+tela raramente é o sétimo da conta, e o sétimo de hoje não é o de amanhã. Um
+vizinho concreto é o mesmo em qualquer filtro, e é sempre alguém que quem
+arrastou estava vendo.
+
+É isso que resolve o caso difícil — **mover com filtro ligado**. Filtrando por
+pendentes, arrastar D para cima de B significa exatamente "D imediatamente
+antes de B" na lista completa; as concluídas que estavam entre os dois não são
+arrastadas junto nem pulam de lugar, porque as demais tarefas mantêm a ordem
+relativa entre si. Quem foi arrastado é o único que muda de lugar.
+
+A ordem mora numa coluna `ordem` em `tasks`, semeada com o próprio `id` na
+migration — que é exatamente a ordem que a listagem mostrava antes, então
+ninguém vê a lista embaralhar ao atualizar. Empates são desfeitos pelo `id`,
+então a ordem é sempre total mesmo que dois valores coincidam. Mover é um
+único `UPDATE` que empurra para baixo o que estava do destino em diante, e não
+uma reescrita de todas as posições: mexer numa tarefa não deveria custar uma
+linha alterada por tarefa da conta. O preço é que as posições ficam esparsas
+com o tempo, o que não importa — a listagem usa a ordem relativa, nunca o valor.
+
+O `UPDATE` é filtrado por dono, e o vizinho também é buscado com o dono junto:
+sem isso, daria para descobrir a posição de uma tarefa alheia mandando o id
+dela como referência.
+
+Na interface a alça aparece à esquerda do cartão. O arraste usa **Pointer
+Events**, e não a API de drag-and-drop do HTML, que não vale no toque —
+reordenar só no desktop seria meia funcionalidade. E funciona pelo teclado:
+com a alça em foco, <kbd>↑</kbd> e <kbd>↓</kbd> movem a tarefa, com o foco
+acompanhando o cartão e um aviso ("posição 2 de 4") para leitor de tela.
+
+Hoje a listagem não oferece outra ordenação na interface, então a ordem manual
+é a ordem. Se um seletor de ordenação for adicionado depois, o arraste precisa
+ser desabilitado enquanto outra ordenação estiver ativa — arrastar sob
+"ordenar por prazo" não teria como significar nada.
 
 ### Passos (subtarefas)
 
@@ -359,6 +404,11 @@ números.
 |--------|------|-----------|
 | `GET` | `/api/dados/exportar` | Baixa projetos, etiquetas, tarefas e hábitos num JSON |
 | `POST` | `/api/dados/importar` | Importa um arquivo exportado |
+
+A exportação sai **na ordem que a conta arrumou**, e não na de criação: a
+arrumação é trabalho de quem usa, e um backup que a perde não é backup. A
+importação renumera na sequência do arquivo, o que continua valendo mesmo
+importando para uma conta que já tem tarefas.
 
 Os passos vêm **aninhados na tarefa**, e não numa lista à parte com referência
 cruzada: passo não existe fora da tarefa, e uma lista separada permitiria um
@@ -560,7 +610,7 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-O projeto possui **137 testes**. A maioria roda contra H2 em memória, sem
+O projeto possui **150 testes**. A maioria roda contra H2 em memória, sem
 precisar de MySQL:
 
 | Classe | Cobre |
@@ -576,6 +626,7 @@ precisar de MySQL:
 | `PainelIntegrationTest` | Agregações do painel, série contínua e isolamento |
 | `DadosIntegrationTest` | Exportar, importar, viagem de ida e volta entre contas |
 | `SubtarefasIntegrationTest` | Passos: ordem, contagem, teto e **isolamento entre contas** |
+| `ReordenacaoIntegrationTest` | Ordem manual, inclusive movendo com filtro ligado |
 | `LembreteServiceTest` | Quando o lembrete sai: fuso de cada conta, uma vez por dia, falha isolada |
 | `EscolhaDoEnviadorTest` | Sem SMTP configurado, o enviador ativo é o que só registra no log |
 | `AgendadorDeLembretesTest` | A varredura só é agendada com `LEMBRETES_ATIVOS=true` |
