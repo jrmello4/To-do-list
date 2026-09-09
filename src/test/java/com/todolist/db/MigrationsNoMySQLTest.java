@@ -90,12 +90,15 @@ class MigrationsNoMySQLTest {
             }
         }
 
+        // Esta lista de colunas é gêmea da de SchemaMigrationTest. Coluna nova
+        // precisa entrar nas duas: esta só roda onde há Docker, então esquecer
+        // dela passa despercebido na máquina de quem desenvolve e só quebra no CI.
         assertThat(tabelas).contains("tasks", "usuarios", "projetos", "etiquetas", "task_etiquetas",
-                "habitos", "habito_registros");
+                "habitos", "habito_registros", "subtarefas");
         assertThat(colunasDeTasks).containsExactlyInAnyOrder(
                 "id", "titulo", "descricao", "concluida",
                 "data_criacao", "data_atualizacao", "usuario_id",
-                "projeto_id", "prazo", "prioridade", "data_conclusao");
+                "projeto_id", "prazo", "prioridade", "data_conclusao", "ordem");
         assertThat(chavesEstrangeiras).contains("usuario_id -> usuarios");
     }
 }

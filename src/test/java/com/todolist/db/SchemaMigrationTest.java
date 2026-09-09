@@ -74,6 +74,8 @@ class SchemaMigrationTest {
             }
         }
 
+        // Gêmea da lista de MigrationsNoMySQLTest, que roda a mesma conferência
+        // contra MySQL de verdade. Coluna nova entra nas duas.
         assertThat(colunas).containsExactlyInAnyOrder(
                 "id", "titulo", "descricao", "concluida",
                 "data_criacao", "data_atualizacao", "usuario_id",
