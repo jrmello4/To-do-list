@@ -56,7 +56,7 @@ class MigrationsNoMySQLTest {
                 .allSatisfy(migration -> assertThat(migration.getState().isFailed()).isFalse());
         assertThat(aplicadas)
                 .extracting(migration -> String.valueOf(migration.getVersion()))
-                .contains("1", "2", "3", "4", "5", "6", "7", "8");
+                .contains("1", "2", "3", "4", "5", "6", "7", "8", "9");
     }
 
     @Test

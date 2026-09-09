@@ -1,5 +1,7 @@
 server:
-  port: ${SERVER_PORT:8080}
+  # PORT vem primeiro porque é o nome que os serviços de hospedagem injetam;
+  # sem ele a aplicação sobe numa porta que ninguém está escutando.
+  port: ${PORT:${SERVER_PORT:8080}}
 
 spring:
   datasource:
@@ -22,6 +24,21 @@ spring:
       hibernate:
         format_sql: true
 
+  mail:
+    # spring.mail.host fica de fora de propósito. EnviadorPorEmail só existe
+    # quando essa propriedade está definida, e um ${MAIL_HOST:} vazio aqui
+    # conta como definida: ligaria o envio real sem servidor nenhum atrás.
+    # Para ligar de verdade, defina SPRING_MAIL_HOST no ambiente.
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -36,3 +53,14 @@ springdoc:
     tags-sorter: alpha
     display-request-duration: true
     doc-expansion: list
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Só o health. Expor tudo publicaria variáveis de ambiente e métricas
+        # internas junto, sem ninguém ter pedido.
+        include: health
+  endpoint:
+    health:
+      show-details: never

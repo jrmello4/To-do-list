@@ -450,7 +450,8 @@
         <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="settings-title">
             <h2 class="card__title" id="settings-title">Personalizar</h2>
             <p class="modal__hint">
-                Suas preferências ficam salvas apenas neste navegador — nada é enviado à API.
+                Nome, cor e tema ficam só neste navegador. Os lembretes, mais abaixo, ficam
+                na sua conta — são eles que o servidor precisa conhecer para enviar.
             </p>
 
             <form id="settings-form" class="form" novalidate>
@@ -479,6 +480,34 @@
                     <button class="btn btn--primary" type="submit">Salvar</button>
                 </div>
             </form>
+
+            <hr class="divisor">
+
+            <span class="field__label">Lembretes por e-mail</span>
+            <p class="modal__hint" style="margin-top: 6px">
+                Um resumo do que passou do prazo e do que vence hoje, na hora que você escolher.
+                Só chega quando há algo a dizer.
+            </p>
+
+            <form id="lembretes-form" class="form">
+                <label class="switch">
+                    <input type="checkbox" id="pref-lembretes">
+                    <span>Quero receber o resumo diário</span>
+                </label>
+
+                <div class="field" id="pref-hora-campo" hidden>
+                    <label class="field__label" for="pref-hora">Horário</label>
+                    <select class="field__input" id="pref-hora"></select>
+                    <span class="field__hint" id="pref-fuso"></span>
+                </div>
+
+                <div class="modal__actions">
+                    <button class="btn btn--primary" type="submit" id="lembretes-submit">
+                        Salvar lembretes
+                    </button>
+                </div>
+            </form>
+            <span class="field__error" id="lembretes-error" role="alert"></span>
 
             <hr class="divisor">
 

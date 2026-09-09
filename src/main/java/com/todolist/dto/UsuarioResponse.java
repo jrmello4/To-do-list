@@ -24,4 +24,13 @@ public class UsuarioResponse {
 
     @Schema(description = "Quando a conta foi criada", example = "2026-09-08T10:00:00")
     private LocalDateTime dataCriacao;
+
+    @Schema(description = "Se a conta recebe o resumo diário", example = "false")
+    private Boolean lembretesAtivos;
+
+    @Schema(description = "Hora local do resumo", example = "8")
+    private Integer horaLembrete;
+
+    @Schema(description = "Fuso da conta", example = "America/Sao_Paulo")
+    private String fusoHorario;
 }

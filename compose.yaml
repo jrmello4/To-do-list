@@ -29,6 +29,9 @@ services:
       # Sem valor definido, a aplicação gera uma chave aleatória a cada
       # reinício — e todos os tokens emitidos antes deixam de valer.
       JWT_SECRET: ${JWT_SECRET:-}
+      # Desligado por padrão: um job de hora em hora numa máquina de
+      # desenvolvimento não serve a ninguém. Ver .env.example para o SMTP.
+      LEMBRETES_ATIVOS: ${LEMBRETES_ATIVOS:-false}
     ports:
       - "8080:8080"
 

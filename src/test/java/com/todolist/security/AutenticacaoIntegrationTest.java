@@ -2,6 +2,7 @@ package com.todolist.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.todolist.dto.LoginRequest;
+import com.todolist.dto.PreferenciasRequest;
 import com.todolist.dto.RegistroRequest;
 import com.todolist.dto.TaskRequest;
 import org.junit.jupiter.api.DisplayName;
@@ -214,6 +215,110 @@ class AutenticacaoIntegrationTest {
                 .andExpect(jsonPath("$.content[0].titulo").value("Única do Bruno"));
     }
 
+    @Test
+    @DisplayName("preferências de lembrete são gravadas e voltam no perfil")
+    void salvaPreferenciasDeLembrete() throws Exception {
+        String ana = registrar("ana@exemplo.com", "senhaSegura1");
+
+        mockMvc.perform(put("/api/auth/preferencias")
+                        .header("Authorization", "Bearer " + ana)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(PreferenciasRequest.builder()
+                                .lembretesAtivos(true)
+                                .horaLembrete(7)
+                                .fusoHorario("Europe/Lisbon")
+                                .build())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lembretesAtivos").value(true))
+                .andExpect(jsonPath("$.horaLembrete").value(7))
+                .andExpect(jsonPath("$.fusoHorario").value("Europe/Lisbon"));
+
+        mockMvc.perform(get("/api/auth/eu").header("Authorization", "Bearer " + ana))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.horaLembrete").value(7))
+                .andExpect(jsonPath("$.fusoHorario").value("Europe/Lisbon"));
+    }
+
+    @Test
+    @DisplayName("campo omitido mantém o valor que já estava")
+    void campoOmitidoNaoApaga() throws Exception {
+        String ana = registrar("ana@exemplo.com", "senhaSegura1");
+        salvarPreferencias(ana, PreferenciasRequest.builder()
+                .lembretesAtivos(true).horaLembrete(7).fusoHorario("Europe/Lisbon").build());
+
+        // Só a hora muda; ligado e fuso continuam como estavam.
+        salvarPreferencias(ana, PreferenciasRequest.builder().horaLembrete(21).build());
+
+        mockMvc.perform(get("/api/auth/eu").header("Authorization", "Bearer " + ana))
+                .andExpect(jsonPath("$.lembretesAtivos").value(true))
+                .andExpect(jsonPath("$.horaLembrete").value(21))
+                .andExpect(jsonPath("$.fusoHorario").value("Europe/Lisbon"));
+    }
+
+    @Test
+    @DisplayName("fuso desconhecido devolve 400 em vez de virar uma conta que nunca recebe")
+    void fusoDesconhecidoDevolve400() throws Exception {
+        String ana = registrar("ana@exemplo.com", "senhaSegura1");
+
+        mockMvc.perform(put("/api/auth/preferencias")
+                        .header("Authorization", "Bearer " + ana)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(PreferenciasRequest.builder()
+                                .fusoHorario("Marte/Olympus").build())))
+                .andExpect(status().isBadRequest());
+
+        // O fuso anterior sobreviveu à tentativa.
+        mockMvc.perform(get("/api/auth/eu").header("Authorization", "Bearer " + ana))
+                .andExpect(jsonPath("$.fusoHorario").value("America/Sao_Paulo"));
+    }
+
+    @Test
+    @DisplayName("hora fora de 0 a 23 devolve 400")
+    void horaForaDoIntervaloDevolve400() throws Exception {
+        String ana = registrar("ana@exemplo.com", "senhaSegura1");
+
+        mockMvc.perform(put("/api/auth/preferencias")
+                        .header("Authorization", "Bearer " + ana)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(PreferenciasRequest.builder().horaLembrete(24).build())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("sem token não dá para mexer nas preferências de ninguém")
+    void preferenciasSemTokenDevolve401() throws Exception {
+        mockMvc.perform(put("/api/auth/preferencias")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(PreferenciasRequest.builder().lembretesAtivos(true).build())))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("rota inexistente devolve 404, e não 500")
+    void rotaInexistenteDevolve404() throws Exception {
+        String ana = registrar("ana@exemplo.com", "senhaSegura1");
+
+        // Um endereço digitado errado é erro de quem chama. Responder 500
+        // mandaria procurar defeito no servidor.
+        mockMvc.perform(get("/api/auth/perfil").header("Authorization", "Bearer " + ana))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("o health check responde sem token, e não expõe mais nada do actuator")
+    void healthCheckEhPublico() throws Exception {
+        // Quem hospeda chama esta rota sem credencial. Atrás de autenticação,
+        // ela leria a aplicação como fora do ar.
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+
+        // O resto do actuator continua fechado: env listaria variáveis de
+        // ambiente, senha de banco inclusive.
+        mockMvc.perform(get("/actuator/env"))
+                .andExpect(status().isUnauthorized());
+    }
+
     /* ----------------------------------------------------------- auxiliares */
 
     private String registrar(String email, String senha) throws Exception {
@@ -235,6 +340,14 @@ class AutenticacaoIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         return objectMapper.readTree(corpo).get("id").asLong();
+    }
+
+    private void salvarPreferencias(String token, PreferenciasRequest request) throws Exception {
+        mockMvc.perform(put("/api/auth/preferencias")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(request)))
+                .andExpect(status().isOk());
     }
 
     private String json(Object valor) throws Exception {

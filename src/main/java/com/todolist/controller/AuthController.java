@@ -78,4 +78,22 @@ public class AuthController {
     public ResponseEntity<UsuarioResponse> eu(@AuthenticationPrincipal UsuarioAutenticado usuario) {
         return ResponseEntity.ok(authService.perfil(usuario.getId()));
     }
+
+    @PutMapping("/preferencias")
+    @Operation(
+            summary = "Salvar preferências de lembrete",
+            description = "O resumo diário chega na hora local configurada. A interface envia o "
+                    + "fuso do próprio navegador, para o lembrete das 8 ser 8 de quem lê."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Preferências salvas"),
+            @ApiResponse(responseCode = "400", description = "Hora ou fuso inválidos",
+                    content = @Content(mediaType = ERRO_JSON,
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<UsuarioResponse> preferencias(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+            @Valid @RequestBody PreferenciasRequest request) {
+        return ResponseEntity.ok(authService.salvarPreferencias(usuario.getId(), request));
+    }
 }

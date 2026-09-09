@@ -9,7 +9,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://swagger.io/)
-[![Testes](https://img.shields.io/badge/testes-100-success?style=flat-square)](#executar-testes)
+[![Testes](https://img.shields.io/badge/testes-121-success?style=flat-square)](#executar-testes)
 [![Segurança](https://img.shields.io/badge/auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)](#autenticação)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)](#subir-com-docker)
 
@@ -31,6 +31,7 @@ acompanha uma **interface web pronta para uso**, servida pela própria aplicaç�
 | **Organização** | Projetos, etiquetas, prazos, prioridade e busca — filtrados no servidor |
 | **Hábitos** | Rotina recorrente com sequências e grade dos últimos 14 dias |
 | **Painel** | Série de conclusões, distribuição por projeto e prioridade, tempo médio |
+| **Lembretes** | Resumo diário por e-mail, na hora local de cada conta |
 | **Seus dados** | Exportar e importar tudo em JSON; instalável no celular |
 | **Interface web** | Criar, concluir, editar, excluir e filtrar tarefas, com anel de progresso e resumo do dia |
 | **Personalização** | Saudação com o seu nome, seis cores de destaque e tema claro/escuro/sistema |
@@ -78,6 +79,7 @@ Todas as rotas de `/api/tarefas` exigem um token JWT.
 | `POST` | `/api/auth/registrar` | Cria a conta e já devolve o token |
 | `POST` | `/api/auth/login` | Autentica e devolve o token |
 | `GET` | `/api/auth/eu` | Perfil da conta autenticada |
+| `PUT` | `/api/auth/preferencias` | Liga os lembretes e define hora e fuso |
 
 ```bash
 # cadastrar e guardar o token
@@ -137,7 +139,7 @@ cp .env.example .env
 | `DB_URL` | `jdbc:mysql://localhost:3306/todolist?...` |
 | `DB_USERNAME` | `root` |
 | `DB_PASSWORD` | `root` |
-| `SERVER_PORT` | `8080` |
+| `SERVER_PORT` | `8080` (`PORT` tem precedência, para os serviços de hospedagem) |
 
 O `.env` é ignorado pelo Git. Nenhuma credencial precisa ser editada dentro do
 `application.yml`, o que permite publicar a aplicação sem alterar o código.
@@ -322,6 +324,56 @@ Nomes já existentes de projeto, etiqueta e hábito são reaproveitados e voltam
 listados em `reaproveitados`; tarefas são sempre criadas, porque não há como
 saber se uma de mesmo título é a mesma ou outra parecida.
 
+### Lembretes por e-mail
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `PUT` | `/api/auth/preferencias` | `lembretesAtivos`, `horaLembrete` (0–23) e `fusoHorario` |
+
+Um resumo do que passou do prazo e do que vence hoje, uma vez por dia. Só sai
+quando há algo a dizer — um e-mail diário avisando que não há nada vira ruído e
+deixa de ser lido.
+
+**O fuso é da conta, não do servidor.** O servidor roda em UTC; quem escolhe
+"8 da manhã" quer as 8 do relógio da parede dele. A varredura roda de hora em
+hora e compara a hora *local* de cada conta: às 11h UTC é 8h em São Paulo, e 8h
+em Tóquio é 23h UTC do dia anterior. A interface envia o fuso do próprio
+navegador (`Intl.DateTimeFormat().resolvedOptions().timeZone`), e um fuso
+desconhecido é recusado com **400** na hora de salvar — gravado, ele viraria
+uma conta que simplesmente nunca recebe.
+
+O campo `ultimo_lembrete_em` guarda a **data local** já enviada, e é o que
+impede o mesmo resumo sair duas vezes no mesmo dia. Uma conta é marcada mesmo
+quando não havia nada a dizer; uma falha de envio **não** marca, para a próxima
+varredura tentar de novo. Um endereço recusado não interrompe as contas
+seguintes.
+
+O envio fica **desligado por padrão**:
+
+| Variável | Efeito |
+|----------|--------|
+| `LEMBRETES_ATIVOS=true` | Liga a varredura de hora em hora. Numa só instância — com duas, o resumo sai duas vezes |
+| `SPRING_MAIL_HOST` | Sem ela, `EnviadorEmLog` registra o lembrete no log em vez de enviar |
+| `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | Credenciais do SMTP |
+| `LEMBRETE_REMETENTE` | Endereço no campo *De* |
+
+`spring.mail.host` não tem valor padrão no `application.yml` de propósito: uma
+string vazia conta como definida para o `@ConditionalOnProperty` e ligaria o
+envio real sem servidor nenhum atrás. `EscolhaDoEnviadorTest` cobre esse caso.
+
+### Publicar
+
+| Variável | Para quê |
+|----------|----------|
+| `PORT` | Nome que os serviços de hospedagem injetam; tem precedência sobre `SERVER_PORT` |
+| `JWT_SECRET` | Obrigatória fora de desenvolvimento — sem ela os tokens caem a cada reinício |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Banco |
+
+`GET /actuator/health` responde **sem autenticação**, para o *health check* de
+quem hospeda não ler a aplicação como fora do ar. É o único endpoint do
+actuator exposto: `/actuator/env` listaria as variáveis de ambiente, senha de
+banco inclusive.
+
 ### Instalável no celular
 
 `manifest.webmanifest` e `sw.js` deixam a aplicação instalável e abrível sem
@@ -457,7 +509,7 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-O projeto possui **100 testes**. A maioria roda contra H2 em memória, sem
+O projeto possui **121 testes**. A maioria roda contra H2 em memória, sem
 precisar de MySQL:
 
 | Classe | Cobre |
@@ -472,6 +524,9 @@ precisar de MySQL:
 | `HabitosIntegrationTest` | Hábitos, registros, dias da semana e isolamento |
 | `PainelIntegrationTest` | Agregações do painel, série contínua e isolamento |
 | `DadosIntegrationTest` | Exportar, importar, viagem de ida e volta entre contas |
+| `LembreteServiceTest` | Quando o lembrete sai: fuso de cada conta, uma vez por dia, falha isolada |
+| `EscolhaDoEnviadorTest` | Sem SMTP configurado, o enviador ativo é o que só registra no log |
+| `AgendadorDeLembretesTest` | A varredura só é agendada com `LEMBRETES_ATIVOS=true` |
 | `MigrationsNoMySQLTest` | As migrations contra **MySQL de verdade**, via Testcontainers |
 
 `MigrationsNoMySQLTest` é pulada automaticamente onde não há Docker, e executa
@@ -497,6 +552,7 @@ src/
 │   │   ├── dto/             # Objetos de requisição/resposta
 │   │   ├── entity/          # Entidade JPA
 │   │   ├── exception/       # Tratamento global de erros
+│   │   ├── lembretes/       # Quando e como o resumo diário sai
 │   │   ├── repository/      # Camada de dados
 │   │   ├── security/        # JWT, filtro e regras de acesso
 │   │   └── service/         # Lógica de negócio
@@ -511,6 +567,7 @@ src/
     └── java/com/todolist/
         ├── controller/      # Testes do controller (MockMvc)
         ├── db/              # Migrations e persistência (Flyway, JPA, Testcontainers)
+        ├── lembretes/       # Varredura, fusos e escolha do enviador
         ├── security/        # Autenticação e isolamento entre contas
         └── service/         # Testes do service (Mockito)
 ```

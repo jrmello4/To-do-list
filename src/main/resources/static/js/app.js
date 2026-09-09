@@ -88,6 +88,13 @@
         settingsBtn: document.getElementById('settings-btn'),
         settingsModal: document.getElementById('settings-modal'),
         settingsForm: document.getElementById('settings-form'),
+        lembretesForm: document.getElementById('lembretes-form'),
+        lembretesSubmit: document.getElementById('lembretes-submit'),
+        lembretesErro: document.getElementById('lembretes-error'),
+        prefLembretes: document.getElementById('pref-lembretes'),
+        prefHoraCampo: document.getElementById('pref-hora-campo'),
+        prefHora: document.getElementById('pref-hora'),
+        prefFuso: document.getElementById('pref-fuso'),
         prefNome: document.getElementById('pref-nome'),
         swatches: document.getElementById('swatches'),
         themeChoice: document.getElementById('theme-choice'),
@@ -296,6 +303,9 @@
         },
         eu: function () {
             return request(API_AUTH + '/eu');
+        },
+        preferencias: function (dados) {
+            return request(API_AUTH + '/preferencias', corpoJson('PUT', dados));
         }
     };
 
@@ -1150,6 +1160,7 @@
         el.prefNome.value = prefs.nome;
         marcarCor(prefs.cor);
         marcarTema(prefs.tema);
+        mostrarLembretes();
 
         el.settingsModal.hidden = false;
         el.prefNome.focus();
@@ -1165,6 +1176,45 @@
             focoAnterior.focus();
             focoAnterior = null;
         }
+    }
+
+    /* ----------------------------------------------------------- Lembretes */
+
+    /**
+     * O fuso vem do navegador, não do servidor.
+     *
+     * O servidor roda em UTC; quem escolhe "8 da manhã" quer as 8 do relógio
+     * da parede dele. Perguntar ao navegador é o único jeito de saber qual é.
+     */
+    function fusoDoNavegador() {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function montarHoras() {
+        for (var hora = 0; hora < 24; hora++) {
+            var opcao = document.createElement('option');
+            opcao.value = String(hora);
+            opcao.textContent = (hora < 10 ? '0' + hora : hora) + ':00';
+            el.prefHora.appendChild(opcao);
+        }
+    }
+
+    function mostrarLembretes() {
+        var conta = sessao.conta || {};
+
+        el.prefLembretes.checked = conta.lembretesAtivos === true;
+        el.prefHora.value = String(conta.horaLembrete == null ? 8 : conta.horaLembrete);
+        el.prefHoraCampo.hidden = !el.prefLembretes.checked;
+        el.lembretesErro.textContent = '';
+
+        var fuso = fusoDoNavegador() || conta.fusoHorario;
+        el.prefFuso.textContent = fuso
+            ? 'No horário de ' + fuso.replace(/_/g, ' ')
+            : 'No horário deste navegador';
     }
 
     /* ------------------------------------------------- Painel de ajustes */
@@ -2128,6 +2178,43 @@
         toast('Preferências salvas', 'success');
     });
 
+    el.prefLembretes.addEventListener('change', function () {
+        el.prefHoraCampo.hidden = !el.prefLembretes.checked;
+    });
+
+    el.lembretesForm.addEventListener('submit', function (evento) {
+        evento.preventDefault();
+        el.lembretesErro.textContent = '';
+        el.lembretesSubmit.disabled = true;
+
+        var dados = {
+            lembretesAtivos: el.prefLembretes.checked,
+            horaLembrete: Number(el.prefHora.value)
+        };
+
+        // Só manda o fuso quando o navegador soube dizer qual é: enviar vazio
+        // apagaria o que já estava salvo por um valor pior.
+        var fuso = fusoDoNavegador();
+        if (fuso) {
+            dados.fusoHorario = fuso;
+        }
+
+        auth.preferencias(dados)
+            .then(function (conta) {
+                sessao.conta = conta;
+                mostrarLembretes();
+                toast(conta.lembretesAtivos
+                    ? 'Resumo diário às ' + dados.horaLembrete + 'h'
+                    : 'Lembretes desligados', 'success');
+            })
+            .catch(function (erro) {
+                el.lembretesErro.textContent = erro.message;
+            })
+            .finally(function () {
+                el.lembretesSubmit.disabled = false;
+            });
+    });
+
     Array.prototype.forEach.call(el.themeChoice.children, function (botao) {
         botao.addEventListener('click', function () {
             window.Prefs.definir({ tema: botao.dataset.themeValue });
@@ -2251,6 +2338,7 @@
     montarCoresDeEtiqueta();
     montarCoresDeHabito();
     montarDiasDaSemana();
+    montarHoras();
     atualizarContador();
     definirModo('login');
 

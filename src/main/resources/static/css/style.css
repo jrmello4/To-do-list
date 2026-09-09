@@ -1819,6 +1819,31 @@ svg {
     color: var(--text-muted);
 }
 
+/* ---------- Lembretes ---------- */
+
+.switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.switch input {
+    /* accent-color deixa o próprio controle do navegador seguir a cor da
+       conta, sem reconstruir a caixa e perder o foco e o teclado de graça. */
+    accent-color: var(--accent);
+    width: 18px;
+    height: 18px;
+    flex: none;
+    cursor: pointer;
+}
+
+#pref-hora-campo {
+    margin-top: 12px;
+}
+
 /* ---------- Exportar / importar e atalhos ---------- */
 
 .acoes-dados {

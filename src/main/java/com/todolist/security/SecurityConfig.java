@@ -45,6 +45,10 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**")
                         .permitAll()
                         .requestMatchers("/error").permitAll()
+                        // O health check de quem hospeda roda sem credencial:
+                        // atrás de autenticação, ele leria a aplicação como
+                        // fora do ar e derrubaria o deploy.
+                        .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(erros -> erros
                         .authenticationEntryPoint(respostaDeErro)

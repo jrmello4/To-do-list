@@ -3,6 +3,7 @@ package com.todolist.service;
 import com.todolist.dto.AuthResponse;
 import com.todolist.dto.LoginRequest;
 import com.todolist.dto.RegistroRequest;
+import com.todolist.dto.PreferenciasRequest;
 import com.todolist.dto.UsuarioResponse;
 import com.todolist.entity.Usuario;
 import com.todolist.exception.EmailJaCadastradoException;
@@ -15,6 +16,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +61,32 @@ public class AuthService {
         return comToken(usuario);
     }
 
+    @Transactional
+    public UsuarioResponse salvarPreferencias(Long usuarioId, PreferenciasRequest request) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", usuarioId));
+
+        if (request.getLembretesAtivos() != null) {
+            usuario.setLembretesAtivos(request.getLembretesAtivos());
+        }
+        if (request.getHoraLembrete() != null) {
+            usuario.setHoraLembrete(request.getHoraLembrete());
+        }
+        if (request.getFusoHorario() != null && !request.getFusoHorario().isBlank()) {
+            // Validado aqui: um fuso inválido gravado agora só apareceria mais
+            // tarde, na varredura, como uma conta que nunca recebe lembrete.
+            try {
+                ZoneId.of(request.getFusoHorario().trim());
+            } catch (Exception e) {
+                throw new IllegalArgumentException(
+                        "Fuso horário desconhecido: " + request.getFusoHorario());
+            }
+            usuario.setFusoHorario(request.getFusoHorario().trim());
+        }
+
+        return toResponse(usuario);
+    }
+
     @Transactional(readOnly = true)
     public UsuarioResponse perfil(Long usuarioId) {
         return usuarioRepository.findById(usuarioId)
@@ -87,6 +116,9 @@ public class AuthService {
                 .nome(usuario.getNome())
                 .email(usuario.getEmail())
                 .dataCriacao(usuario.getDataCriacao())
+                .lembretesAtivos(usuario.getLembretesAtivos())
+                .horaLembrete(usuario.getHoraLembrete())
+                .fusoHorario(usuario.getFusoHorario())
                 .build();
     }
 }

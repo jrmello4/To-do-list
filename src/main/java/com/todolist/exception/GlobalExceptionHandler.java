@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -110,6 +111,23 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(
                         HttpStatus.BAD_REQUEST.value(),
                         ex.getMessage()
+                ));
+    }
+
+    /**
+     * Rota que não existe.
+     *
+     * Sem este tratamento a exceção cairia no genérico abaixo e um endereço
+     * digitado errado voltaria como 500, dizendo que o servidor quebrou quando
+     * quem errou foi o cliente. Registrar como erro também poluiria o log.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleRotaInexistente(NoResourceFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(
+                        HttpStatus.NOT_FOUND.value(),
+                        "Recurso não encontrado: " + ex.getResourcePath()
                 ));
     }
 
