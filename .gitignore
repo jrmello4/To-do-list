@@ -14,3 +14,12 @@ target/
 maven/
 uploads/
 *.tmp
+
+# test/preview artifacts
+.pw-tmp/
+.playwright-cli/
+output/
+pw-test*.cjs
+boot-run.log
+boot.log
+boot.err
