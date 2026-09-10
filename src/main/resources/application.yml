@@ -1,5 +1,10 @@
 server:
   port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
 
 spring:
   profiles:
@@ -20,7 +25,7 @@ app:
     api-key: 123
     cache-name: esportes
     ligas:
-      # IDs públicos da TheSportsDB
+      # IDs pÃºblicos da TheSportsDB
       - id: 4328
         esporte: FUTEBOL
         nome: English Premier League
