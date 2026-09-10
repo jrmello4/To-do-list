@@ -2791,7 +2791,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!eventos || eventos.length === 0) {
-      dashSportsList.innerHTML = '<div class="dash-empty">Nenhum evento encontrado para os filtros aplicados. Clique em "⚙️ Meus Esportes" para adicionar modalidades! 🏆</div>';
+      dashSportsList.innerHTML = '<div class="dash-empty">Nenhum evento agora. Tente outro filtro ou recarregue — o radar busca jogos reais em tempo quase real.</div>';
       return;
     }
 
@@ -2928,7 +2928,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!activeSportsPrefsContainer) return;
 
     if (cachedSportsPreferences.length === 0) {
-      activeSportsPrefsContainer.innerHTML = '<span style="font-size:0.8rem;color:var(--text-muted);">Nenhum esporte ou time seguido ainda. Clique nas sugestões abaixo para adicionar!</span>';
+      activeSportsPrefsContainer.innerHTML = '<span style="font-size:0.8rem;color:var(--text-muted);">Nenhum time seguido ainda. O radar de eventos já funciona — use as sugestões abaixo para personalizar a ordem.</span>';
       return;
     }
 

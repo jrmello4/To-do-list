@@ -47,7 +47,7 @@ public class AuthService {
     @Transactional
     public AuthResponse cadastrar(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("O e-mail informado já está cadastrado.");
+            throw new IllegalArgumentException("O e-mail informado jÃ¡ estÃ¡ cadastrado.");
         }
 
         User user = User.builder()
@@ -58,6 +58,7 @@ public class AuthService {
                 .build();
 
         User saved = userRepository.save(user);
+        inicializarEsportesConvidado(saved);
         String token = jwtService.gerarToken(saved);
 
         return AuthResponse.builder()
@@ -69,6 +70,7 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
     public AuthResponse autenticar(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -78,7 +80,12 @@ public class AuthService {
         );
 
         User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário", 0L));
+                .orElseThrow(() -> new ResourceNotFoundException("UsuÃ¡rio", 0L));
+
+        // Contas antigas podem nÃ£o ter preferÃªncias esportivas â€” garante o radar
+        if (preferenciaEsporteRepository.findByUsuarioAndAtivoTrue(user).isEmpty()) {
+            inicializarEsportesConvidado(user);
+        }
 
         String token = jwtService.gerarToken(user);
 
@@ -95,7 +102,7 @@ public class AuthService {
     public User obterUsuarioAutenticado() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new IllegalArgumentException("Acesso não autorizado: usuário não autenticado.");
+            throw new IllegalArgumentException("Acesso nÃ£o autorizado: usuÃ¡rio nÃ£o autenticado.");
         }
 
         if (authentication.getPrincipal() instanceof User user) {
@@ -104,7 +111,7 @@ public class AuthService {
 
         String email = authentication.getName();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário", 0L));
+                .orElseThrow(() -> new ResourceNotFoundException("UsuÃ¡rio", 0L));
     }
 
     @Transactional(readOnly = true)
@@ -123,7 +130,7 @@ public class AuthService {
         String guestEmail = "convidado@todolist.local";
         User user = userRepository.findByEmail(guestEmail).orElseGet(() -> {
             User guest = User.builder()
-                    .nome("Usuário Convidado")
+                    .nome("UsuÃ¡rio Convidado")
                     .email(guestEmail)
                     .senha(passwordEncoder.encode(UUID.randomUUID().toString()))
                     .role(Role.ROLE_USER)
@@ -157,8 +164,8 @@ public class AuthService {
                 .orElseGet(() -> tagRepository.save(Tag.builder().nome("Frontend").cor("#3B82F6").usuario(user).build()));
         Tag tagUrgente = tagRepository.findByUsuarioIdAndNomeIgnoreCase(user.getId(), "Urgente")
                 .orElseGet(() -> tagRepository.save(Tag.builder().nome("Urgente").cor("#EF4444").usuario(user).build()));
-        Tag tagRevisao = tagRepository.findByUsuarioIdAndNomeIgnoreCase(user.getId(), "Revisão")
-                .orElseGet(() -> tagRepository.save(Tag.builder().nome("Revisão").cor("#10B981").usuario(user).build()));
+        Tag tagRevisao = tagRepository.findByUsuarioIdAndNomeIgnoreCase(user.getId(), "RevisÃ£o")
+                .orElseGet(() -> tagRepository.save(Tag.builder().nome("RevisÃ£o").cor("#10B981").usuario(user).build()));
         Tag tagApi = tagRepository.findByUsuarioIdAndNomeIgnoreCase(user.getId(), "API")
                 .orElseGet(() -> tagRepository.save(Tag.builder().nome("API").cor("#8B5CF6").usuario(user).build()));
         Tag tagPessoal = tagRepository.findByUsuarioIdAndNomeIgnoreCase(user.getId(), "Pessoal")
@@ -170,8 +177,8 @@ public class AuthService {
 
         // 1. Foco / Pomodoro
         Task task1 = Task.builder()
-                .titulo("🎯 Explorar Modo Foco Pomodoro")
-                .descricao("Inicie o cronômetro Pomodoro de 25 minutos e foque nesta tarefa!")
+                .titulo("ðŸŽ¯ Explorar Modo Foco Pomodoro")
+                .descricao("Inicie o cronÃ´metro Pomodoro de 25 minutos e foque nesta tarefa!")
                 .categoria(Categoria.TRABALHO)
                 .prioridade(Prioridade.ALTA)
                 .status(StatusTarefa.EM_ANDAMENTO)
@@ -183,13 +190,13 @@ public class AuthService {
                 .tags(new HashSet<>(List.of(tagFrontend)))
                 .build();
         task1.getSubtarefas().add(Subtask.builder().titulo("Iniciar timer de 25 min").concluida(true).task(task1).build());
-        task1.getSubtarefas().add(Subtask.builder().titulo("Completar sessão de foco").concluida(false).task(task1).build());
+        task1.getSubtarefas().add(Subtask.builder().titulo("Completar sessÃ£o de foco").concluida(false).task(task1).build());
         taskRepository.save(task1);
 
-        // 2. Dashboard / Gráficos
+        // 2. Dashboard / GrÃ¡ficos
         Task task2 = Task.builder()
-                .titulo("📊 Analisar Dashboard Gráfico")
-                .descricao("Acesse a aba 'Produtividade' para ver a distribuição por categoria e prioridade.")
+                .titulo("ðŸ“Š Analisar Dashboard GrÃ¡fico")
+                .descricao("Acesse a aba 'Produtividade' para ver a distribuiÃ§Ã£o por categoria e prioridade.")
                 .categoria(Categoria.ESTUDOS)
                 .prioridade(Prioridade.MEDIA)
                 .status(StatusTarefa.A_FAZER)
@@ -200,14 +207,14 @@ public class AuthService {
                 .usuario(user)
                 .tags(new HashSet<>(List.of(tagApi)))
                 .build();
-        task2.getSubtarefas().add(Subtask.builder().titulo("Ver gráfico de categorias").concluida(false).task(task2).build());
+        task2.getSubtarefas().add(Subtask.builder().titulo("Ver grÃ¡fico de categorias").concluida(false).task(task2).build());
         task2.getSubtarefas().add(Subtask.builder().titulo("Ver taxa de pontualidade").concluida(false).task(task2).build());
         taskRepository.save(task2);
 
-        // 3. Crítica / atrasada
+        // 3. CrÃ­tica / atrasada
         Task task3 = Task.builder()
-                .titulo("⚠️ Alerta de Prazo Crítico")
-                .descricao("Tarefa com prazo expirado para testar o alerta no sino 🔔 de notificações.")
+                .titulo("âš ï¸ Alerta de Prazo CrÃ­tico")
+                .descricao("Tarefa com prazo expirado para testar o alerta no sino ðŸ”” de notificaÃ§Ãµes.")
                 .categoria(Categoria.GERAL)
                 .prioridade(Prioridade.URGENTE)
                 .status(StatusTarefa.A_FAZER)
@@ -220,10 +227,10 @@ public class AuthService {
                 .build();
         taskRepository.save(task3);
 
-        // 4. Concluída
+        // 4. ConcluÃ­da
         Task task4 = Task.builder()
-                .titulo("📄 Gerar Relatório Executivo em PDF")
-                .descricao("Clique no botão 'Exportar PDF' no cabeçalho para gerar o relatório corporativo.")
+                .titulo("ðŸ“„ Gerar RelatÃ³rio Executivo em PDF")
+                .descricao("Clique no botÃ£o 'Exportar PDF' no cabeÃ§alho para gerar o relatÃ³rio corporativo.")
                 .categoria(Categoria.FINANCAS)
                 .prioridade(Prioridade.BAIXA)
                 .status(StatusTarefa.CONCLUIDA)
@@ -237,8 +244,8 @@ public class AuthService {
 
         // 5. Recorrente
         Task task5 = Task.builder()
-                .titulo("🔁 Alinhamento Semanal de Sprint")
-                .descricao("Tarefa configurada com recorrência semanal para teste de replicação automática.")
+                .titulo("ðŸ” Alinhamento Semanal de Sprint")
+                .descricao("Tarefa configurada com recorrÃªncia semanal para teste de replicaÃ§Ã£o automÃ¡tica.")
                 .categoria(Categoria.TRABALHO)
                 .prioridade(Prioridade.ALTA)
                 .status(StatusTarefa.A_FAZER)
@@ -251,10 +258,10 @@ public class AuthService {
                 .build();
         taskRepository.save(task5);
 
-        // 6. Projeto pessoal — Kanban
+        // 6. Projeto pessoal â€” Kanban
         Task task6 = Task.builder()
-                .titulo("🚀 Lançar portfólio pessoal")
-                .descricao("Montar landing page, revisar cases e publicar no domínio próprio.")
+                .titulo("ðŸš€ LanÃ§ar portfÃ³lio pessoal")
+                .descricao("Montar landing page, revisar cases e publicar no domÃ­nio prÃ³prio.")
                 .categoria(Categoria.ESTUDOS)
                 .prioridade(Prioridade.ALTA)
                 .status(StatusTarefa.EM_ANDAMENTO)
@@ -270,10 +277,10 @@ public class AuthService {
         task6.getSubtarefas().add(Subtask.builder().titulo("Configurar deploy").concluida(false).task(task6).build());
         taskRepository.save(task6);
 
-        // 7. Casa / manutenção
+        // 7. Casa / manutenÃ§Ã£o
         Task task7 = Task.builder()
-                .titulo("🏠 Trocar filtro de água")
-                .descricao("Comprar filtro novo na farmácia e agendar troca.")
+                .titulo("ðŸ  Trocar filtro de Ã¡gua")
+                .descricao("Comprar filtro novo na farmÃ¡cia e agendar troca.")
                 .categoria(Categoria.PESSOAL)
                 .prioridade(Prioridade.MEDIA)
                 .status(StatusTarefa.A_FAZER)
@@ -286,8 +293,8 @@ public class AuthService {
 
         // 8. Compras
         Task task8 = Task.builder()
-                .titulo("🛒 Lista do mercado da semana")
-                .descricao("Arroz, feijão, frutas, café e itens de limpeza.")
+                .titulo("ðŸ›’ Lista do mercado da semana")
+                .descricao("Arroz, feijÃ£o, frutas, cafÃ© e itens de limpeza.")
                 .categoria(Categoria.PESSOAL)
                 .prioridade(Prioridade.BAIXA)
                 .status(StatusTarefa.A_FAZER)
@@ -296,14 +303,14 @@ public class AuthService {
                 .usuario(user)
                 .tags(new HashSet<>(List.of(tagPessoal)))
                 .build();
-        task8.getSubtarefas().add(Subtask.builder().titulo("Arroz e feijão").concluida(false).task(task8).build());
-        task8.getSubtarefas().add(Subtask.builder().titulo("Frutas da estação").concluida(false).task(task8).build());
+        task8.getSubtarefas().add(Subtask.builder().titulo("Arroz e feijÃ£o").concluida(false).task(task8).build());
+        task8.getSubtarefas().add(Subtask.builder().titulo("Frutas da estaÃ§Ã£o").concluida(false).task(task8).build());
         taskRepository.save(task8);
 
-        // 9. Saúde
+        // 9. SaÃºde
         Task task9 = Task.builder()
-                .titulo("🩺 Agendar check-up anual")
-                .descricao("Ligar na clínica e reservar horário com clínico geral.")
+                .titulo("ðŸ©º Agendar check-up anual")
+                .descricao("Ligar na clÃ­nica e reservar horÃ¡rio com clÃ­nico geral.")
                 .categoria(Categoria.SAUDE)
                 .prioridade(Prioridade.MEDIA)
                 .status(StatusTarefa.A_FAZER)
@@ -313,9 +320,9 @@ public class AuthService {
                 .build();
         taskRepository.save(task9);
 
-        // 10. Concluída extra (gráfico mais cheio)
+        // 10. ConcluÃ­da extra (grÃ¡fico mais cheio)
         Task task10 = Task.builder()
-                .titulo("✅ Organizar caixa de entrada do e-mail")
+                .titulo("âœ… Organizar caixa de entrada do e-mail")
                 .descricao("Zerar unread e criar filtros de labels.")
                 .categoria(Categoria.TRABALHO)
                 .prioridade(Prioridade.BAIXA)
@@ -328,7 +335,7 @@ public class AuthService {
         taskRepository.save(task10);
     }
 
-    /** Popula finanças, hábitos, metas, notas e calendário do modo convidado. */
+    /** Popula finanÃ§as, hÃ¡bitos, metas, notas e calendÃ¡rio do modo convidado. */
     private void inicializarLifeHubConvidado(User user) {
         LocalDate hoje = LocalDate.now();
 
@@ -365,7 +372,7 @@ public class AuthService {
         CategoriaTransacao catMoradia = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
                 .nome("Moradia").tipo(TipoTransacao.DESPESA).icone("home").cor("#F59E0B").usuario(user).build());
         CategoriaTransacao catSalario = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
-                .nome("Salário").tipo(TipoTransacao.RECEITA).icone("briefcase").cor("#10B981").usuario(user).build());
+                .nome("SalÃ¡rio").tipo(TipoTransacao.RECEITA).icone("briefcase").cor("#10B981").usuario(user).build());
         CategoriaTransacao catMercado = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
                 .nome("Mercado").tipo(TipoTransacao.DESPESA).icone("shopping-cart").cor("#3B82F6").usuario(user).build());
         CategoriaTransacao catLazer = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
@@ -373,12 +380,12 @@ public class AuthService {
         CategoriaTransacao catTransporte = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
                 .nome("Transporte").tipo(TipoTransacao.DESPESA).icone("car").cor("#06B6D4").usuario(user).build());
         CategoriaTransacao catSaude = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
-                .nome("Saúde").tipo(TipoTransacao.DESPESA).icone("heartbeat").cor("#EF4444").usuario(user).build());
+                .nome("SaÃºde").tipo(TipoTransacao.DESPESA).icone("heartbeat").cor("#EF4444").usuario(user).build());
         CategoriaTransacao catFreela = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
                 .nome("Freela").tipo(TipoTransacao.RECEITA).icone("laptop-code").cor("#22C55E").usuario(user).build());
 
         transacaoRepository.save(Transacao.builder()
-                .descricao("Salário Mensal").tipo(TipoTransacao.RECEITA).valor(new BigDecimal("5500.00"))
+                .descricao("SalÃ¡rio Mensal").tipo(TipoTransacao.RECEITA).valor(new BigDecimal("5500.00"))
                 .dataVencimento(hoje.withDayOfMonth(5)).dataPagamento(hoje.withDayOfMonth(5))
                 .status(StatusTransacao.PAGO).conta(contaPrincipal).categoria(catSalario).usuario(user).build());
 
@@ -398,12 +405,12 @@ public class AuthService {
                 .conta(carteira).categoria(catLazer).usuario(user).build());
 
         transacaoRepository.save(Transacao.builder()
-                .descricao("Combustível / apps").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("220.00"))
+                .descricao("CombustÃ­vel / apps").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("220.00"))
                 .dataVencimento(hoje.minusDays(5)).dataPagamento(hoje.minusDays(5))
                 .status(StatusTransacao.PAGO).conta(carteira).categoria(catTransporte).usuario(user).build());
 
         transacaoRepository.save(Transacao.builder()
-                .descricao("Plano de saúde").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("390.00"))
+                .descricao("Plano de saÃºde").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("390.00"))
                 .dataVencimento(hoje.plusDays(8)).status(StatusTransacao.PENDENTE)
                 .conta(contaPrincipal).categoria(catSaude).usuario(user).build());
 
@@ -417,15 +424,15 @@ public class AuthService {
                 .dataVencimento(hoje.withDayOfMonth(Math.min(hoje.getDayOfMonth() + 2, 28)))
                 .status(StatusTransacao.PENDENTE).conta(contaPrincipal).categoria(catMoradia).usuario(user).build());
 
-        // Hábitos + streaks
+        // HÃ¡bitos + streaks
         Habito agua = habitoRepository.save(Habito.builder()
-                .nome("Beber 2L de Água").icone("droplet").cor("#06b6d4").ativo(true).usuario(user).build());
+                .nome("Beber 2L de Ãgua").icone("droplet").cor("#06b6d4").ativo(true).usuario(user).build());
         Habito leitura = habitoRepository.save(Habito.builder()
                 .nome("Leitura / Estudo 20min").icone("book-open").cor("#8b5cf6").ativo(true).usuario(user).build());
         Habito caminhada = habitoRepository.save(Habito.builder()
-                .nome("Exercício Físico / Caminhada").icone("activity").cor("#10b981").ativo(true).usuario(user).build());
+                .nome("ExercÃ­cio FÃ­sico / Caminhada").icone("activity").cor("#10b981").ativo(true).usuario(user).build());
         Habito dormir = habitoRepository.save(Habito.builder()
-                .nome("Dormir até 23h").icone("moon").cor("#6366f1").ativo(true).usuario(user).build());
+                .nome("Dormir atÃ© 23h").icone("moon").cor("#6366f1").ativo(true).usuario(user).build());
 
         registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje).concluido(true).build());
         registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje.minusDays(1)).concluido(true).build());
@@ -439,12 +446,12 @@ public class AuthService {
 
         // Metas
         metaRepository.save(Meta.builder()
-                .titulo("Reserva de Emergência").descricao("Guardar 6 meses de custo fixo")
+                .titulo("Reserva de EmergÃªncia").descricao("Guardar 6 meses de custo fixo")
                 .categoria("FINANCEIRA").valorAlvo(new BigDecimal("10000.00")).valorAtual(new BigDecimal("3500.00"))
                 .unidade("R$").prazo(hoje.plusMonths(6)).cor("#10b981").icone("shield")
                 .concluida(false).ativo(true).usuario(user).build());
         metaRepository.save(Meta.builder()
-                .titulo("Ler 12 Livros no Ano").descricao("Manter o hábito de leitura")
+                .titulo("Ler 12 Livros no Ano").descricao("Manter o hÃ¡bito de leitura")
                 .categoria("ESTUDO").valorAlvo(new BigDecimal("12.00")).valorAtual(new BigDecimal("4.00"))
                 .unidade("livros").prazo(hoje.plusMonths(4)).cor("#6366f1").icone("book")
                 .concluida(false).ativo(true).usuario(user).build());
@@ -462,37 +469,41 @@ public class AuthService {
         // Notas
         notaRapidaRepository.save(NotaRapida.builder()
                 .titulo("Ideias da semana")
-                .conteudo("Este é o seu bloco de notas rápidas! Use para rascunhos, links úteis ou insights.")
+                .conteudo("Este Ã© o seu bloco de notas rÃ¡pidas! Use para rascunhos, links Ãºteis ou insights.")
                 .cor("#fff7ed").fixada(true).usuario(user).build());
         notaRapidaRepository.save(NotaRapida.builder()
                 .titulo("Compras online")
-                .conteudo("Comparar preço de monitor 27\\\" e cadeira ergonômica antes da Black Friday.")
+                .conteudo("Comparar preÃ§o de monitor 27\\\" e cadeira ergonÃ´mica antes da Black Friday.")
                 .cor("#eff6ff").fixada(false).usuario(user).build());
 
-        // Calendário
+        // CalendÃ¡rio
         eventoCalendarioRepository.save(EventoCalendario.builder()
                 .titulo("Dentista").descricao("Limpeza semestral")
                 .dataEvento(hoje.plusDays(4)).horaInicio(LocalTime.of(10, 0)).horaFim(LocalTime.of(11, 0))
-                .cor("#06b6d4").categoria("Saúde").ativo(true).usuario(user).build());
+                .cor("#06b6d4").categoria("SaÃºde").ativo(true).usuario(user).build());
         eventoCalendarioRepository.save(EventoCalendario.builder()
-                .titulo("Almoço com a equipe").descricao("Comemorar release do sprint")
+                .titulo("AlmoÃ§o com a equipe").descricao("Comemorar release do sprint")
                 .dataEvento(hoje.plusDays(2)).horaInicio(LocalTime.of(12, 30)).horaFim(LocalTime.of(14, 0))
                 .cor("#8b5cf6").categoria("Trabalho").ativo(true).usuario(user).build());
         eventoCalendarioRepository.save(EventoCalendario.builder()
-                .titulo("Aniversário da Ana").descricao("Jantar às 20h")
+                .titulo("AniversÃ¡rio da Ana").descricao("Jantar Ã s 20h")
                 .dataEvento(hoje.plusDays(6)).horaInicio(LocalTime.of(20, 0))
                 .cor("#f59e0b").categoria("Pessoal").ativo(true).usuario(user).build());
         eventoCalendarioRepository.save(EventoCalendario.builder()
-                .titulo("Reunião 1:1 com gestor").descricao("Feedback trimestral")
+                .titulo("ReuniÃ£o 1:1 com gestor").descricao("Feedback trimestral")
                 .dataEvento(hoje.plusDays(1)).horaInicio(LocalTime.of(9, 0)).horaFim(LocalTime.of(9, 45))
                 .cor("#3b82f6").categoria("Trabalho").ativo(true).usuario(user).build());
     }
 
     private void inicializarEsportesConvidado(User user) {
+        if (preferenciaEsporteRepository.findByUsuarioAndAtivoTrue(user).size() > 0) {
+            return;
+        }
         preferenciaEsporteRepository.saveAll(List.of(
-                PreferenciaEsporte.builder().esporte("FUTEBOL").nomeInteresse("Flamengo").icone("⚽").cor("#10b981").ativo(true).usuario(user).build(),
-                PreferenciaEsporte.builder().esporte("UFC").nomeInteresse("UFC / MMA").icone("🥊").cor("#ef4444").ativo(true).usuario(user).build(),
-                PreferenciaEsporte.builder().esporte("BASQUETE").nomeInteresse("NBA").icone("🏀").cor("#f59e0b").ativo(true).usuario(user).build()
+                PreferenciaEsporte.builder().esporte("FUTEBOL").nomeInteresse("Flamengo").icone("âš½").cor("#10b981").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("UFC").nomeInteresse("UFC / MMA").icone("ðŸ¥Š").cor("#ef4444").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("BASQUETE").nomeInteresse("NBA").icone("ðŸ€").cor("#f59e0b").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("F1").nomeInteresse("FÃ³rmula 1").icone("ðŸŽï¸").cor("#dc2626").ativo(true).usuario(user).build()
         ));
     }
 }
