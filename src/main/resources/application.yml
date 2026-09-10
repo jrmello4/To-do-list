@@ -1,5 +1,10 @@
 server:
   port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
 
 spring:
   profiles:
@@ -12,6 +17,104 @@ spring:
 app:
   upload:
     dir: uploads/
+  cors:
+    allowed-origins: http://localhost:8080,http://127.0.0.1:8080
+  esportes:
+    enabled: true
+    api-base-url: https://www.thesportsdb.com/api/v1/json
+    api-key: 123
+    cache-name: esportes
+    # Ligas que entram no radar (IDs publicos TheSportsDB)
+    ligas:
+      - id: 4328
+        esporte: FUTEBOL
+        nome: Premier League
+      - id: 4335
+        esporte: FUTEBOL
+        nome: La Liga
+      - id: 4332
+        esporte: FUTEBOL
+        nome: Serie A
+      - id: 4331
+        esporte: FUTEBOL
+        nome: Bundesliga
+      - id: 4334
+        esporte: FUTEBOL
+        nome: Ligue 1
+      - id: 4480
+        esporte: FUTEBOL
+        nome: UEFA Champions League
+      - id: 4370
+        esporte: F1
+        nome: Formula 1
+      - id: 4387
+        esporte: BASQUETE
+        nome: NBA
+      - id: 4391
+        esporte: NFL
+        nome: NFL
+      - id: 4443
+        esporte: UFC
+        nome: UFC
+    # Esportes do dia (usados como complemento; o filtro de ligas e aplicado depois)
+    esportes-dia:
+      - Soccer
+      - Basketball
+      - Fighting
+      - Motorsport
+      - American Football
+    # So passa o que bate com estas ligas / nomes
+    ligas-permitidas-nomes:
+      - premier league
+      - la liga
+      - serie a
+      - bundesliga
+      - ligue 1
+      - champions league
+      - brasileirao
+      - brasileirão
+      - brazilian serie a
+      - libertadores
+      - copa libertadores
+      - formula 1
+      - f1
+      - nba
+      - nfl
+      - ufc
+    # Bloqueia ruido (WWE, AEW, ligas secundarias, etc.)
+    ligas-bloqueadas-nomes:
+      - wwe
+      - aew
+      - bkfc
+      - lfa
+      - pfl
+      - motogp
+      - nascar
+      - dtm
+      - afl
+      - usl
+      - liga mx
+      - lnb
+      - bbl
+      - bnp
+      - k-league
+      - j-league
+      - allsvenskan
+      - primera division
+      - serie b
+      - championship
+
+jwt:
+  expiration: 86400000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
 
 springdoc:
   api-docs:

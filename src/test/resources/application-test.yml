@@ -15,3 +15,10 @@ spring:
 
   flyway:
     enabled: false
+
+jwt:
+  secret: test-only-secret-not-for-production-0123456789abcdef
+
+app:
+  esportes:
+    enabled: false

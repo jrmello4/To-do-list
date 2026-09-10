@@ -12,11 +12,23 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
 
   flyway:
-    enabled: false
+    enabled: true
+    locations: classpath:db/migration
+
+jwt:
+  # Chave apenas para desenvolvimento local — nunca use em produção
+  secret: dev-only-not-for-production-404E635266556A586E3272357538782F413F4428472B4B62
+
+app:
+  cors:
+    allowed-origins: http://localhost:8080,http://127.0.0.1:8080
+  esportes:
+    # Em dev pode-se desligar a chamada externa com enabled=false
+    enabled: true

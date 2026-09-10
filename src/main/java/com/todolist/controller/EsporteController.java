@@ -67,4 +67,10 @@ public class EsporteController {
     public ResponseEntity<List<EsporteJogoResponse>> obterJogos(@RequestParam(required = false) String time) {
         return ResponseEntity.ok(esporteService.obterJogosDoDia(time));
     }
+
+    @GetMapping("/alertas")
+    @Operation(summary = "Alertas de jogos nas próximas 1h (eventos de Esportes do calendário)")
+    public ResponseEntity<List<com.todolist.dto.AlertaEsporteResponse>> alertas() {
+        return ResponseEntity.ok(esporteService.coletarAlertasProximos());
+    }
 }

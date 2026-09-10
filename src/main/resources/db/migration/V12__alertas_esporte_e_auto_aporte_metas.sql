@@ -1,0 +1,3 @@
+ALTER TABLE eventos_calendario ADD COLUMN alerta_enviado BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE metas ADD COLUMN auto_aporte_percentual DECIMAL(5, 2) DEFAULT NULL;
+ALTER TABLE metas ADD COLUMN auto_aporte_ativo BOOLEAN NOT NULL DEFAULT FALSE;

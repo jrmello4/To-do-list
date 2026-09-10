@@ -3,6 +3,8 @@ package com.todolist.dto;
 import com.todolist.entity.TipoTransacao;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,4 +16,5 @@ public class CategoriaTransacaoResponse {
     private TipoTransacao tipo;
     private String icone;
     private String cor;
+    private BigDecimal limiteMensal;
 }

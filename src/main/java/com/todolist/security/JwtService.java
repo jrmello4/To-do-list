@@ -3,6 +3,7 @@ package com.todolist.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -15,13 +16,26 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    // Chave secreta padrão de 256 bits para desenvolvimento/testes
-    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${jwt.secret:}")
     private String secretKey;
 
-    // 24 horas em milissegundos
     @Value("${jwt.expiration:86400000}")
     private long jwtExpiration;
+
+    private SecretKey signingKey;
+
+    @PostConstruct
+    void validarChaveSecreta() {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException(
+                    "jwt.secret não configurado. Defina a variável de ambiente JWT_SECRET "
+                            + "(ou a propriedade jwt.secret) com ao menos 32 bytes.");
+        }
+        if (secretKey.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("jwt.secret deve ter no mínimo 32 bytes (256 bits).");
+        }
+        this.signingKey = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    }
 
     public String gerarToken(UserDetails userDetails) {
         return gerarToken(userDetails.getUsername());
@@ -32,7 +46,7 @@ public class JwtService {
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .signWith(getSigningKey())
+                .signWith(signingKey)
                 .compact();
     }
 
@@ -40,34 +54,35 @@ public class JwtService {
         return extrairClaim(token, Claims::getSubject);
     }
 
-    public <T> T extrairClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extrairTodosClaims(token);
+    private <T> T extrairClaim(String token, Function<Claims, T> claimsResolver) {
+        Claims claims = extrairTodosClaims(token);
         return claimsResolver.apply(claims);
-    }
-
-    public boolean isTokenValido(String token, UserDetails userDetails) {
-        final String username = extrairUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpirado(token);
-    }
-
-    private boolean isTokenExpirado(String token) {
-        return extrairExpiracao(token).before(new Date());
-    }
-
-    private Date extrairExpiracao(String token) {
-        return extrairClaim(token, Claims::getExpiration);
     }
 
     private Claims extrairTodosClaims(String token) {
         return Jwts.parser()
-                .verifyWith(getSigningKey())
+                .verifyWith(signingKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
     }
 
+    public boolean isTokenValido(String token, UserDetails userDetails) {
+        final String username = extrairUsername(token);
+        return username != null
+                && username.equals(userDetails.getUsername())
+                && !isTokenExpirado(token);
+    }
+
+    private boolean isTokenExpirado(String token) {
+        return extrairExpiration(token).before(new Date());
+    }
+
+    private Date extrairExpiration(String token) {
+        return extrairClaim(token, Claims::getExpiration);
+    }
+
     private SecretKey getSigningKey() {
-        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return signingKey;
     }
 }
