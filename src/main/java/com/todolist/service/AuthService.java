@@ -40,6 +40,7 @@ public class AuthService {
     private final RegistroHabitoRepository registroHabitoRepository;
     private final MetaRepository metaRepository;
     private final NotaRapidaRepository notaRapidaRepository;
+    private final PreferenciaEsporteRepository preferenciaEsporteRepository;
 
     @Transactional
     public AuthResponse cadastrar(RegisterRequest request) {
@@ -133,6 +134,9 @@ public class AuthService {
         }
         if (contaFinanceiraRepository.findByUsuarioIdAndAtivoTrueOrderByNomeAsc(user.getId()).isEmpty()) {
             inicializarLifeHubConvidado(user);
+        }
+        if (preferenciaEsporteRepository.findByUsuarioAndAtivoTrue(user).isEmpty()) {
+            inicializarEsportesConvidado(user);
         }
 
         String token = jwtService.gerarToken(user);
@@ -366,5 +370,13 @@ public class AuthService {
                 .fixada(true)
                 .usuario(user)
                 .build());
+    }
+
+    private void inicializarEsportesConvidado(User user) {
+        preferenciaEsporteRepository.saveAll(List.of(
+                PreferenciaEsporte.builder().esporte("FUTEBOL").nomeInteresse("Flamengo").icone("⚽").cor("#10b981").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("UFC").nomeInteresse("UFC / MMA").icone("🥊").cor("#ef4444").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("BASQUETE").nomeInteresse("NBA").icone("🏀").cor("#f59e0b").ativo(true).usuario(user).build()
+        ));
     }
 }

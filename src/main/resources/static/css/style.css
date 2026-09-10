@@ -1253,9 +1253,12 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 }
 .calendar-days-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
+.calendar-container { overflow-x: auto; }
+.calendar-view-header { min-width: 640px; }
+.calendar-weekdays-grid, .calendar-days-grid { min-width: 640px; }
 .calendar-day-cell {
   min-height: 88px;
   background: var(--deck);
@@ -1820,3 +1823,269 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
   .app-layout { grid-template-columns: 1fr; }
   body { background: white; color: black; }
 }
+
+/* ==========================================================================
+   MODAIS OVERLAY (Meus Esportes, Finanças, Metas, Eventos...)
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.modal-overlay.hidden { display: none !important; }
+.modal-overlay > .modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 6, 14, 0.78);
+  backdrop-filter: blur(8px);
+  z-index: 0;
+  cursor: pointer;
+}
+.modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(680px, 100%);
+  max-height: min(88vh, 880px);
+  overflow: auto;
+  background: linear-gradient(180deg, #16223a 0%, #121b2d 100%);
+  border: 1px solid rgba(148, 163, 204, 0.22);
+  border-radius: 20px;
+  box-shadow: 0 28px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(108,140,255,0.08);
+  animation: modal-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+[data-theme="light"] .modal-card {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.18);
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-card { animation: none; }
+}
+.modal-card .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  margin: 0;
+  border-bottom: 1px solid var(--edge);
+  position: sticky;
+  top: 0;
+  background: inherit;
+  z-index: 2;
+  border-radius: 20px 20px 0 0;
+}
+.modal-card .modal-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.modal-card .modal-body {
+  padding: 16px 20px 4px;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.modal-card .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--edge);
+  position: sticky;
+  bottom: 0;
+  background: inherit;
+}
+.btn-close {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.btn-close:hover {
+  background: var(--panel-3);
+  color: var(--ink);
+  border-color: var(--edge);
+}
+
+/* Preferências esportivas */
+.sports-prefs-tags-box {
+  min-height: 56px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--deck);
+  border: 1px dashed var(--edge-strong);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.sports-pref-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 7px 9px;
+  border-radius: 11px;
+  background: var(--panel-2);
+  border: 1px solid var(--edge);
+  border-left: 3px solid var(--mint);
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.sports-pref-remove {
+  width: 22px; height: 22px;
+  border-radius: 7px;
+  display: grid; place-items: center;
+  font-size: 1.05rem;
+  color: var(--muted);
+  background: transparent;
+  transition: var(--transition);
+}
+.sports-pref-remove:hover { background: var(--coral-dim); color: var(--coral); }
+.sports-suggestions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.btn-quick-pref {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 13px;
+  border-radius: 11px;
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--ink-2);
+  background: var(--panel-2);
+  border: 1px solid var(--edge);
+  transition: var(--transition);
+}
+.btn-quick-pref:hover {
+  border-color: rgba(108,140,255,0.55);
+  color: var(--volt-2);
+  background: var(--volt-dim);
+  transform: translateY(-1px);
+}
+.btn-quick-pref.selected, .btn-quick-pref.active {
+  background: var(--volt-dim);
+  border-color: var(--volt);
+  color: var(--volt-2);
+  box-shadow: 0 0 0 1px rgba(108,140,255,0.28);
+}
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.flex-1 { flex: 1 1 160px; min-width: 140px; }
+.flex-2 { flex: 2 1 220px; min-width: 180px; }
+
+/* Sports match: alinha badges e título */
+.sports-match-card .sports-match-header {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.sports-match-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 2px 0 0;
+  line-height: 1.3;
+}
+.sports-match-sub {
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.sports-match-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.sports-match-date {
+  font-weight: 600;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+.sports-match-card .sports-status-badge { flex-shrink: 0; }
+
+/* Goal cards no cockpit */
+.cockpit-widget .goal-card {
+  background: var(--panel-2);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.cockpit-widget .goal-card + .goal-card { margin-top: 8px; }
+.goal-card .goal-card-title { font-weight: 700; font-size: 0.9rem; }
+
+/* Habits progress bar */
+.habits-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel-3);
+  overflow: hidden;
+  margin: 6px 0 12px;
+}
+.habits-progress-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--mint), var(--volt));
+  border-radius: inherit;
+}
+
+/* Chart cards polish */
+.chart-card {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+.chart-card h3, .chart-card .card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+/* Filter pills row compact */
+.sports-filters .sports-filter-btn, .filter-pills .filter-btn {
+  padding: 6px 11px;
+  font-size: 0.76rem;
+}
+
+/* Section titles on views */
+.app-panel-view > h2, .app-panel-view h2:first-of-type {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+
+/* Auth modal z-index below generic overlays if both open */
+#authModal { z-index: 200; }
+.modal-overlay { z-index: 150; }
+#sportsPreferencesModal { z-index: 160; }

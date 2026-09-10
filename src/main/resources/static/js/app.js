@@ -2818,27 +2818,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <div class="sports-match-card" data-event-id="${ev.id}">
           <div class="sports-match-header">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span class="sports-status-badge ${sportBadgeClass}">${escapeHtml(ev.icone)} ${escapeHtml(ev.esporte)}</span>
-              <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${escapeHtml(ev.subtitulo || '')}</span>
-            </div>
+            <span class="sports-status-badge ${sportBadgeClass}">${escapeHtml(ev.icone)} ${escapeHtml(ev.esporte)}</span>
             <span class="sports-status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>
           </div>
-
-          <div style="padding:4px 0;">
-            <h4 style="font-size:0.92rem;font-weight:700;color:var(--text-primary);margin:0;">
-              ${escapeHtml(ev.titulo)}
-            </h4>
-          </div>
-
-          <div class="sports-match-footer" style="margin-top:2px;">
-            <div style="display:flex;flex-direction:column;gap:2px;">
+          <h4 class="sports-match-title">${escapeHtml(ev.titulo)}</h4>
+          <div class="sports-match-sub">${escapeHtml(ev.subtitulo || '')}</div>
+          <div class="sports-match-footer">
+            <div class="sports-match-meta">
               <span>${escapeHtml(ev.transmissao || 'Transmissão a confirmar')}</span>
-              <span style="font-weight:600;color:var(--text-secondary);">📅 ${escapeHtml(ev.dataHoraFormatada || '')}</span>
+              <span class="sports-match-date">📅 ${escapeHtml(ev.dataHoraFormatada || '')}</span>
             </div>
-            <div>
-              ${calBtnHtml}
-            </div>
+            ${calBtnHtml}
           </div>
         </div>
       `;
@@ -3522,7 +3512,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dayDetailsList.querySelectorAll('.btn-day-toggle-task').forEach(btn => {
           btn.addEventListener('click', async () => {
             const id = btn.dataset.id;
-            await apiFetch(`/api/tarefas/${id}/toggle-concluida`, { method: 'PUT' });
+            await apiFetch(`/api/tarefas/${id}/toggle`, { method: 'PATCH' });
             showToast('Status da tarefa atualizado!');
             await fetchCalendarData();
             closeDayDetailsModal();
@@ -3742,7 +3732,7 @@ document.addEventListener('DOMContentLoaded', () => {
           chk.addEventListener('change', async () => {
             const taskId = chk.dataset.id;
             try {
-              await apiFetch(`/api/tarefas/${taskId}/toggle-concluida`, { method: 'PUT' });
+              await apiFetch(`/api/tarefas/${taskId}/toggle`, { method: 'PATCH' });
               showToast('Status da tarefa atualizado!');
               await refreshData();
             } catch (err) {

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LifeHub - Cockpit Pessoal, Tarefas & Finanças</title>
-  <meta name="description" content="Cockpit inteligente de produtividade pessoal, gestão avançada de tarefas, quadro Kanban e controle financeiro integrado">
+  <title>LifeHub - Cockpit Pessoal, Tarefas & FinanÃ§as</title>
+  <meta name="description" content="Cockpit inteligente de produtividade pessoal, gestÃ£o avanÃ§ada de tarefas, quadro Kanban e controle financeiro integrado">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#070b14">
@@ -12,11 +12,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="app-layout" id="appLayout">
-    <!-- Sidebar Retrátil -->
+    <!-- Sidebar RetrÃ¡til -->
     <aside class="app-sidebar" id="appSidebar">
       <div class="sidebar-header">
         <div class="sidebar-brand">
@@ -28,7 +28,7 @@
           </div>
           <div class="brand-info">
             <h2>LifeHub</h2>
-            <span class="brand-tag">Cockpit Diário</span>
+            <span class="brand-tag">Cockpit DiÃ¡rio</span>
           </div>
         </div>
         <button type="button" id="btnToggleSidebar" class="sidebar-toggle-btn" title="Recolher / Expandir Menu" aria-label="Menu">
@@ -39,32 +39,32 @@
       </div>
 
       <nav class="sidebar-nav">
-        <button type="button" class="sidebar-nav-item active" data-app-view="dashboard" title="Visão Geral (Cockpit)">
-          <span class="nav-icon">📊</span>
-          <span class="nav-text">Visão Geral</span>
+        <button type="button" class="sidebar-nav-item active" data-app-view="dashboard" title="VisÃ£o Geral (Cockpit)">
+          <span class="nav-icon">ðŸ“Š</span>
+          <span class="nav-text">VisÃ£o Geral</span>
         </button>
         <button type="button" class="sidebar-nav-item" data-app-view="tasks" title="Tarefas & Kanban">
-          <span class="nav-icon">📋</span>
+          <span class="nav-icon">ðŸ“‹</span>
           <span class="nav-text">Tarefas & Projetos</span>
         </button>
-        <button type="button" class="sidebar-nav-item" data-app-view="finances" title="Finanças & Carteiras">
-          <span class="nav-icon">💰</span>
-          <span class="nav-text">Finanças Pessoais</span>
+        <button type="button" class="sidebar-nav-item" data-app-view="finances" title="FinanÃ§as & Carteiras">
+          <span class="nav-icon">ðŸ’°</span>
+          <span class="nav-text">FinanÃ§as Pessoais</span>
         </button>
-        <button type="button" class="sidebar-nav-item" data-app-view="calendar" title="Calendário Unificado">
-          <span class="nav-icon">📅</span>
-          <span class="nav-text">Calendário</span>
+        <button type="button" class="sidebar-nav-item" data-app-view="calendar" title="CalendÃ¡rio Unificado">
+          <span class="nav-icon">ðŸ“…</span>
+          <span class="nav-text">CalendÃ¡rio</span>
         </button>
         <button type="button" class="sidebar-nav-item" data-app-view="goals" title="Metas & OKRs">
-          <span class="nav-icon">🎯</span>
+          <span class="nav-icon">ðŸŽ¯</span>
           <span class="nav-text">Metas & Sonhos</span>
         </button>
-        <button type="button" class="sidebar-nav-item" data-app-view="stats" title="Gráficos & Métricas">
-          <span class="nav-icon">📈</span>
+        <button type="button" class="sidebar-nav-item" data-app-view="stats" title="GrÃ¡ficos & MÃ©tricas">
+          <span class="nav-icon">ðŸ“ˆ</span>
           <span class="nav-text">Produtividade</span>
         </button>
         <button type="button" class="sidebar-nav-item" data-app-view="trash" title="Lixeira">
-          <span class="nav-icon">🗑️</span>
+          <span class="nav-icon">ðŸ—‘ï¸</span>
           <span class="nav-text">Lixeira</span>
           <span class="sidebar-badge" id="sidebarTrashBadge">0</span>
         </button>
@@ -93,23 +93,23 @@
                 </svg>
               </button>
               <div>
-                <h1 id="headerGreeting">👋 Bom dia!</h1>
+                <h1 id="headerGreeting">ðŸ‘‹ Bom dia!</h1>
                 <p class="subtitle" id="headerDateFormatted">Carregando seu cockpit...</p>
               </div>
             </div>
 
-            <!-- Ticker de Informações Rápidas: Clima & Jogos -->
+            <!-- Ticker de InformaÃ§Ãµes RÃ¡pidas: Clima & Jogos -->
             <div class="header-tickers-bar">
-              <div class="ticker-chip weather-chip" id="weatherChip" title="Previsão do Tempo Local (Clique para atualizar)">
-                <span id="weatherIcon">⛅</span>
+              <div class="ticker-chip weather-chip" id="weatherChip" title="PrevisÃ£o do Tempo Local (Clique para atualizar)">
+                <span id="weatherIcon">â›…</span>
                 <span id="weatherText">Consultando clima...</span>
               </div>
               <div class="ticker-chip sports-chip" id="sportsChip" title="Radar Esportivo / Futebol">
-                <span>⚽</span>
+                <span>âš½</span>
                 <span id="sportsHighlightText">Carregando jogos...</span>
               </div>
-              <div class="ticker-chip calendar-chip" id="calendarChip" title="Ver Calendário Unificado">
-                <span>📅</span>
+              <div class="ticker-chip calendar-chip" id="calendarChip" title="Ver CalendÃ¡rio Unificado">
+                <span>ðŸ“…</span>
                 <span id="calendarChipText">Agenda & Compromissos</span>
               </div>
             </div>
@@ -123,12 +123,12 @@
                 </svg>
                 + Tarefa
               </button>
-              <button type="button" id="btnQuickNewTrans" class="btn btn-success-action btn-sm" title="Novo Lançamento Financeiro">
+              <button type="button" id="btnQuickNewTrans" class="btn btn-success-action btn-sm" title="Novo LanÃ§amento Financeiro">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                + Finança
+                + FinanÃ§a
               </button>
 
               <button id="btnExportCsv" class="btn btn-outline btn-sm" title="Exportar tarefas para CSV">
@@ -139,7 +139,7 @@
                 </svg>
                 CSV
               </button>
-              <button id="btnExportPdf" class="btn btn-outline btn-sm" title="Exportar Relatório Executivo em PDF">
+              <button id="btnExportPdf" class="btn btn-outline btn-sm" title="Exportar RelatÃ³rio Executivo em PDF">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
@@ -157,9 +157,9 @@
                 Swagger
               </a>
 
-              <!-- Central de Notificações -->
+              <!-- Central de NotificaÃ§Ãµes -->
               <div class="notification-container" id="notificationContainer">
-                <button type="button" id="btnNotification" class="btn-icon notification-btn" title="Central de Notificações" aria-label="Notificações">
+                <button type="button" id="btnNotification" class="btn-icon notification-btn" title="Central de NotificaÃ§Ãµes" aria-label="NotificaÃ§Ãµes">
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -168,11 +168,11 @@
                 </button>
                 <div id="notificationDropdown" class="notification-dropdown hidden">
                   <div class="notification-header">
-                    <span class="notification-header-title">Alertas & Notificações</span>
-                    <button type="button" id="btnRequestNotifyPerm" class="btn btn-xs btn-outline" title="Receber alertas nativos na área de trabalho">🔔 Alertas no Windows</button>
+                    <span class="notification-header-title">Alertas & NotificaÃ§Ãµes</span>
+                    <button type="button" id="btnRequestNotifyPerm" class="btn btn-xs btn-outline" title="Receber alertas nativos na Ã¡rea de trabalho">ðŸ”” Alertas no Windows</button>
                   </div>
                   <div id="notificationList" class="notification-list">
-                    <div class="notification-empty">Nenhum alerta pendente 🎉</div>
+                    <div class="notification-empty">Nenhum alerta pendente ðŸŽ‰</div>
                   </div>
                 </div>
               </div>
@@ -202,7 +202,7 @@
               
               <!-- User Profile & Auth Controls -->
               <div id="authContainer" class="auth-container" style="display: flex; gap: 8px;">
-                <button id="btnHeaderGuest" class="btn btn-outline btn-sm" title="Acessar como Convidado (Modo Demonstração)">
+                <button id="btnHeaderGuest" class="btn btn-outline btn-sm" title="Acessar como Convidado (Modo DemonstraÃ§Ã£o)">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                     <circle cx="8.5" cy="7" r="4"></circle>
@@ -219,9 +219,9 @@
                   Entrar
                 </button>
                 <div id="userProfile" class="user-profile hidden">
-                  <div class="user-avatar" id="userAvatar" title="Usuário logado">U</div>
+                  <div class="user-avatar" id="userAvatar" title="UsuÃ¡rio logado">U</div>
                   <div class="user-details">
-                    <span class="user-name" id="userName">Usuário</span>
+                    <span class="user-name" id="userName">UsuÃ¡rio</span>
                     <span class="user-email" id="userEmail">user@email.com</span>
                   </div>
                   <button id="btnLogout" class="btn-icon btn-logout" title="Sair da conta" aria-label="Sair">
@@ -238,21 +238,21 @@
         </header>
 
         <!-- ================================================================
-             PAINEL 1: DASHBOARD CENTRAL / COCKPIT DIÁRIO
+             PAINEL 1: DASHBOARD CENTRAL / COCKPIT DIÃRIO
              ================================================================ -->
         <section id="dashboardView" class="app-panel-view">
-          <!-- Banner de Alertas e Atenção Imediata -->
+          <!-- Banner de Alertas e AtenÃ§Ã£o Imediata -->
           <div id="cockpitAlertsBanner" class="cockpit-alerts-banner hidden">
-            <div class="alert-banner-icon">🚨</div>
-            <div class="alert-banner-content" id="cockpitAlertsText">Você possui itens com vencimento para hoje ou atrasados!</div>
+            <div class="alert-banner-icon">ðŸš¨</div>
+            <div class="alert-banner-content" id="cockpitAlertsText">VocÃª possui itens com vencimento para hoje ou atrasados!</div>
           </div>
 
-          <!-- Métricas Rápidas do Cockpit -->
+          <!-- MÃ©tricas RÃ¡pidas do Cockpit -->
           <div class="cockpit-kpi-grid">
             <div class="cockpit-kpi-card">
               <div class="kpi-card-header">
                 <span class="kpi-card-label">Tarefas de Hoje</span>
-                <span class="kpi-card-icon">📋</span>
+                <span class="kpi-card-icon">ðŸ“‹</span>
               </div>
               <div class="kpi-card-value" id="dashKpiTarefasHoje">0</div>
               <div class="kpi-card-sub" id="dashKpiTarefasAtrasadas">0 atrasadas</div>
@@ -261,7 +261,7 @@
             <div class="cockpit-kpi-card warning">
               <div class="kpi-card-header">
                 <span class="kpi-card-label">Contas a Vencer</span>
-                <span class="kpi-card-icon">⚠️</span>
+                <span class="kpi-card-icon">âš ï¸</span>
               </div>
               <div class="kpi-card-value" id="dashKpiContasVencer">0</div>
               <div class="kpi-card-sub" id="dashKpiContasAtrasadas">0 em atraso</div>
@@ -270,7 +270,7 @@
             <div class="cockpit-kpi-card success">
               <div class="kpi-card-header">
                 <span class="kpi-card-label">Saldo em Contas</span>
-                <span class="kpi-card-icon">💰</span>
+                <span class="kpi-card-icon">ðŸ’°</span>
               </div>
               <div class="kpi-card-value" id="dashKpiSaldoTotal">R$ 0,00</div>
               <div class="kpi-card-sub">Saldo consolidado</div>
@@ -278,8 +278,8 @@
 
             <div class="cockpit-kpi-card primary">
               <div class="kpi-card-header">
-                <span class="kpi-card-label">Previsão Fim do Mês</span>
-                <span class="kpi-card-icon">📈</span>
+                <span class="kpi-card-label">PrevisÃ£o Fim do MÃªs</span>
+                <span class="kpi-card-icon">ðŸ“ˆ</span>
               </div>
               <div class="kpi-card-value" id="dashKpiSaldoPrevisto">R$ 0,00</div>
               <div class="kpi-card-sub" id="dashKpiBalancoMes">Receitas - Despesas</div>
@@ -294,39 +294,39 @@
               <div class="cockpit-widget card">
                 <div class="widget-header">
                   <div class="widget-title">
-                    <span class="widget-icon">📅</span>
-                    <h3>Meu Dia (Tarefas Prioritárias)</h3>
+                    <span class="widget-icon">ðŸ“…</span>
+                    <h3>Meu Dia (Tarefas PrioritÃ¡rias)</h3>
                   </div>
                   <button type="button" class="btn btn-xs btn-outline" id="btnDashGoTasks">Ver Todas &rarr;</button>
                 </div>
                 <div id="dashTasksList" class="dash-list">
-                  <div class="dash-empty">Nenhuma tarefa agendada para hoje. Aproveite o dia! ✨</div>
+                  <div class="dash-empty">Nenhuma tarefa agendada para hoje. Aproveite o dia! âœ¨</div>
                 </div>
               </div>
 
-              <!-- Widget: Atenção Urgente (Tarefas e Contas Atrasadas) -->
+              <!-- Widget: AtenÃ§Ã£o Urgente (Tarefas e Contas Atrasadas) -->
               <div class="cockpit-widget card">
                 <div class="widget-header">
                   <div class="widget-title">
-                    <span class="widget-icon">⚡</span>
-                    <h3>Atenção Urgente</h3>
+                    <span class="widget-icon">âš¡</span>
+                    <h3>AtenÃ§Ã£o Urgente</h3>
                   </div>
                 </div>
                 <div id="dashUrgentList" class="dash-list">
-                  <div class="dash-empty">Tudo em dia! Nenhum item atrasado ou de risco crítico. 👍</div>
+                  <div class="dash-empty">Tudo em dia! Nenhum item atrasado ou de risco crÃ­tico. ðŸ‘</div>
                 </div>
               </div>
 
-              <!-- Widget: Hábitos Diários & Streaks -->
+              <!-- Widget: HÃ¡bitos DiÃ¡rios & Streaks -->
               <div class="cockpit-widget card">
                 <div class="widget-header">
                   <div class="widget-title">
-                    <span class="widget-icon">🔄</span>
-                    <h3>Hábitos & Rotinas</h3>
+                    <span class="widget-icon">ðŸ”„</span>
+                    <h3>HÃ¡bitos & Rotinas</h3>
                   </div>
-                  <button type="button" class="btn btn-xs btn-primary" id="btnOpenNewHabit">+ Novo Hábito</button>
+                  <button type="button" class="btn btn-xs btn-primary" id="btnOpenNewHabit">+ Novo HÃ¡bito</button>
                 </div>
-                <!-- Barra de Progresso dos Hábitos -->
+                <!-- Barra de Progresso dos HÃ¡bitos -->
                 <div class="habits-progress-wrapper">
                   <div class="habits-progress-text">
                     <span>Progresso de Hoje</span>
@@ -345,12 +345,12 @@
               <div class="card cockpit-widget">
                 <div class="widget-header">
                   <div class="widget-header-title">
-                    <span class="widget-icon">🎯</span>
+                    <span class="widget-icon">ðŸŽ¯</span>
                     <h3>Metas & Objetivos</h3>
                   </div>
                   <div style="display:flex;gap:6px;">
                     <button type="button" class="btn btn-xs btn-outline" id="btnOpenNewGoalCockpit" title="Criar Nova Meta">+ Nova</button>
-                    <button type="button" class="btn btn-xs btn-outline" id="btnGoGoalsView" title="Ver Painel Completo">➔</button>
+                    <button type="button" class="btn btn-xs btn-outline" id="btnGoGoalsView" title="Ver Painel Completo">âž”</button>
                   </div>
                 </div>
                 <div id="dashGoalsList" class="dash-goals-list">
@@ -359,27 +359,27 @@
               </div>
             </div>
 
-            <!-- Coluna 2: Radar Financeiro & Foco Rápido -->
+            <!-- Coluna 2: Radar Financeiro & Foco RÃ¡pido -->
             <div class="cockpit-column">
-              <!-- Widget: Radar Financeiro & Próximos Vencimentos -->
+              <!-- Widget: Radar Financeiro & PrÃ³ximos Vencimentos -->
               <div class="cockpit-widget card">
                 <div class="widget-header">
                   <div class="widget-title">
-                    <span class="widget-icon">💳</span>
-                    <h3>Próximos Vencimentos (7 dias)</h3>
+                    <span class="widget-icon">ðŸ’³</span>
+                    <h3>PrÃ³ximos Vencimentos (7 dias)</h3>
                   </div>
-                  <button type="button" class="btn btn-xs btn-outline" id="btnDashGoFinances">Ver Finanças &rarr;</button>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnDashGoFinances">Ver FinanÃ§as &rarr;</button>
                 </div>
                 <div id="dashBillsList" class="dash-list">
-                  <div class="dash-empty">Nenhum pagamento pendente para os próximos 7 dias. 🎉</div>
+                  <div class="dash-empty">Nenhum pagamento pendente para os prÃ³ximos 7 dias. ðŸŽ‰</div>
                 </div>
               </div>
 
-              <!-- Widget: Carteiras & Contas Bancárias -->
+              <!-- Widget: Carteiras & Contas BancÃ¡rias -->
               <div class="cockpit-widget card">
                 <div class="widget-header">
                   <div class="widget-title">
-                    <span class="widget-icon">🏦</span>
+                    <span class="widget-icon">ðŸ¦</span>
                     <h3>Minhas Contas & Carteiras</h3>
                   </div>
                   <button type="button" class="btn btn-xs btn-primary" id="btnDashAddAccount">+ Nova Conta</button>
@@ -389,21 +389,21 @@
                 </div>
               </div>
 
-              <!-- Widget: Bloco de Notas Rápidas (Scratchpad) -->
+              <!-- Widget: Bloco de Notas RÃ¡pidas (Scratchpad) -->
               <div class="cockpit-widget card">
                 <div class="widget-header">
                   <div class="widget-title">
-                    <span class="widget-icon">📝</span>
-                    <h3>Bloco de Notas Rápidas</h3>
+                    <span class="widget-icon">ðŸ“</span>
+                    <h3>Bloco de Notas RÃ¡pidas</h3>
                   </div>
                   <button type="button" class="btn btn-xs btn-outline" id="btnConvertNoteToTask" title="Transformar este rascunho em uma Tarefa">
-                    ➔ Criar Tarefa
+                    âž” Criar Tarefa
                   </button>
                 </div>
                 <div class="scratchpad-box">
-                  <textarea id="scratchpadTextarea" class="scratchpad-textarea" placeholder="Digite seus pensamentos, rascunhos, links úteis ou anotações aqui... Salva automaticamente!"></textarea>
+                  <textarea id="scratchpadTextarea" class="scratchpad-textarea" placeholder="Digite seus pensamentos, rascunhos, links Ãºteis ou anotaÃ§Ãµes aqui... Salva automaticamente!"></textarea>
                   <div class="scratchpad-footer">
-                    <span class="scratchpad-status" id="scratchpadStatus">Salvo automaticamente ✅</span>
+                    <span class="scratchpad-status" id="scratchpadStatus">Salvo automaticamente âœ…</span>
                     <span id="scratchpadCharCount" style="font-size:0.75rem;color:var(--text-muted);">0 caracteres</span>
                   </div>
                 </div>
@@ -413,23 +413,23 @@
               <div class="cockpit-widget card">
                 <div class="widget-header">
                   <div class="widget-title">
-                    <span class="widget-icon">🏆</span>
+                    <span class="widget-icon">ðŸ†</span>
                     <h3>Radar Esportivo & Lutas</h3>
                   </div>
                   <div style="display:flex;align-items:center;gap:6px;">
                     <button type="button" class="btn btn-xs btn-outline" id="btnOpenSportsPrefs" title="Personalizar esportes e times">
-                      ⚙️ Meus Esportes
+                      âš™ï¸ Meus Esportes
                     </button>
                     <input type="text" id="sportsFilterInput" placeholder="Buscar time, luta..." class="select-filter-sm" style="max-width:115px;padding:3px 8px;font-size:0.78rem;">
                   </div>
                 </div>
-                <!-- Filtro rápido de modalidades -->
+                <!-- Filtro rÃ¡pido de modalidades -->
                 <div class="sports-sport-pills" id="sportsSportPills" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;">
                   <button type="button" class="sport-pill active" data-sport="all">Todos</button>
-                  <button type="button" class="sport-pill" data-sport="UFC">🥊 UFC</button>
-                  <button type="button" class="sport-pill" data-sport="F1">🏎️ F1</button>
-                  <button type="button" class="sport-pill" data-sport="FUTEBOL">⚽ Futebol</button>
-                  <button type="button" class="sport-pill" data-sport="BASQUETE">🏀 Basquete</button>
+                  <button type="button" class="sport-pill" data-sport="UFC">ðŸ¥Š UFC</button>
+                  <button type="button" class="sport-pill" data-sport="F1">ðŸŽï¸ F1</button>
+                  <button type="button" class="sport-pill" data-sport="FUTEBOL">âš½ Futebol</button>
+                  <button type="button" class="sport-pill" data-sport="BASQUETE">ðŸ€ Basquete</button>
                 </div>
                 <div id="dashSportsList" class="dash-sports-list">
                   <!-- Inserido dinamicamente via JS -->
@@ -472,10 +472,10 @@
           <section class="card pomodoro-card" id="pomodoroSection">
             <div class="pomodoro-header">
               <div class="pomodoro-title-group">
-                <span class="pomodoro-icon">🍅</span>
+                <span class="pomodoro-icon">ðŸ…</span>
                 <div>
                   <h3>Modo Foco & Pomodoro</h3>
-                  <p class="pomodoro-target" id="pomodoroTaskLabel">Nenhuma tarefa em foco (clique em "🍅 Focar" em um card)</p>
+                  <p class="pomodoro-target" id="pomodoroTaskLabel">Nenhuma tarefa em foco (clique em "ðŸ… Focar" em um card)</p>
                 </div>
               </div>
               <div class="pomodoro-modes">
@@ -500,7 +500,7 @@
                   Reiniciar
                 </button>
                 <button type="button" class="btn btn-outline" id="btnPomoSound" title="Alternar som do alarme Pomodoro">
-                  🔔 Som: Ativo
+                  ðŸ”” Som: Ativo
                 </button>
               </div>
             </div>
@@ -554,7 +554,7 @@
 
             <div class="metric-card completed">
               <div class="metric-info">
-                <span class="metric-label">Concluídas</span>
+                <span class="metric-label">ConcluÃ­das</span>
                 <span class="metric-value" id="metricCompleted">0</span>
               </div>
               <div class="metric-icon">
@@ -583,8 +583,8 @@
             <form id="createTaskForm">
               <div class="form-row">
                 <div class="form-group flex-2">
-                  <label for="taskTitle">Título *</label>
-                  <input type="text" id="taskTitle" name="titulo" placeholder="Ex: Criar apresentação do projeto" required maxlength="200" autocomplete="off">
+                  <label for="taskTitle">TÃ­tulo *</label>
+                  <input type="text" id="taskTitle" name="titulo" placeholder="Ex: Criar apresentaÃ§Ã£o do projeto" required maxlength="200" autocomplete="off">
                 </div>
                 <div class="form-group flex-1">
                   <label for="taskDueDate">Data de Vencimento</label>
@@ -596,40 +596,40 @@
                 <div class="form-group flex-1">
                   <label for="taskPriority">Prioridade</label>
                   <select id="taskPriority" name="prioridade">
-                    <option value="BAIXA">🟢 Baixa</option>
-                    <option value="MEDIA" selected>🟡 Média</option>
-                    <option value="ALTA">🟠 Alta</option>
-                    <option value="URGENTE">🔴 Urgente</option>
+                    <option value="BAIXA">ðŸŸ¢ Baixa</option>
+                    <option value="MEDIA" selected>ðŸŸ¡ MÃ©dia</option>
+                    <option value="ALTA">ðŸŸ  Alta</option>
+                    <option value="URGENTE">ðŸ”´ Urgente</option>
                   </select>
                 </div>
                 <div class="form-group flex-1">
                   <label for="taskCategory">Categoria</label>
                   <select id="taskCategory" name="categoria">
-                    <option value="GERAL" selected>📁 Geral</option>
-                    <option value="TRABALHO">💼 Trabalho</option>
-                    <option value="ESTUDOS">🎓 Estudos</option>
-                    <option value="PESSOAL">🏠 Pessoal</option>
-                    <option value="FINANCAS">💰 Finanças</option>
-                    <option value="SAUDE">🏃 Saúde</option>
+                    <option value="GERAL" selected>ðŸ“ Geral</option>
+                    <option value="TRABALHO">ðŸ’¼ Trabalho</option>
+                    <option value="ESTUDOS">ðŸŽ“ Estudos</option>
+                    <option value="PESSOAL">ðŸ  Pessoal</option>
+                    <option value="FINANCAS">ðŸ’° FinanÃ§as</option>
+                    <option value="SAUDE">ðŸƒ SaÃºde</option>
                   </select>
                 </div>
                 <div class="form-group flex-1">
-                  <label for="taskRecurrence">Recorrência</label>
+                  <label for="taskRecurrence">RecorrÃªncia</label>
                   <select id="taskRecurrence" name="recorrencia">
                     <option value="NENHUMA" selected>Nenhuma</option>
-                    <option value="DIARIA">🔁 Diária</option>
-                    <option value="SEMANAL">🔁 Semanal</option>
-                    <option value="MENSAL">🔁 Mensal</option>
+                    <option value="DIARIA">ðŸ” DiÃ¡ria</option>
+                    <option value="SEMANAL">ðŸ” Semanal</option>
+                    <option value="MENSAL">ðŸ” Mensal</option>
                   </select>
                 </div>
                 <div class="form-group flex-1">
-                  <label for="taskEstimatedPomodoros">🍅 Pomodoros Estimados</label>
+                  <label for="taskEstimatedPomodoros">ðŸ… Pomodoros Estimados</label>
                   <input type="number" id="taskEstimatedPomodoros" name="pomodorosEstimados" min="1" max="20" value="1" title="Quantidade estimada de blocos de foco de 25min">
                 </div>
               </div>
 
               <div class="form-group">
-                <label for="taskDescription">Descrição</label>
+                <label for="taskDescription">DescriÃ§Ã£o</label>
                 <textarea id="taskDescription" name="descricao" rows="2" placeholder="Detalhes da tarefa (opcional)" maxlength="1000"></textarea>
               </div>
 
@@ -661,27 +661,27 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              <input type="text" id="searchInput" placeholder="Pesquisar tarefas pelo título ou descrição..." autocomplete="off">
+              <input type="text" id="searchInput" placeholder="Pesquisar tarefas pelo tÃ­tulo ou descriÃ§Ã£o..." autocomplete="off">
               <button id="clearSearchBtn" class="btn-clear hidden" aria-label="Limpar pesquisa">&times;</button>
             </div>
 
             <div class="toolbar-filters">
               <select id="categoryFilter" class="select-filter" aria-label="Filtrar por categoria">
                 <option value="">Todas as Categorias</option>
-                <option value="GERAL">📁 Geral</option>
-                <option value="TRABALHO">💼 Trabalho</option>
-                <option value="ESTUDOS">🎓 Estudos</option>
-                <option value="PESSOAL">🏠 Pessoal</option>
-                <option value="FINANCAS">💰 Finanças</option>
-                <option value="SAUDE">🏃 Saúde</option>
+                <option value="GERAL">ðŸ“ Geral</option>
+                <option value="TRABALHO">ðŸ’¼ Trabalho</option>
+                <option value="ESTUDOS">ðŸŽ“ Estudos</option>
+                <option value="PESSOAL">ðŸ  Pessoal</option>
+                <option value="FINANCAS">ðŸ’° FinanÃ§as</option>
+                <option value="SAUDE">ðŸƒ SaÃºde</option>
               </select>
 
               <select id="priorityFilter" class="select-filter" aria-label="Filtrar por prioridade">
                 <option value="">Todas as Prioridades</option>
-                <option value="BAIXA">🟢 Baixa</option>
-                <option value="MEDIA">🟡 Média</option>
-                <option value="ALTA">🟠 Alta</option>
-                <option value="URGENTE">🔴 Urgente</option>
+                <option value="BAIXA">ðŸŸ¢ Baixa</option>
+                <option value="MEDIA">ðŸŸ¡ MÃ©dia</option>
+                <option value="ALTA">ðŸŸ  Alta</option>
+                <option value="URGENTE">ðŸ”´ Urgente</option>
               </select>
 
               <select id="tagFilter" class="select-filter" aria-label="Filtrar por etiqueta/tag">
@@ -691,17 +691,17 @@
               <div class="filter-tabs" id="statusTabs">
                 <button class="filter-btn active" data-filter="all">Todas</button>
                 <button class="filter-btn" data-filter="pending">Pendentes</button>
-                <button class="filter-btn" data-filter="completed">Concluídas</button>
+                <button class="filter-btn" data-filter="completed">ConcluÃ­das</button>
               </div>
             </div>
 
             <div class="period-filter-group" id="periodFilterGroup">
               <span class="period-filter-label">Prazo:</span>
               <button type="button" class="period-pill active" data-period="all">Todos</button>
-              <button type="button" class="period-pill" data-period="overdue">⚠️ Atrasadas</button>
-              <button type="button" class="period-pill" data-period="today">📅 Vence Hoje</button>
-              <button type="button" class="period-pill" data-period="week">📆 Esta Semana</button>
-              <button type="button" class="period-pill" data-period="nodate">⏳ Sem Prazo</button>
+              <button type="button" class="period-pill" data-period="overdue">âš ï¸ Atrasadas</button>
+              <button type="button" class="period-pill" data-period="today">ðŸ“… Vence Hoje</button>
+              <button type="button" class="period-pill" data-period="week">ðŸ“† Esta Semana</button>
+              <button type="button" class="period-pill" data-period="nodate">â³ Sem Prazo</button>
             </div>
           </section>
 
@@ -719,7 +719,7 @@
                 </svg>
               </div>
               <h3>Nenhuma tarefa encontrada</h3>
-              <p id="emptyMessage">Você ainda não possui tarefas ativas. Crie uma nova tarefa acima!</p>
+              <p id="emptyMessage">VocÃª ainda nÃ£o possui tarefas ativas. Crie uma nova tarefa acima!</p>
             </div>
           </section>
 
@@ -750,12 +750,12 @@
                 <div class="kanban-cards" id="cardsEmAndamento"></div>
               </div>
 
-              <!-- Column 3: Concluída -->
+              <!-- Column 3: ConcluÃ­da -->
               <div class="kanban-column" data-status="CONCLUIDA">
                 <div class="kanban-header column-done">
                   <div class="kanban-title">
                     <span class="status-dot dot-done"></span>
-                    <h3>Concluída</h3>
+                    <h3>ConcluÃ­da</h3>
                   </div>
                   <span class="kanban-count" id="countConcluida">0</span>
                 </div>
@@ -766,19 +766,19 @@
         </section>
 
         <!-- ================================================================
-             PAINEL 3: FINANÇAS & CARTEIRAS
+             PAINEL 3: FINANÃ‡AS & CARTEIRAS
              ================================================================ -->
         <section id="financesView" class="app-panel-view hidden">
-          <!-- Top Bar de Finanças: Período e Ações -->
+          <!-- Top Bar de FinanÃ§as: PerÃ­odo e AÃ§Ãµes -->
           <div class="finances-toolbar card">
             <div class="month-selector">
-              <button type="button" class="btn btn-icon btn-sm" id="btnPrevMonth" title="Mês Anterior">&larr;</button>
+              <button type="button" class="btn btn-icon btn-sm" id="btnPrevMonth" title="MÃªs Anterior">&larr;</button>
               <span class="current-month-label" id="lblFinancesMonth">Setembro 2026</span>
-              <button type="button" class="btn btn-icon btn-sm" id="btnNextMonth" title="Próximo Mês">&rarr;</button>
+              <button type="button" class="btn btn-icon btn-sm" id="btnNextMonth" title="PrÃ³ximo MÃªs">&rarr;</button>
             </div>
             <div class="finances-actions">
               <button type="button" class="btn btn-outline btn-sm" id="btnOpenAccountModal">+ Nova Conta</button>
-              <button type="button" class="btn btn-primary btn-sm" id="btnOpenTransModal">+ Nova Transação</button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnOpenTransModal">+ Nova TransaÃ§Ã£o</button>
             </div>
           </div>
 
@@ -790,23 +790,23 @@
               <span class="fin-card-sub">Total em todas as carteiras</span>
             </div>
             <div class="fin-card income">
-              <span class="fin-card-label">Receitas do Mês</span>
+              <span class="fin-card-label">Receitas do MÃªs</span>
               <span class="fin-card-val" id="finTotalReceitas">+ R$ 0,00</span>
-              <span class="fin-card-sub">Entradas no período</span>
+              <span class="fin-card-sub">Entradas no perÃ­odo</span>
             </div>
             <div class="fin-card expense">
-              <span class="fin-card-label">Despesas do Mês</span>
+              <span class="fin-card-label">Despesas do MÃªs</span>
               <span class="fin-card-val" id="finTotalDespesas">- R$ 0,00</span>
-              <span class="fin-card-sub">Saídas no período</span>
+              <span class="fin-card-sub">SaÃ­das no perÃ­odo</span>
             </div>
             <div class="fin-card balance">
-              <span class="fin-card-label">Saldo Previsto Fim do Mês</span>
+              <span class="fin-card-label">Saldo Previsto Fim do MÃªs</span>
               <span class="fin-card-val" id="finSaldoPrevisto">R$ 0,00</span>
-              <span class="fin-card-sub">Considerando pendências</span>
+              <span class="fin-card-sub">Considerando pendÃªncias</span>
             </div>
           </div>
 
-          <!-- Seção de Contas / Carteiras -->
+          <!-- SeÃ§Ã£o de Contas / Carteiras -->
           <div class="card fin-accounts-section">
             <div class="fin-section-header">
               <h3>Contas & Carteiras</h3>
@@ -816,10 +816,10 @@
             </div>
           </div>
 
-          <!-- Seção de Extrato de Transações -->
+          <!-- SeÃ§Ã£o de Extrato de TransaÃ§Ãµes -->
           <div class="card fin-transactions-section">
             <div class="fin-section-header">
-              <h3>Lançamentos do Mês</h3>
+              <h3>LanÃ§amentos do MÃªs</h3>
               <div class="fin-filters-bar">
                 <button type="button" class="fin-filter-pill active" data-fin-filter="all">Todas</button>
                 <button type="button" class="fin-filter-pill" data-fin-filter="DESPESA">Despesas</button>
@@ -833,7 +833,7 @@
             </div>
 
             <div id="finTransactionsList" class="fin-trans-list">
-              <div class="dash-empty">Nenhum lançamento registrado para este mês. Clique em "+ Nova Transação" acima!</div>
+              <div class="dash-empty">Nenhum lanÃ§amento registrado para este mÃªs. Clique em "+ Nova TransaÃ§Ã£o" acima!</div>
             </div>
           </div>
         </section>
@@ -844,16 +844,16 @@
         <section id="statsView" class="app-panel-view hidden">
           <div class="stats-header">
             <div>
-              <h2>Painel de Produtividade & Métricas</h2>
-              <p class="subtitle">Estatísticas detalhadas sobre seu fluxo de trabalho, foco e pontualidade</p>
+              <h2>Painel de Produtividade & MÃ©tricas</h2>
+              <p class="subtitle">EstatÃ­sticas detalhadas sobre seu fluxo de trabalho, foco e pontualidade</p>
             </div>
-            <button id="btnRefreshStats" class="btn btn-outline btn-sm" title="Atualizar dados dos gráficos">
+            <button id="btnRefreshStats" class="btn btn-outline btn-sm" title="Atualizar dados dos grÃ¡ficos">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 4 23 10 17 10"></polyline>
                 <polyline points="1 20 1 14 7 14"></polyline>
                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
               </svg>
-              Atualizar Gráficos
+              Atualizar GrÃ¡ficos
             </button>
           </div>
 
@@ -868,7 +868,7 @@
               <span class="kpi-value" id="kpiPomodorosDone">0</span>
             </div>
             <div class="kpi-card">
-              <span class="kpi-label">Tarefas com Recorrência</span>
+              <span class="kpi-label">Tarefas com RecorrÃªncia</span>
               <span class="kpi-value" id="kpiRecurringTasks">0</span>
             </div>
           </div>
@@ -876,7 +876,7 @@
           <!-- Charts Grid -->
           <div class="charts-grid">
             <div class="chart-card">
-              <h4>Distribuição por Categoria</h4>
+              <h4>DistribuiÃ§Ã£o por Categoria</h4>
               <div class="chart-wrapper">
                 <canvas id="categoryChart"></canvas>
               </div>
@@ -890,7 +890,7 @@
             </div>
 
             <div class="chart-card chart-card-wide">
-              <h4>Produtividade Semanal (Últimos 7 dias: Criadas vs Concluídas)</h4>
+              <h4>Produtividade Semanal (Ãšltimos 7 dias: Criadas vs ConcluÃ­das)</h4>
               <div class="chart-wrapper chart-wide">
                 <canvas id="weeklyTrendChart"></canvas>
               </div>
@@ -905,7 +905,7 @@
           <div class="trash-header">
             <div>
               <h2>Lixeira</h2>
-              <p class="subtitle">Itens excluídos podem ser restaurados ou eliminados permanentemente</p>
+              <p class="subtitle">Itens excluÃ­dos podem ser restaurados ou eliminados permanentemente</p>
             </div>
             <button id="btnEmptyTrash" class="btn btn-danger btn-sm">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -930,14 +930,14 @@
         </section>
 
         <!-- ================================================================
-             PAINEL 5: CALENDÁRIO UNIFICADO
+             PAINEL 5: CALENDÃRIO UNIFICADO
              ================================================================ -->
         <section id="calendarView" class="app-view hidden">
           <div class="calendar-view-header">
             <div class="cal-title-nav">
-              <button type="button" class="btn btn-icon btn-outline" id="btnPrevCalendarMonth" title="Mês Anterior">&larr;</button>
+              <button type="button" class="btn btn-icon btn-outline" id="btnPrevCalendarMonth" title="MÃªs Anterior">&larr;</button>
               <h2 id="calendarMonthTitle">Setembro de 2026</h2>
-              <button type="button" class="btn btn-icon btn-outline" id="btnNextCalendarMonth" title="Próximo Mês">&rarr;</button>
+              <button type="button" class="btn btn-icon btn-outline" id="btnNextCalendarMonth" title="PrÃ³ximo MÃªs">&rarr;</button>
               <button type="button" class="btn btn-xs btn-outline" id="btnCalendarToday">Hoje</button>
             </div>
             <div class="cal-header-actions">
@@ -965,10 +965,10 @@
               <div class="weekday-header">Qua</div>
               <div class="weekday-header">Qui</div>
               <div class="weekday-header">Sex</div>
-              <div class="weekday-header">Sáb</div>
+              <div class="weekday-header">SÃ¡b</div>
             </div>
             <div class="calendar-days-grid" id="calendarDaysGrid">
-              <!-- Células dos dias geradas dinamicamente via JS -->
+              <!-- CÃ©lulas dos dias geradas dinamicamente via JS -->
             </div>
           </div>
         </section>
@@ -979,8 +979,8 @@
         <section id="goalsView" class="app-view hidden">
           <div class="goals-view-header">
             <div>
-              <h2>Metas, Sonhos & OKRs 🎯</h2>
-              <p class="section-subtitle">Conecte sua rotina diária aos seus grandes objetivos de vida e carreira</p>
+              <h2>Metas, Sonhos & OKRs ðŸŽ¯</h2>
+              <p class="section-subtitle">Conecte sua rotina diÃ¡ria aos seus grandes objetivos de vida e carreira</p>
             </div>
             <button type="button" class="btn btn-primary" id="btnOpenNewGoalMain">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -996,28 +996,28 @@
               <span class="kpi-sub">Foco ativo</span>
             </div>
             <div class="kpi-card">
-              <span class="kpi-label">Metas Concluídas</span>
+              <span class="kpi-label">Metas ConcluÃ­das</span>
               <span class="kpi-value" id="kpiGoalsCompleted" style="color:var(--success);">0</span>
-              <span class="kpi-sub">Sonhos atingidos 🎉</span>
+              <span class="kpi-sub">Sonhos atingidos ðŸŽ‰</span>
             </div>
             <div class="kpi-card">
-              <span class="kpi-label">Progresso Médio</span>
+              <span class="kpi-label">Progresso MÃ©dio</span>
               <span class="kpi-value" id="kpiGoalsAvgProgress">0%</span>
-              <span class="kpi-sub">Consistência total</span>
+              <span class="kpi-sub">ConsistÃªncia total</span>
             </div>
           </div>
 
           <!-- Filtro por Categoria -->
           <div class="finances-filter-pills" id="goalsCategoryFilters" style="margin-bottom:18px;">
             <button type="button" class="fin-pill active" data-goal-category="all">Todas</button>
-            <button type="button" class="fin-pill" data-goal-category="FINANCEIRA">💰 Financeiras</button>
-            <button type="button" class="fin-pill" data-goal-category="ESTUDO">📚 Estudos</button>
-            <button type="button" class="fin-pill" data-goal-category="CARREIRA">💼 Carreira</button>
-            <button type="button" class="fin-pill" data-goal-category="SAUDE">🏋️ Saúde</button>
-            <button type="button" class="fin-pill" data-goal-category="PESSOAL">🌟 Pessoal</button>
+            <button type="button" class="fin-pill" data-goal-category="FINANCEIRA">ðŸ’° Financeiras</button>
+            <button type="button" class="fin-pill" data-goal-category="ESTUDO">ðŸ“š Estudos</button>
+            <button type="button" class="fin-pill" data-goal-category="CARREIRA">ðŸ’¼ Carreira</button>
+            <button type="button" class="fin-pill" data-goal-category="SAUDE">ðŸ‹ï¸ SaÃºde</button>
+            <button type="button" class="fin-pill" data-goal-category="PESSOAL">ðŸŒŸ Pessoal</button>
           </div>
 
-          <!-- Grade de Cartões de Metas -->
+          <!-- Grade de CartÃµes de Metas -->
           <div class="goals-grid" id="goalsCardsGrid">
             <!-- Renderizado dinamicamente via JS -->
           </div>
@@ -1031,27 +1031,27 @@
        MODAIS
        ================================================================ -->
 
-  <!-- Modal Nova / Editar Transação Financeira -->
+  <!-- Modal Nova / Editar TransaÃ§Ã£o Financeira -->
   <div id="transactionModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop" id="transModalBackdrop"></div>
     <div class="modal-card">
       <div class="modal-header">
-        <h3 id="transModalTitle">Nova Transação Financeira</h3>
+        <h3 id="transModalTitle">Nova TransaÃ§Ã£o Financeira</h3>
         <button type="button" class="btn-close" id="btnCloseTransModal" aria-label="Fechar">&times;</button>
       </div>
       <form id="transactionForm">
         <div class="modal-body">
           <!-- Toggle Tipo: Despesa vs Receita -->
           <div class="trans-type-toggle">
-            <button type="button" class="trans-type-btn active-expense" id="btnTypeExpense" data-type="DESPESA">💸 Despesa (Saída)</button>
-            <button type="button" class="trans-type-btn" id="btnTypeIncome" data-type="RECEITA">💰 Receita (Entrada)</button>
+            <button type="button" class="trans-type-btn active-expense" id="btnTypeExpense" data-type="DESPESA">ðŸ’¸ Despesa (SaÃ­da)</button>
+            <button type="button" class="trans-type-btn" id="btnTypeIncome" data-type="RECEITA">ðŸ’° Receita (Entrada)</button>
           </div>
           <input type="hidden" id="transTypeInput" value="DESPESA">
 
           <div class="form-row">
             <div class="form-group flex-2">
-              <label for="transDescricao">Descrição *</label>
-              <input type="text" id="transDescricao" required placeholder="Ex: Mercado, Aluguel, Salário..." maxlength="255">
+              <label for="transDescricao">DescriÃ§Ã£o *</label>
+              <input type="text" id="transDescricao" required placeholder="Ex: Mercado, Aluguel, SalÃ¡rio..." maxlength="255">
             </div>
             <div class="form-group flex-1">
               <label for="transValor">Valor (R$) *</label>
@@ -1082,7 +1082,7 @@
             <div class="form-group flex-1">
               <label for="transStatusPago" style="display:flex;align-items:center;gap:8px;margin-top:28px;cursor:pointer;">
                 <input type="checkbox" id="transStatusPago" style="width:18px;height:18px;">
-                <span>Já foi pago / recebido</span>
+                <span>JÃ¡ foi pago / recebido</span>
               </label>
             </div>
           </div>
@@ -1091,25 +1091,25 @@
           <div class="form-group" style="background:var(--bg-main);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
             <label for="transParcelado" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
               <input type="checkbox" id="transParcelado" style="width:18px;height:18px;">
-              <span>Compra Parcelada / Recorrência Mensal</span>
+              <span>Compra Parcelada / RecorrÃªncia Mensal</span>
             </label>
             <div id="transParcelasGroup" class="hidden" style="margin-top:10px;">
-              <label for="transTotalParcelas">Número total de parcelas:</label>
+              <label for="transTotalParcelas">NÃºmero total de parcelas:</label>
               <input type="number" id="transTotalParcelas" min="2" max="48" value="2" style="max-width:140px;">
               <span style="font-size:0.8rem;color:var(--text-muted);display:block;margin-top:4px;">
-                As parcelas mensais com vencimento sequencial serão geradas automaticamente.
+                As parcelas mensais com vencimento sequencial serÃ£o geradas automaticamente.
               </span>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="transObservacoes">Observações (Opcional)</label>
-            <textarea id="transObservacoes" rows="2" placeholder="Detalhes, número de nota, link de comprovante..."></textarea>
+            <label for="transObservacoes">ObservaÃ§Ãµes (Opcional)</label>
+            <textarea id="transObservacoes" rows="2" placeholder="Detalhes, nÃºmero de nota, link de comprovante..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="btnCancelTrans">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="btnSubmitTrans">Salvar Transação</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitTrans">Salvar TransaÃ§Ã£o</button>
         </div>
       </form>
     </div>
@@ -1127,17 +1127,17 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="accountNome">Nome da Conta / Banco *</label>
-            <input type="text" id="accountNome" required placeholder="Ex: Nubank, Itaú, Dinheiro na Carteira..." maxlength="100">
+            <input type="text" id="accountNome" required placeholder="Ex: Nubank, ItaÃº, Dinheiro na Carteira..." maxlength="100">
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="accountTipo">Tipo da Conta *</label>
               <select id="accountTipo" required>
                 <option value="CORRENTE">Conta Corrente</option>
-                <option value="POUPANCA">Poupança</option>
-                <option value="DINHEIRO">Dinheiro Físico</option>
+                <option value="POUPANCA">PoupanÃ§a</option>
+                <option value="DINHEIRO">Dinheiro FÃ­sico</option>
                 <option value="INVESTIMENTO">Investimentos</option>
-                <option value="CARTAO">Cartão de Crédito</option>
+                <option value="CARTAO">CartÃ£o de CrÃ©dito</option>
               </select>
             </div>
             <div class="form-group flex-1">
@@ -1173,7 +1173,7 @@
         <input type="hidden" id="editTaskId">
 
         <div class="form-group">
-          <label for="editTaskTitle">Título *</label>
+          <label for="editTaskTitle">TÃ­tulo *</label>
           <input type="text" id="editTaskTitle" required maxlength="200">
         </div>
 
@@ -1185,10 +1185,10 @@
           <div class="form-group flex-1">
             <label for="editTaskPriority">Prioridade</label>
             <select id="editTaskPriority">
-              <option value="BAIXA">🟢 Baixa</option>
-              <option value="MEDIA">🟡 Média</option>
-              <option value="ALTA">🟠 Alta</option>
-              <option value="URGENTE">🔴 Urgente</option>
+              <option value="BAIXA">ðŸŸ¢ Baixa</option>
+              <option value="MEDIA">ðŸŸ¡ MÃ©dia</option>
+              <option value="ALTA">ðŸŸ  Alta</option>
+              <option value="URGENTE">ðŸ”´ Urgente</option>
             </select>
           </div>
         </div>
@@ -1197,12 +1197,12 @@
           <div class="form-group flex-1">
             <label for="editTaskCategory">Categoria</label>
             <select id="editTaskCategory">
-              <option value="GERAL">📁 Geral</option>
-              <option value="TRABALHO">💼 Trabalho</option>
-              <option value="ESTUDOS">🎓 Estudos</option>
-              <option value="PESSOAL">🏠 Pessoal</option>
-              <option value="FINANCAS">💰 Finanças</option>
-              <option value="SAUDE">🏃 Saúde</option>
+              <option value="GERAL">ðŸ“ Geral</option>
+              <option value="TRABALHO">ðŸ’¼ Trabalho</option>
+              <option value="ESTUDOS">ðŸŽ“ Estudos</option>
+              <option value="PESSOAL">ðŸ  Pessoal</option>
+              <option value="FINANCAS">ðŸ’° FinanÃ§as</option>
+              <option value="SAUDE">ðŸƒ SaÃºde</option>
             </select>
           </div>
           <div class="form-group flex-1">
@@ -1210,29 +1210,29 @@
             <select id="editTaskStatus">
               <option value="A_FAZER">A Fazer</option>
               <option value="EM_ANDAMENTO">Em Andamento</option>
-              <option value="CONCLUIDA">Concluída</option>
+              <option value="CONCLUIDA">ConcluÃ­da</option>
             </select>
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group flex-1">
-            <label for="editTaskRecurrence">Recorrência</label>
+            <label for="editTaskRecurrence">RecorrÃªncia</label>
             <select id="editTaskRecurrence">
               <option value="NENHUMA">Nenhuma</option>
-              <option value="DIARIA">🔁 Diária</option>
-              <option value="SEMANAL">🔁 Semanal</option>
-              <option value="MENSAL">🔁 Mensal</option>
+              <option value="DIARIA">ðŸ” DiÃ¡ria</option>
+              <option value="SEMANAL">ðŸ” Semanal</option>
+              <option value="MENSAL">ðŸ” Mensal</option>
             </select>
           </div>
           <div class="form-group flex-1">
-            <label for="editTaskEstimatedPomodoros">🍅 Pomodoros Estimados</label>
+            <label for="editTaskEstimatedPomodoros">ðŸ… Pomodoros Estimados</label>
             <input type="number" id="editTaskEstimatedPomodoros" min="1" max="20" value="1">
           </div>
         </div>
 
         <div class="form-group">
-          <label for="editTaskDescription">Descrição</label>
+          <label for="editTaskDescription">DescriÃ§Ã£o</label>
           <textarea id="editTaskDescription" rows="3" maxlength="1000"></textarea>
         </div>
 
@@ -1263,7 +1263,7 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="btnModalCancel">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+          <button type="submit" class="btn btn-primary">Salvar AlteraÃ§Ãµes</button>
         </div>
       </form>
     </div>
@@ -1280,7 +1280,7 @@
       <form id="createTagForm">
         <div class="form-group">
           <label for="newTagName">Nome da Tag *</label>
-          <input type="text" id="newTagName" placeholder="Ex: frontend, bug-crítico, release-v1" required maxlength="50">
+          <input type="text" id="newTagName" placeholder="Ex: frontend, bug-crÃ­tico, release-v1" required maxlength="50">
         </div>
         <div class="form-group">
           <label for="newTagColor">Cor da Tag</label>
@@ -1331,7 +1331,7 @@
         </div>
         <div class="form-group">
           <label for="loginPassword">Senha *</label>
-          <input type="password" id="loginPassword" name="senha" placeholder="••••••••" required autocomplete="current-password">
+          <input type="password" id="loginPassword" name="senha" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required autocomplete="current-password">
         </div>
         <div class="modal-footer auth-footer">
           <button type="submit" class="btn btn-primary btn-block" id="btnSubmitLogin">Entrar</button>
@@ -1349,8 +1349,8 @@
           <input type="email" id="registerEmail" name="email" placeholder="seu@email.com" required autocomplete="username">
         </div>
         <div class="form-group">
-          <label for="registerPassword">Senha (mínimo 6 caracteres) *</label>
-          <input type="password" id="registerPassword" name="senha" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+          <label for="registerPassword">Senha (mÃ­nimo 6 caracteres) *</label>
+          <input type="password" id="registerPassword" name="senha" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" minlength="6" required autocomplete="new-password">
         </div>
         <div class="modal-footer auth-footer">
           <button type="submit" class="btn btn-primary btn-block" id="btnSubmitRegister">Criar Minha Conta</button>
@@ -1368,9 +1368,9 @@
             <circle cx="8.5" cy="7" r="4"></circle>
             <polyline points="17 11 19 13 23 9"></polyline>
           </svg>
-          ⚡ Entrar como Convidado (Acesso Completo)
+          âš¡ Entrar como Convidado (Acesso Completo)
         </button>
-        <span class="guest-login-hint">Modo teste imediato com tarefas, métricas e tags pré-carregadas</span>
+        <span class="guest-login-hint">Modo teste imediato com tarefas, mÃ©tricas e tags prÃ©-carregadas</span>
       </div>
     </div>
   </div>
@@ -1380,7 +1380,7 @@
     <div class="modal-backdrop" id="shortcutsModalBackdrop"></div>
     <div class="modal-card">
       <div class="modal-header">
-        <h3 id="shortcutsModalTitle">⌨️ Atalhos de Teclado</h3>
+        <h3 id="shortcutsModalTitle">âŒ¨ï¸ Atalhos de Teclado</h3>
         <button class="btn-close" id="btnCloseShortcuts" aria-label="Fechar">&times;</button>
       </div>
       <div class="modal-body">
@@ -1388,7 +1388,7 @@
           <tbody>
             <tr>
               <td><kbd class="shortcut-kbd">1</kbd></td>
-              <td>Ir para Visão Geral (Cockpit)</td>
+              <td>Ir para VisÃ£o Geral (Cockpit)</td>
             </tr>
             <tr>
               <td><kbd class="shortcut-kbd">2</kbd></td>
@@ -1396,15 +1396,15 @@
             </tr>
             <tr>
               <td><kbd class="shortcut-kbd">3</kbd></td>
-              <td>Ir para Finanças Pessoais</td>
+              <td>Ir para FinanÃ§as Pessoais</td>
             </tr>
             <tr>
               <td><kbd class="shortcut-kbd">N</kbd></td>
-              <td>Focar na criação de nova tarefa</td>
+              <td>Focar na criaÃ§Ã£o de nova tarefa</td>
             </tr>
             <tr>
               <td><kbd class="shortcut-kbd">F</kbd></td>
-              <td>Abrir modal de Nova Finança / Transação</td>
+              <td>Abrir modal de Nova FinanÃ§a / TransaÃ§Ã£o</td>
             </tr>
             <tr>
               <td><kbd class="shortcut-kbd">/</kbd></td>
@@ -1452,59 +1452,59 @@
           <input type="hidden" id="editSubtaskTaskId">
           <input type="hidden" id="editSubtaskSubId">
           <div class="form-group">
-            <label for="editSubtaskTitle">Título da Subtarefa *</label>
+            <label for="editSubtaskTitle">TÃ­tulo da Subtarefa *</label>
             <input type="text" id="editSubtaskTitle" required maxlength="200">
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="btnCancelSubtaskEdit">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar Alteração</button>
+          <button type="submit" class="btn btn-primary">Salvar AlteraÃ§Ã£o</button>
         </div>
       </form>
     </div>
   </div>
 
   
-  <!-- Modal Novo Hábito -->
+  <!-- Modal Novo HÃ¡bito -->
   <div id="habitModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop" id="habitModalBackdrop"></div>
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Novo Hábito Diário</h3>
+        <h3>Novo HÃ¡bito DiÃ¡rio</h3>
         <button type="button" class="btn-close" id="btnCloseHabitModal" aria-label="Fechar">&times;</button>
       </div>
       <form id="habitForm">
         <div class="modal-body">
           <div class="form-group">
-            <label for="habitNome">Nome do Hábito *</label>
-            <input type="text" id="habitNome" required placeholder="Ex: Beber 2L de Água, Meditar, Treinar..." maxlength="100">
+            <label for="habitNome">Nome do HÃ¡bito *</label>
+            <input type="text" id="habitNome" required placeholder="Ex: Beber 2L de Ãgua, Meditar, Treinar..." maxlength="100">
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="habitIcone">Ícone Temático</label>
+              <label for="habitIcone">Ãcone TemÃ¡tico</label>
               <select id="habitIcone">
-                <option value="droplet">💧 Hidratação / Água</option>
-                <option value="activity">🏋️ Exercício / Treino</option>
-                <option value="book-open">📚 Leitura / Estudo</option>
-                <option value="smile">🧘 Meditação / Bem-estar</option>
-                <option value="code">💻 Programação / Foco</option>
-                <option value="heart">❤️ Saúde / Remédio</option>
-                <option value="sun">☀️ Acordar Cedo</option>
-                <option value="check">✅ Hábito Geral</option>
+                <option value="droplet">ðŸ’§ HidrataÃ§Ã£o / Ãgua</option>
+                <option value="activity">ðŸ‹ï¸ ExercÃ­cio / Treino</option>
+                <option value="book-open">ðŸ“š Leitura / Estudo</option>
+                <option value="smile">ðŸ§˜ MeditaÃ§Ã£o / Bem-estar</option>
+                <option value="code">ðŸ’» ProgramaÃ§Ã£o / Foco</option>
+                <option value="heart">â¤ï¸ SaÃºde / RemÃ©dio</option>
+                <option value="sun">â˜€ï¸ Acordar Cedo</option>
+                <option value="check">âœ… HÃ¡bito Geral</option>
               </select>
             </div>
             <div class="form-group flex-1">
               <label for="habitCor">Cor de Destaque</label>
               <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
                 <input type="color" id="habitCor" value="#10b981" class="color-picker-input">
-                <span style="font-size:0.8rem;color:var(--text-muted);">Identificação visual</span>
+                <span style="font-size:0.8rem;color:var(--text-muted);">IdentificaÃ§Ã£o visual</span>
               </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="btnCancelHabit">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Criar Hábito</button>
+          <button type="submit" class="btn btn-primary">Criar HÃ¡bito</button>
         </div>
       </form>
     </div>
@@ -1522,23 +1522,23 @@
       <form id="goalForm">
         <div class="modal-body">
           <div class="form-group">
-            <label for="goalTitulo">Título da Meta *</label>
-            <input type="text" id="goalTitulo" required placeholder="Ex: Reserva de Emergência, Comprar Carro, Ler 12 Livros..." maxlength="150">
+            <label for="goalTitulo">TÃ­tulo da Meta *</label>
+            <input type="text" id="goalTitulo" required placeholder="Ex: Reserva de EmergÃªncia, Comprar Carro, Ler 12 Livros..." maxlength="150">
           </div>
           <div class="form-group">
-            <label for="goalDescricao">Descrição ou Motivação</label>
-            <textarea id="goalDescricao" rows="2" placeholder="Por que essa meta é importante para você?"></textarea>
+            <label for="goalDescricao">DescriÃ§Ã£o ou MotivaÃ§Ã£o</label>
+            <textarea id="goalDescricao" rows="2" placeholder="Por que essa meta Ã© importante para vocÃª?"></textarea>
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
               <label for="goalCategoria">Categoria</label>
               <select id="goalCategoria">
-                <option value="FINANCEIRA">💰 Financeira</option>
-                <option value="ESTUDO">📚 Estudo / Leitura</option>
-                <option value="CARREIRA">💼 Carreira / Projetos</option>
-                <option value="SAUDE">🏋️ Saúde / Fitness</option>
-                <option value="PESSOAL">🌟 Pessoal / Viagem</option>
-                <option value="GERAL">🎯 Geral</option>
+                <option value="FINANCEIRA">ðŸ’° Financeira</option>
+                <option value="ESTUDO">ðŸ“š Estudo / Leitura</option>
+                <option value="CARREIRA">ðŸ’¼ Carreira / Projetos</option>
+                <option value="SAUDE">ðŸ‹ï¸ SaÃºde / Fitness</option>
+                <option value="PESSOAL">ðŸŒŸ Pessoal / Viagem</option>
+                <option value="GERAL">ðŸŽ¯ Geral</option>
               </select>
             </div>
             <div class="form-group flex-1">
@@ -1552,7 +1552,7 @@
               <input type="number" id="goalValorAlvo" step="0.01" min="0.01" required placeholder="10000.00">
             </div>
             <div class="form-group flex-1">
-              <label for="goalValorAtual">Valor Já Conquistado</label>
+              <label for="goalValorAtual">Valor JÃ¡ Conquistado</label>
               <input type="number" id="goalValorAtual" step="0.01" min="0" value="0.00">
             </div>
           </div>
@@ -1562,7 +1562,7 @@
               <input type="date" id="goalPrazo">
             </div>
             <div class="form-group flex-1">
-              <label for="goalCor">Cor Temática</label>
+              <label for="goalCor">Cor TemÃ¡tica</label>
               <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
                 <input type="color" id="goalCor" value="#10b981" class="color-picker-input">
                 <span style="font-size:0.8rem;color:var(--text-muted);">Destaque visual</span>
@@ -1578,7 +1578,7 @@
     </div>
   </div>
 
-  <!-- Modal Aporte / Avanço na Meta -->
+  <!-- Modal Aporte / AvanÃ§o na Meta -->
   <div id="goalAporteModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop" id="goalAporteModalBackdrop"></div>
     <div class="modal-card modal-sm">
@@ -1594,7 +1594,7 @@
             <label for="aporteValor">Valor a Somar ao Progresso *</label>
             <input type="number" id="aporteValor" step="0.01" min="0.01" required placeholder="Ex: 250.00">
             <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:4px;">
-              Este valor será adicionado ao montante acumulado da meta.
+              Este valor serÃ¡ adicionado ao montante acumulado da meta.
             </span>
           </div>
         </div>
@@ -1617,12 +1617,12 @@
       <form id="eventForm">
         <div class="modal-body">
           <div class="form-group">
-            <label for="eventTitulo">Título do Compromisso *</label>
-            <input type="text" id="eventTitulo" required placeholder="Ex: Reunião com Cliente, Dentista, Aniversário..." maxlength="150">
+            <label for="eventTitulo">TÃ­tulo do Compromisso *</label>
+            <input type="text" id="eventTitulo" required placeholder="Ex: ReuniÃ£o com Cliente, Dentista, AniversÃ¡rio..." maxlength="150">
           </div>
           <div class="form-group">
-            <label for="eventDescricao">Local ou Observações</label>
-            <textarea id="eventDescricao" rows="2" placeholder="Ex: Google Meet, Consultório Dr. Silva, Sala 3..."></textarea>
+            <label for="eventDescricao">Local ou ObservaÃ§Ãµes</label>
+            <textarea id="eventDescricao" rows="2" placeholder="Ex: Google Meet, ConsultÃ³rio Dr. Silva, Sala 3..."></textarea>
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
@@ -1632,22 +1632,22 @@
             <div class="form-group flex-1">
               <label for="eventCategoria">Categoria</label>
               <select id="eventCategoria">
-                <option value="Trabalho">💼 Trabalho / Reunião</option>
-                <option value="Saúde">🩺 Saúde / Médico</option>
-                <option value="Estudo">📚 Estudo / Aula</option>
-                <option value="Pessoal">🌟 Pessoal / Lazer</option>
-                <option value="Família">🏡 Família / Casa</option>
-                <option value="Geral">📌 Geral</option>
+                <option value="Trabalho">ðŸ’¼ Trabalho / ReuniÃ£o</option>
+                <option value="SaÃºde">ðŸ©º SaÃºde / MÃ©dico</option>
+                <option value="Estudo">ðŸ“š Estudo / Aula</option>
+                <option value="Pessoal">ðŸŒŸ Pessoal / Lazer</option>
+                <option value="FamÃ­lia">ðŸ¡ FamÃ­lia / Casa</option>
+                <option value="Geral">ðŸ“Œ Geral</option>
               </select>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="eventHoraInicio">Hora Início (Opcional)</label>
+              <label for="eventHoraInicio">Hora InÃ­cio (Opcional)</label>
               <input type="time" id="eventHoraInicio">
             </div>
             <div class="form-group flex-1">
-              <label for="eventHoraFim">Hora Término (Opcional)</label>
+              <label for="eventHoraFim">Hora TÃ©rmino (Opcional)</label>
               <input type="time" id="eventHoraFim">
             </div>
             <div class="form-group" style="min-width:100px;">
@@ -1664,7 +1664,7 @@
     </div>
   </div>
 
-  <!-- Modal Detalhes do Dia (Calendário) -->
+  <!-- Modal Detalhes do Dia (CalendÃ¡rio) -->
   <div id="dayDetailsModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop" id="dayDetailsModalBackdrop"></div>
     <div class="modal-card">
@@ -1690,58 +1690,58 @@
     <div class="modal-backdrop" id="sportsPreferencesModalBackdrop"></div>
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Meus Esportes, Ligas & Times Favoritos 🏆</h3>
+        <h3>Meus Esportes, Ligas & Times Favoritos ðŸ†</h3>
         <button type="button" class="btn-close" id="btnCloseSportsPrefsModal" aria-label="Fechar">&times;</button>
       </div>
       <div class="modal-body">
         <p style="font-size:0.84rem;color:var(--text-muted);margin-bottom:14px;">
-          Escolha os esportes, lutas ou clubes que você quer acompanhar no seu LifeHub e sincronizar com o calendário:
+          Escolha os esportes, lutas ou clubes que vocÃª quer acompanhar no seu LifeHub e sincronizar com o calendÃ¡rio:
         </p>
 
         <!-- Meus Interesses Ativos -->
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:6px;">Interesses Seguidos Atualmente:</label>
         <div id="activeSportsPrefsContainer" class="sports-prefs-tags-box">
-          <!-- Tags com botão de remover inseridas via JS -->
+          <!-- Tags com botÃ£o de remover inseridas via JS -->
         </div>
 
         <hr style="margin:16px 0;border:0;border-top:1px solid var(--border-color);">
 
-        <!-- Sugestões Rápidas (1 clique) -->
-        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:6px;">Sugestões Populares (Clique para adicionar):</label>
+        <!-- SugestÃµes RÃ¡pidas (1 clique) -->
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:6px;">SugestÃµes Populares (Clique para adicionar):</label>
         <div class="sports-suggestions-grid">
-          <button type="button" class="btn-quick-pref" data-sport="UFC" data-name="UFC / MMA">🥊 UFC / MMA</button>
-          <button type="button" class="btn-quick-pref" data-sport="F1" data-name="Fórmula 1">🏎️ Fórmula 1</button>
-          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Flamengo">⚽ Flamengo</button>
-          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Palmeiras">⚽ Palmeiras</button>
-          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="São Paulo">⚽ São Paulo</button>
-          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Corinthians">⚽ Corinthians</button>
-          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Real Madrid">⚽ Real Madrid</button>
-          <button type="button" class="btn-quick-pref" data-sport="BASQUETE" data-name="NBA / Lakers">🏀 NBA / Lakers</button>
-          <button type="button" class="btn-quick-pref" data-sport="BASQUETE" data-name="Warriors">🏀 Warriors</button>
-          <button type="button" class="btn-quick-pref" data-sport="NFL" data-name="NFL">🏈 NFL</button>
+          <button type="button" class="btn-quick-pref" data-sport="UFC" data-name="UFC / MMA">ðŸ¥Š UFC / MMA</button>
+          <button type="button" class="btn-quick-pref" data-sport="F1" data-name="FÃ³rmula 1">ðŸŽï¸ FÃ³rmula 1</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Flamengo">âš½ Flamengo</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Palmeiras">âš½ Palmeiras</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="SÃ£o Paulo">âš½ SÃ£o Paulo</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Corinthians">âš½ Corinthians</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Real Madrid">âš½ Real Madrid</button>
+          <button type="button" class="btn-quick-pref" data-sport="BASQUETE" data-name="NBA / Lakers">ðŸ€ NBA / Lakers</button>
+          <button type="button" class="btn-quick-pref" data-sport="BASQUETE" data-name="Warriors">ðŸ€ Warriors</button>
+          <button type="button" class="btn-quick-pref" data-sport="NFL" data-name="NFL">ðŸˆ NFL</button>
         </div>
 
         <hr style="margin:16px 0;border:0;border-top:1px solid var(--border-color);">
 
-        <!-- Formulário para Adicionar Interesse Personalizado -->
+        <!-- FormulÃ¡rio para Adicionar Interesse Personalizado -->
         <form id="addSportsPrefForm">
           <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:6px;">Adicionar Outro Time, Atleta ou Esporte:</label>
           <div class="form-row" style="align-items:flex-end;">
             <div class="form-group flex-1">
               <label for="customPrefSport" style="font-size:0.75rem;">Modalidade</label>
               <select id="customPrefSport" class="select-filter-sm" style="width:100%;height:38px;font-size:0.88rem;">
-                <option value="UFC">🥊 UFC / MMA</option>
-                <option value="F1">🏎️ Fórmula 1</option>
-                <option value="FUTEBOL">⚽ Futebol</option>
-                <option value="BASQUETE">🏀 Basquete (NBA)</option>
-                <option value="NFL">🏈 Futebol Americano (NFL)</option>
-                <option value="TENIS">🎾 Tênis</option>
-                <option value="OUTRO">🏆 Outro</option>
+                <option value="UFC">ðŸ¥Š UFC / MMA</option>
+                <option value="F1">ðŸŽï¸ FÃ³rmula 1</option>
+                <option value="FUTEBOL">âš½ Futebol</option>
+                <option value="BASQUETE">ðŸ€ Basquete (NBA)</option>
+                <option value="NFL">ðŸˆ Futebol Americano (NFL)</option>
+                <option value="TENIS">ðŸŽ¾ TÃªnis</option>
+                <option value="OUTRO">ðŸ† Outro</option>
               </select>
             </div>
             <div class="form-group flex-2">
               <label for="customPrefName" style="font-size:0.75rem;">Nome do Time / Atleta / Liga</label>
-              <input type="text" id="customPrefName" placeholder="Ex: Charles Oliveira, Grêmio, Liverpool..." required style="height:38px;">
+              <input type="text" id="customPrefName" placeholder="Ex: Charles Oliveira, GrÃªmio, Liverpool..." required style="height:38px;">
             </div>
             <div>
               <button type="submit" class="btn btn-primary" style="height:38px;">+ Adicionar</button>
