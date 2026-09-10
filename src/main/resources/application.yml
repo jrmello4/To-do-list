@@ -12,6 +12,35 @@ spring:
 app:
   upload:
     dir: uploads/
+  cors:
+    allowed-origins: http://localhost:8080,http://127.0.0.1:8080
+  esportes:
+    enabled: true
+    api-base-url: https://www.thesportsdb.com/api/v1/json
+    api-key: 123
+    cache-name: esportes
+    ligas:
+      # IDs públicos da TheSportsDB
+      - id: 4328
+        esporte: FUTEBOL
+        nome: English Premier League
+      - id: 4443
+        esporte: FUTEBOL
+        nome: UEFA Champions League
+      - id: 4370
+        esporte: F1
+        nome: Formula 1
+      - id: 4387
+        esporte: BASQUETE
+        nome: NBA
+    esportes-dia:
+      - Soccer
+      - Basketball
+      - Fighting
+      - Motorsport
+
+jwt:
+  expiration: 86400000
 
 springdoc:
   api-docs:

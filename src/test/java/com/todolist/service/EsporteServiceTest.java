@@ -8,16 +8,17 @@ import com.todolist.entity.Role;
 import com.todolist.entity.User;
 import com.todolist.repository.EventoCalendarioRepository;
 import com.todolist.repository.PreferenciaEsporteRepository;
+import com.todolist.service.esportes.EsporteEventMapper;
+import com.todolist.service.esportes.TheSportsDbClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,6 +38,12 @@ class EsporteServiceTest {
     @Mock
     private AuthService authService;
 
+    @Mock
+    private TheSportsDbClient sportsDbClient;
+
+    @Spy
+    private EsporteEventMapper eventMapper = new EsporteEventMapper();
+
     @InjectMocks
     private EsporteService esporteService;
 
@@ -51,16 +58,18 @@ class EsporteServiceTest {
                 .role(Role.ROLE_USER)
                 .build();
         lenient().when(authService.obterUsuarioAutenticado()).thenReturn(usuario);
+        lenient().when(sportsDbClient.buscarCatalogo(any())).thenReturn(List.of());
     }
 
     @Test
-    @DisplayName("Deve inicializar preferencias padrao se usuario nao possuir nenhuma")
-    void deveInicializarPreferenciasPadrao() {
-        when(preferenciaRepository.countByUsuarioAndAtivoTrue(usuario)).thenReturn(0L);
+    @DisplayName("Não deve gravar preferências ao listar (sem seed em GET)")
+    void naoDeveInicializarPreferenciasAoListar() {
+        when(preferenciaRepository.findByUsuarioAndAtivoTrue(usuario)).thenReturn(List.of());
 
-        esporteService.obterPreferenciasDoUsuario();
+        List<PreferenciaEsporte> prefs = esporteService.obterPreferenciasDoUsuario();
 
-        verify(preferenciaRepository).saveAll(any());
+        assertThat(prefs).isEmpty();
+        verify(preferenciaRepository, never()).saveAll(any());
     }
 
     @Test
@@ -96,7 +105,7 @@ class EsporteServiceTest {
             return ev;
         });
 
-        EsporteEventoResponse response = esporteService.salvarNoCalendario("UFC-315");
+        EsporteEventoResponse response = esporteService.salvarNoCalendario("DEMO-UFC-1");
 
         assertThat(response).isNotNull();
         assertThat(response.getNoCalendario()).isTrue();
