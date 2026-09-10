@@ -24,6 +24,13 @@ public class JwtService {
     /** HS256 exige chave de no mínimo 256 bits. */
     private static final int MINIMO_DE_BYTES = 32;
 
+    /** Nome curto porque vai em todo token; o conteúdo é um número pequeno. */
+    private static final String CLAIM_VERSAO = "tv";
+
+    /** O que um token válido carrega: de quem é, e de que geração. */
+    public record Conteudo(Long usuarioId, int versao) {
+    }
+
     private final SecretKey chave;
     private final long validadeSegundos;
 
@@ -60,6 +67,10 @@ public class JwtService {
         return Jwts.builder()
                 .subject(String.valueOf(usuario.getId()))
                 .claim("email", usuario.getEmail())
+                // A geração do token. O filtro compara com a da conta e recusa
+                // o que ficou para trás — é o que faz trocar a senha derrubar
+                // os tokens antigos em vez de deixá-los valendo até expirar.
+                .claim(CLAIM_VERSAO, versaoDe(usuario))
                 .issuedAt(Date.from(agora))
                 .expiration(Date.from(agora.plusSeconds(validadeSegundos)))
                 .signWith(chave)
@@ -67,11 +78,11 @@ public class JwtService {
     }
 
     /**
-     * Devolve o id do usuário quando o token é válido, e vazio quando não é —
+     * Devolve o conteúdo do token quando ele é válido, e vazio quando não é —
      * expirado, adulterado, assinado com outra chave ou malformado. Quem chama
      * não precisa distinguir os casos: todos levam ao mesmo 401.
      */
-    public Optional<Long> extrairUsuarioId(String token) {
+    public Optional<Conteudo> ler(String token) {
         try {
             Claims conteudo = Jwts.parser()
                     .verifyWith(chave)
@@ -79,10 +90,22 @@ public class JwtService {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            return Optional.of(Long.valueOf(conteudo.getSubject()));
+            // Token emitido antes desta funcionalidade não traz a claim. Ler a
+            // ausência como 0 — a versão inicial de toda conta — é o que evita
+            // deslogar todo mundo no deploy que introduz a revogação.
+            Integer versao = conteudo.get(CLAIM_VERSAO, Integer.class);
+
+            return Optional.of(new Conteudo(
+                    Long.valueOf(conteudo.getSubject()),
+                    versao == null ? 0 : versao));
         } catch (JwtException | IllegalArgumentException e) {
             return Optional.empty();
         }
+    }
+
+    /** Conta gravada antes da coluna existir vale como versão 0. */
+    public static int versaoDe(Usuario usuario) {
+        return usuario.getTokenVersion() == null ? 0 : usuario.getTokenVersion();
     }
 
     public long getValidadeSegundos() {

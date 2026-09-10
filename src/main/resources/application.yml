@@ -3,6 +3,17 @@ server:
   # sem ele a aplicação sobe numa porta que ninguém está escutando.
   port: ${PORT:${SERVER_PORT:8080}}
 
+  # Faz getRemoteAddr() enxergar o IP de quem chamou, e não o do proxy.
+  #
+  # Importa para o limite de tentativas de login, que conta por origem: atrás
+  # de um proxy sem isto, toda a internet chega com o mesmo endereço e vinte
+  # tentativas erradas de uma pessoa trancam todas as outras. O contrário —
+  # ligado sem proxy na frente — deixa o cabeçalho ser forjado e o limite
+  # deixa de valer. Como o projeto é feito para rodar hospedado, e trancar
+  # quem é inocente é pior do que voltar ao que havia antes do limite, o
+  # padrão atende o caso do proxy; sem proxy, defina como none.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+
 spring:
   datasource:
     # Valores padrão servem para desenvolvimento local. Em qualquer outro
@@ -19,10 +30,14 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    # Desligado aqui e ligado no perfil dev, logo abaixo. Ligado para todo
+    # ambiente, cada requisição gastava CPU formatando SQL e enchia o log de
+    # produção a ponto de esconder o que importa — inclusive o log de erro que
+    # existe justamente para não perder rastro de falha nenhuma.
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 
   mail:
     # spring.mail.host fica de fora de propósito. EnviadorPorEmail só existe
@@ -64,3 +79,16 @@ management:
   endpoint:
     health:
       show-details: never
+
+---
+# Perfil de desenvolvimento: rode com SPRING_PROFILES_ACTIVE=dev para ver as
+# consultas que o Hibernate emite.
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true

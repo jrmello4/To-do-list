@@ -88,7 +88,7 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve criar tarefa com sucesso")
         void deveCriarTarefaComSucesso() {
-            when(taskRepository.save(any(Task.class))).thenReturn(task);
+            when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
 
             TaskResponse response = taskService.criar(USUARIO_ID, request);
 
@@ -98,7 +98,7 @@ class TaskServiceTest {
             assertThat(response.getDescricao()).isEqualTo("Estudar Spring Boot e JPA");
             assertThat(response.getConcluida()).isFalse();
 
-            verify(taskRepository).save(taskCaptor.capture());
+            verify(taskRepository).saveAndFlush(taskCaptor.capture());
             Task saved = taskCaptor.getValue();
             assertThat(saved.getTitulo()).isEqualTo("Estudar Java");
         }
@@ -107,7 +107,7 @@ class TaskServiceTest {
         @DisplayName("Deve criar tarefa com concluida=true quando fornecida")
         void deveCriarTarefaConcluida() {
             request.setConcluida(true);
-            when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> {
                 Task t = invocation.getArgument(0);
                 t.setId(2L);
                 t.setDataCriacao(LocalDateTime.now());
@@ -124,7 +124,7 @@ class TaskServiceTest {
         @DisplayName("Deve criar tarefa com concluida=false quando não fornecida")
         void deveCriarTarefaComConcluidaPadrao() {
             request.setConcluida(null);
-            when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> {
                 Task t = invocation.getArgument(0);
                 t.setId(3L);
                 t.setDataCriacao(LocalDateTime.now());
@@ -206,7 +206,7 @@ class TaskServiceTest {
         @DisplayName("Deve atualizar tarefa com sucesso")
         void deveAtualizarTarefa() {
             when(taskRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(task));
-            when(taskRepository.save(any(Task.class))).thenReturn(task);
+            when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
 
             TaskRequest updateRequest = TaskRequest.builder()
                     .titulo("Estudar Spring Boot")
@@ -237,7 +237,7 @@ class TaskServiceTest {
             request.setConcluida(null);
 
             when(taskRepository.findByIdAndUsuarioId(1L, USUARIO_ID)).thenReturn(Optional.of(task));
-            when(taskRepository.save(any(Task.class))).thenReturn(task);
+            when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
 
             TaskResponse response = taskService.atualizar(USUARIO_ID, 1L, request);
 

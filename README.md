@@ -81,6 +81,8 @@ Todas as rotas de `/api/tarefas` exigem um token JWT.
 | `POST` | `/api/auth/registrar` | Cria a conta e já devolve o token |
 | `POST` | `/api/auth/login` | Autentica e devolve o token |
 | `GET` | `/api/auth/eu` | Perfil da conta autenticada |
+| `PUT` | `/api/auth/senha` | Troca a senha e derruba os tokens antigos |
+| `POST` | `/api/auth/sair-de-todos` | Invalida todos os tokens da conta |
 | `PUT` | `/api/auth/preferencias` | Liga os lembretes e define hora e fuso |
 
 ```bash
@@ -105,6 +107,41 @@ existe.
 
 O comportamento é coberto por testes: trocar `findByIdAndUsuarioId` por
 `findById` derruba o build.
+
+### Tentativas de senha
+
+Errar a senha muitas vezes seguidas da mesma origem passa a devolver **429**,
+com `Retry-After`. O BCrypt já encarece cada tentativa, mas não impede o
+volume — e é justamente esse custo que torna o login um bom alvo: cada tentativa
+errada gasta CPU do servidor, então o mesmo laço que procura a senha também tira
+a aplicação do ar para todo mundo.
+
+A contagem é **por origem**, e não por e-mail. Contar por e-mail é o primeiro
+impulso e cria um problema maior: qualquer um trancaria a conta de qualquer
+pessoa só errando a senha dela algumas vezes. O ataque deixaria de ser descobrir
+a senha e passaria a ser trancar o dono do lado de fora. Há um segundo teto por
+(origem, e-mail), que corta o laço contra uma conta específica sem dar a ninguém
+esse poder.
+
+Dois limites conhecidos, e nenhum deles é acidente: a contagem vive na memória
+da instância, então atrás de um balanceador o teto efetivo é multiplicado pelo
+número de instâncias; e um ataque distribuído por muitos IPs passa por baixo —
+para esse caso o que serve é um segundo fator, não um contador. Ver
+`FORWARD_HEADERS_STRATEGY` em `.env.example`: atrás de um proxy, sem ela, todos
+chegam com o mesmo endereço e o limite tranca todo mundo de uma vez.
+
+### Revogar tokens
+
+O token não tem sessão no servidor, então apagá-lo do navegador não impede quem
+já tenha uma cópia. Duas rotas resolvem isso: `PUT /api/auth/senha`, que exige a
+senha atual — um token roubado não deve bastar para tomar a conta —, e
+`POST /api/auth/sair-de-todos`.
+
+As duas incrementam uma versão guardada na conta. O token carrega a versão que
+existia quando foi emitido, e o filtro compara: o que ficou para trás para de
+valer na requisição seguinte. Sem isso, trocar a senha depois de um vazamento
+não fazia nada — o token vazado seguia válido por até 24 horas, que é
+exatamente quando alguém troca a senha.
 
 ### Chave dos tokens
 
@@ -385,6 +422,13 @@ Tudo agregado no banco, em vez de mandar as tarefas todas e somar no navegador
 contínua: dias sem conclusão aparecem com zero, para o gráfico não comprimir os
 intervalos vazios.
 
+**O dia é o de quem lê.** As conclusões são gravadas em UTC e convertidas para
+o fuso da conta antes de serem agrupadas. Sem essa conversão — que é como o
+painel nasceu — o eixo vinha nos dias de quem lê e as barras nos dias do
+servidor: uma tarefa concluída às 22h em São Paulo já é do dia seguinte em UTC e
+ia para a coluna errada. É a mesma correção que os lembretes já faziam, aplicada
+onde faltava.
+
 **Sobre os gráficos.** A paleta de acento do app foi submetida ao validador de
 daltonismo, e seis tons escolhidos pelo usuário não passam numa checagem de
 todos os pares — sempre há um par que alguma forma de daltonismo colapsa. Como
@@ -524,6 +568,13 @@ com a lista paginada, somar a página no cliente daria contagens erradas.
 dia. O cálculo de "atrasada" usa a data enviada em `?hoje=`, e não a do
 servidor — quem usa pode estar em outro fuso.
 
+**Ordenação.** `sort` aceita `id`, `ordem`, `titulo`, `prazo`, `prioridade`,
+`concluida`, `dataCriacao`, `dataAtualizacao` e `dataConclusao`. Qualquer outro
+campo devolve **400** com a lista. A restrição não é burocracia: ordenar por uma
+coleção — `sort=subtarefas.titulo` — viraria junção, e a página voltaria com a
+mesma tarefa repetida uma vez por passo, com `totalElements` contando junção em
+vez de tarefa.
+
 ### Exemplos de Requisição
 
 **Criar tarefa** (`POST /api/tarefas`):
@@ -537,6 +588,11 @@ servidor — quem usa pode estar em outro fuso.
 ```
 
 **Atualizar tarefa** (`PUT /api/tarefas/1`):
+
+Enviar `versao` é opcional e recomendado: com ela, uma edição feita sobre dado
+desatualizado volta **409** em vez de apagar em silêncio o que outra tela salvou.
+A versão vem em toda leitura da tarefa. Sem o campo, grava como sempre gravou —
+é o que mantém a importação e clientes antigos funcionando.
 
 ```json
 {
@@ -556,6 +612,7 @@ servidor — quem usa pode estar em outro fuso.
   "titulo": "Estudar Spring Boot",
   "descricao": "Aprofundar em JPA e Flyway",
   "concluida": false,
+  "versao": 0,
   "dataCriacao": "2026-06-26T10:00:00",
   "dataAtualizacao": "2026-06-26T10:00:00"
 }
@@ -610,7 +667,7 @@ Cada campo dos DTOs traz descrição e exemplo, e as respostas de erro apontam p
 ./maven/bin/mvn test
 ```
 
-O projeto possui **150 testes**. A maioria roda contra H2 em memória, sem
+O projeto possui **183 testes**. A maioria roda contra H2 em memória, sem
 precisar de MySQL:
 
 | Classe | Cobre |
@@ -630,6 +687,11 @@ precisar de MySQL:
 | `LembreteServiceTest` | Quando o lembrete sai: fuso de cada conta, uma vez por dia, falha isolada |
 | `EscolhaDoEnviadorTest` | Sem SMTP configurado, o enviador ativo é o que só registra no log |
 | `AgendadorDeLembretesTest` | A varredura só é agendada com `LEMBRETES_ATIVOS=true` |
+| `FusoDoPainelIntegrationTest` | O dia de cada conclusão no fuso de quem lê, não no do servidor |
+| `OrdenacaoIntegrationTest` | O que `?sort=` aceita e o que recusa |
+| `ConcorrenciaIntegrationTest` | Duas telas editando a mesma tarefa |
+| `EndurecimentoDeLoginIntegrationTest` | Teto de tentativas, troca de senha e revogação de token |
+| `LimiteDeCorpoIntegrationTest` | Corpo grande demais recusado antes de ser desserializado |
 | `MigrationsNoMySQLTest` | As migrations contra **MySQL de verdade**, via Testcontainers |
 
 `MigrationsNoMySQLTest` é pulada automaticamente onde não há Docker, e executa
@@ -639,10 +701,36 @@ O perfil de teste usa `ddl-auto: validate` com Flyway ligado: o schema vem das
 migrations e o Hibernate apenas confere as entidades contra ele. Uma migration
 quebrada, ou um campo sem migration correspondente, derruba o build.
 
+### Cobertura
+
+`mvn verify` gera o relatório do JaCoCo em `target/site/jacoco/index.html` e
+confere um piso: **82% de instruções e 68% de ramos**, medidos sem os DTOs e as
+entidades — que são getters gerados pelo Lombok e só inflariam o número.
+
+O piso está abaixo do que o projeto tem hoje (87% e 73%) de propósito. Ele não é
+meta: existe para a cobertura não cair sem ninguém perceber. Subir o número é
+decisão de quem escreve os testes; deixá-lo despencar, não.
+
+### Verificação da interface
+
+A interface é perto de 40% do código do projeto e não passava por verificação
+nenhuma — um erro de digitação em `app.js` atravessava o CI verde e só aparecia
+para quem abrisse a página.
+
+```bash
+npm install   # só na primeira vez
+npm run lint
+```
+
+Não substitui teste de fluxo, mas pega a classe de erro que mais custa num
+arquivo sem compilação por trás: nome errado, variável que não existe, `case`
+sem `break`.
+
 ### Integração contínua
 
-`.github/workflows/ci.yml` roda `mvn verify` e constrói a imagem Docker a cada
-push e pull request.
+`.github/workflows/ci.yml` roda três trabalhos em paralelo a cada push e pull
+request: `mvn verify` com os testes e o piso de cobertura, o ESLint da
+interface, e a construção da imagem Docker.
 
 ## Estrutura do Projeto
 
@@ -669,8 +757,15 @@ src/
 └── test/
     └── java/com/todolist/
         ├── controller/      # Testes do controller (MockMvc)
+        ├── dados/           # Exportação, importação e teto de corpo
         ├── db/              # Migrations e persistência (Flyway, JPA, Testcontainers)
+        ├── habitos/         # Hábitos, registros e sequências
         ├── lembretes/       # Varredura, fusos e escolha do enviador
-        ├── security/        # Autenticação e isolamento entre contas
-        └── service/         # Testes do service (Mockito)
+        ├── security/        # Autenticação, tentativas de senha e revogação
+        ├── service/         # Testes do service (Mockito)
+        └── tarefas/         # Planejamento, ordem, passos, painel e concorrência
 ```
+
+Na raiz, `eslint.config.mjs` e `package.json` existem só para a verificação
+estática da interface — a aplicação em si não tem dependência de Node e continua
+sendo servida como está pelo Spring Boot.

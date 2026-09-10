@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "usuarios")
@@ -33,6 +34,18 @@ public class Usuario {
     @Builder.Default
     private Boolean ativo = true;
 
+    /**
+     * Versão dos tokens da conta.
+     *
+     * O token carrega o valor que estava aqui quando foi emitido; o filtro
+     * compara com o valor atual e recusa o que não bate. Incrementar esta
+     * coluna é o que derruba, de uma vez, todos os tokens já emitidos — é o
+     * que acontece ao trocar a senha ou ao sair de todos os aparelhos.
+     */
+    @Column(name = "token_version", nullable = false)
+    @Builder.Default
+    private Integer tokenVersion = 0;
+
     /** Fuso da conta. O servidor roda em UTC; o dia de quem usa é outro. */
     @Column(name = "fuso_horario", nullable = false, length = 60)
     @Builder.Default
@@ -56,6 +69,6 @@ public class Usuario {
 
     @PrePersist
     protected void onCreate() {
-        dataCriacao = LocalDateTime.now();
+        dataCriacao = LocalDateTime.now(ZoneOffset.UTC);
     }
 }

@@ -61,8 +61,11 @@ public class TaskController {
 
                     A resposta é paginada: o corpo é um objeto com `content`, `totalElements` e
                     `totalPages` — não um array. Use `page`, `size` e `sort` para navegar
-                    (por exemplo `sort=prazo,asc`). Campos ordenáveis: `id`, `titulo`, `prazo`,
-                    `prioridade`, `dataCriacao`, `dataAtualizacao`.
+                    (por exemplo `sort=prazo,asc`).
+
+                    Só os campos da própria tarefa são ordenáveis, e qualquer outro devolve 400:
+                    ordenar por uma coleção viraria junção, e a página voltaria com a mesma
+                    tarefa repetida uma vez por passo.
                     """
     )
     @ApiResponses({

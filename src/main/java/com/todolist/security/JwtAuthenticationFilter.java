@@ -34,8 +34,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // acesso é responsabilidade das regras de autorização, não daqui:
         // rotas públicas precisam seguir adiante sem token.
         extrairToken(requisicao)
-                .flatMap(jwtService::extrairUsuarioId)
-                .flatMap(usuarioRepository::findById)
+                .flatMap(jwtService::ler)
+                // A versão do token precisa bater com a da conta. Um token
+                // emitido antes de uma troca de senha continua com assinatura
+                // válida e dentro do prazo — é esta comparação, e só ela, que
+                // o derruba.
+                .flatMap(conteudo -> usuarioRepository.findById(conteudo.usuarioId())
+                        .filter(usuario -> JwtService.versaoDe(usuario) == conteudo.versao()))
                 .map(UsuarioAutenticado::new)
                 .filter(UsuarioAutenticado::isEnabled)
                 .ifPresent(usuario -> {

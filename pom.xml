@@ -149,6 +149,69 @@
 
     <build>
         <plugins>
+            <!-- Cobertura. Não havia medição nenhuma: dava para escrever muito
+                 teste e continuar sem saber o que nenhum deles executava. O
+                 relatório sai em target/site/jacoco. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>relatorio</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <!-- Piso, e não meta: existe para a cobertura não cair
+                             sem ninguém perceber. Subir o número é decisão de
+                             quem escreve os testes; deixá-lo despencar, não.
+                             Hoje o projeto está em 87% de instruções e 73% de
+                             ramos, então há folga: o piso pega queda, não
+                             oscilação. -->
+                        <id>piso-de-cobertura</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.82</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.68</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                            <excludes>
+                                <!-- DTOs e entidades são getters gerados pelo
+                                     Lombok: contá-los infla o número sem dizer
+                                     nada sobre o que está testado. -->
+                                <exclude>com/todolist/dto/**</exclude>
+                                <exclude>com/todolist/entity/**</exclude>
+                                <exclude>com/todolist/TodoListApplication.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

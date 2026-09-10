@@ -5,6 +5,7 @@ import org.hibernate.annotations.BatchSize;
 import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -100,19 +101,42 @@ public class Task {
     @Builder.Default
     private List<Subtarefa> subtarefas = new ArrayList<>();
 
+    /**
+     * Controle de concorrência otimista.
+     *
+     * Sem ele, duas abas abertas na mesma tarefa gravavam uma por cima da
+     * outra: a última vencia e a edição da primeira desaparecia sem aviso.
+     * Com a coluna, a segunda gravação estoura e o cliente recarrega — o que
+     * importa numa aplicação instalável, onde ter a mesma conta aberta em dois
+     * lugares é o caso comum, não a exceção.
+     */
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer versao = 0;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime dataCriacao;
 
     private LocalDateTime dataAtualizacao;
 
+    /*
+     * Os carimbos são gravados em UTC, e não no fuso padrão da JVM.
+     *
+     * O painel agrupa as conclusões por dia e depois converte para o fuso da
+     * conta. Isso só fecha se o valor gravado tiver um fuso conhecido: com
+     * LocalDateTime.now() o dia dependeria de como a máquina que rodou a
+     * gravação estava configurada, e duas instâncias em fusos diferentes
+     * gravariam a mesma conclusão em dias diferentes.
+     */
     @PrePersist
     protected void onCreate() {
-        dataCriacao = LocalDateTime.now();
-        dataAtualizacao = LocalDateTime.now();
+        dataCriacao = LocalDateTime.now(ZoneOffset.UTC);
+        dataAtualizacao = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     @PreUpdate
     protected void onUpdate() {
-        dataAtualizacao = LocalDateTime.now();
+        dataAtualizacao = LocalDateTime.now(ZoneOffset.UTC);
     }
 }

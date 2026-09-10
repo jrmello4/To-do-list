@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -48,7 +49,7 @@ public class Habito {
 
     @PrePersist
     protected void onCreate() {
-        dataCriacao = LocalDateTime.now();
+        dataCriacao = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     /** Conjunto de dias em que o hábito vale, já como DayOfWeek. */

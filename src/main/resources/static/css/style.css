@@ -580,6 +580,13 @@ svg {
     box-shadow: var(--shadow);
 }
 
+/* Posição inicial do indicador. Estava num atributo style no HTML, o que
+   obrigava a política de conteúdo a liberar estilo embutido; o JavaScript
+   segue trocando o valor por setProperty, que é CSSOM e não é bloqueado. */
+.filters {
+    --indice: 0;
+}
+
 /* Indicador que desliza entre as três opções (--indice: 0, 1 ou 2). */
 .filters__pill {
     position: absolute;
@@ -847,6 +854,11 @@ svg {
     border-radius: 20px;
     box-shadow: var(--shadow-lg);
     animation: aparecer 240ms var(--ease);
+}
+
+/* Dica logo abaixo de um rótulo de campo, que precisa de um respiro a mais. */
+.modal__hint--sob-rotulo {
+    margin-top: 6px;
 }
 
 .modal__hint {

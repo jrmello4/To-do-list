@@ -37,6 +37,10 @@ public class TaskResponse {
     @Schema(description = "Posição manual na lista da conta", example = "3")
     private Integer ordem;
 
+    @Schema(description = "Versão da tarefa. Devolva-a no PUT para que uma edição feita sobre "
+            + "dado desatualizado seja recusada em vez de sobrescrever a alheia.", example = "3")
+    private Integer versao;
+
     @Schema(description = "Passos da tarefa, em ordem")
     private List<SubtarefaResponse> subtarefas;
 

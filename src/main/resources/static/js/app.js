@@ -210,7 +210,12 @@
                 }
 
                 if (!resposta.ok) {
-                    throw new Error(mensagemDeErro(corpo, resposta.status));
+                    var erro = new Error(mensagemDeErro(corpo, resposta.status));
+                    // O código vem junto: alguns casos pedem tratamento
+                    // próprio, e comparar texto de mensagem para descobrir
+                    // qual é qual seria frágil.
+                    erro.status = resposta.status;
+                    throw erro;
                 }
 
                 return corpo;
@@ -1362,6 +1367,8 @@
             return;
         }
 
+        var naTela = buscarNoEstado(id);
+
         api.atualizar(id, {
             titulo: titulo,
             descricao: el.editDescricao.value.trim() || null,
@@ -1369,7 +1376,12 @@
             prazo: el.editPrazo.value || null,
             prioridade: el.editPrioridade.value,
             etiquetaIds: etiquetasEscolhidas(el.editEtiquetasEscolha),
-            concluida: el.editConcluida.checked
+            concluida: el.editConcluida.checked,
+            // A versão que estava na tela quando o formulário abriu. É ela que
+            // permite ao servidor recusar esta gravação caso a tarefa tenha
+            // mudado noutro aparelho enquanto o modal estava aberto — sem
+            // mandá-la, a última gravação simplesmente apaga a outra.
+            versao: naTela ? naTela.versao : null
         })
             .then(function () {
                 fecharModal();
@@ -1377,9 +1389,21 @@
                 return recarregar();
             })
             .catch(function (erro) {
-                if (erro.message !== 'Sessão expirada') {
-                    toast(erro.message, 'error');
+                if (erro.message === 'Sessão expirada') {
+                    return;
                 }
+
+                // 409 é a edição feita sobre dado velho: recarregar é parte da
+                // resposta, senão a tela continua mostrando o que já não vale
+                // e a próxima tentativa é recusada de novo.
+                if (erro.status === 409) {
+                    fecharModal();
+                    toast(erro.message, 'error');
+                    recarregar();
+                    return;
+                }
+
+                toast(erro.message, 'error');
             });
     }
 

@@ -1,10 +1,13 @@
 package com.todolist.exception;
 
 import com.todolist.dto.ErrorResponse;
+import com.todolist.repository.OrdenacaoDeTarefas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.mapping.PropertyReferenceException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.ResponseEntity;
@@ -66,8 +69,26 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * ?sort=campoQueNaoExiste chegaria ao Spring Data e explodiria em 500.
-     * É erro de quem chama, não do servidor.
+     * Ordenação recusada pela lista branca de OrdenacaoDeTarefas.
+     *
+     * A lista de campos válidos vem de lá, e não escrita à mão aqui: eram dois
+     * lugares para manter iguais, e já estavam diferentes — `ordem`, que a
+     * própria interface usa, faltava nesta mensagem.
+     */
+    @ExceptionHandler(OrdenacaoInvalidaException.class)
+    public ResponseEntity<ErrorResponse> handleOrdenacaoRecusada(OrdenacaoInvalidaException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(
+                        HttpStatus.BAD_REQUEST.value(),
+                        ex.getMessage(),
+                        List.of("Campos ordenáveis: " + OrdenacaoDeTarefas.listados())));
+    }
+
+    /**
+     * Rede de baixo para as demais listagens (projetos, etiquetas, hábitos),
+     * que não passam pela lista branca: ?sort=campoQueNaoExiste chegaria ao
+     * Spring Data e explodiria em 500. É erro de quem chama, não do servidor.
      */
     @ExceptionHandler(PropertyReferenceException.class)
     public ResponseEntity<ErrorResponse> handleOrdenacaoInvalida(PropertyReferenceException ex) {
@@ -75,9 +96,7 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(
                         HttpStatus.BAD_REQUEST.value(),
-                        "Não é possível ordenar por \"" + ex.getPropertyName() + "\"",
-                        List.of("Campos ordenáveis: id, titulo, prazo, prioridade, "
-                                + "dataCriacao, dataAtualizacao")));
+                        "Não é possível ordenar por \"" + ex.getPropertyName() + "\""));
     }
 
     /** Prioridade ou data em formato inválido no parâmetro da URL. */
@@ -92,6 +111,25 @@ public class GlobalExceptionHandler {
                         List.of(String.valueOf(ex.getValue()))));
     }
 
+    /**
+     * Devolve Retry-After junto: sem ele o cliente não tem como saber quanto
+     * esperar e volta a tentar em laço, que é o que acabou de ser barrado.
+     */
+    @ExceptionHandler(TentativasExcedidasException.class)
+    public ResponseEntity<ErrorResponse> handleTentativasExcedidas(TentativasExcedidasException ex) {
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getEspera().toSeconds()))
+                .body(ErrorResponse.of(HttpStatus.TOO_MANY_REQUESTS.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(SenhaAtualIncorretaException.class)
+    public ResponseEntity<ErrorResponse> handleSenhaAtualIncorreta(SenhaAtualIncorretaException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleFalhaDeAutenticacao(AuthenticationException ex) {
         // Mensagem única para e-mail inexistente e senha errada: distinguir os
@@ -102,6 +140,30 @@ public class GlobalExceptionHandler {
                         HttpStatus.UNAUTHORIZED.value(),
                         "E-mail ou senha incorretos"
                 ));
+    }
+
+    /**
+     * Duas gravações concorrentes na mesma tarefa.
+     *
+     * 409 e não 500: não houve falha do servidor, houve uma edição feita em
+     * cima de uma versão que já não era a atual. A mensagem diz o que fazer,
+     * porque a informação que o cliente tem na tela está velha.
+     */
+    @ExceptionHandler(ConflitoDeVersaoException.class)
+    public ResponseEntity<ErrorResponse> handleConflitoDeVersao(ConflitoDeVersaoException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleConcorrencia(
+            ObjectOptimisticLockingFailureException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(
+                        HttpStatus.CONFLICT.value(),
+                        "Esta tarefa foi alterada em outro lugar. Recarregue e refaça a edição."));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

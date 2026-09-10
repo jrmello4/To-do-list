@@ -1,0 +1,13 @@
+{
+  "name": "to-do-list-interface",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Verificação estática da interface web servida pelo Spring Boot",
+  "scripts": {
+    "lint": "eslint src/main/resources/static"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0"
+  }
+}

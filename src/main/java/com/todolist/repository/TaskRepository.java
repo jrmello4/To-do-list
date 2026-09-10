@@ -45,7 +45,12 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
      * porque o que a listagem usa é a ordem relativa, nunca o valor.
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Task t SET t.ordem = t.ordem + 1 "
+    // A versão sobe junto. Um UPDATE em massa não passa pela sessão e não
+    // mexeria na coluna sozinho — e aí uma tarefa poderia ter a posição
+    // alterada por este comando sem que ninguém que a tivesse em mãos
+    // percebesse, que é exatamente o que o bloqueio otimista existe para
+    // impedir.
+    @Query("UPDATE Task t SET t.ordem = t.ordem + 1, t.versao = t.versao + 1 "
             + "WHERE t.usuario.id = :usuarioId AND t.ordem >= :apartirDe")
     void abrirEspaco(@Param("usuarioId") Long usuarioId, @Param("apartirDe") int apartirDe);
 
@@ -66,20 +71,29 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     long countByUsuarioIdAndConcluidaFalseAndPrazo(Long usuarioId, LocalDate data);
 
     /**
-     * Concluídas por dia. Agrupado com year/month/day em vez de um CAST para
-     * date: são funções que o Hibernate traduz para qualquer banco, e o CAST
-     * teria sintaxe diferente em H2 e MySQL.
+     * Instantes de conclusão dentro de uma janela, sem agrupar.
+     *
+     * Agrupar por YEAR/MONTH/DAY no banco parece mais barato, e era o que se
+     * fazia aqui, mas agrupa pelo dia de quem gravou — UTC — enquanto o eixo
+     * do painel é o dia de quem lê. Uma tarefa concluída às 22h em São Paulo
+     * é 01h UTC do dia seguinte, e ia para a coluna errada do gráfico.
+     *
+     * Converter dentro da consulta exigiria função de fuso do banco, com
+     * sintaxe própria em H2 e em MySQL. Então a conversão sobe para o Java,
+     * como já acontece em buscarTemposDeConclusao: a janela é limitada a no
+     * máximo 365 dias e cada linha traz uma coluna só.
      */
     @Query("""
-            SELECT YEAR(t.dataConclusao), MONTH(t.dataConclusao), DAY(t.dataConclusao), COUNT(t)
+            SELECT t.dataConclusao
             FROM Task t
             WHERE t.usuario.id = :usuarioId
               AND t.concluida = true
-              AND t.dataConclusao >= :desde
-            GROUP BY YEAR(t.dataConclusao), MONTH(t.dataConclusao), DAY(t.dataConclusao)
+              AND t.dataConclusao >= :inicio
+              AND t.dataConclusao < :fim
             """)
-    List<Object[]> contarConcluidasPorDia(@Param("usuarioId") Long usuarioId,
-                                          @Param("desde") LocalDateTime desde);
+    List<LocalDateTime> buscarConclusoesEntre(@Param("usuarioId") Long usuarioId,
+                                              @Param("inicio") LocalDateTime inicio,
+                                              @Param("fim") LocalDateTime fim);
 
     @Query("""
             SELECT t.prioridade, COUNT(t)

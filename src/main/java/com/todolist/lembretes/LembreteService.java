@@ -44,12 +44,10 @@ public class LembreteService {
     public int varrer(ZonedDateTime agoraUtc) {
         int enviados = 0;
 
-        for (Usuario usuario : usuarioRepository.findAll()) {
-            if (!Boolean.TRUE.equals(usuario.getLembretesAtivos())
-                    || !Boolean.TRUE.equals(usuario.getAtivo())) {
-                continue;
-            }
-
+        // Filtrado no banco, e não com findAll() seguido de um if: a varredura
+        // roda de hora em hora, e carregar toda a base para descartar quase
+        // tudo custa proporcional ao número de contas, não ao de lembretes.
+        for (Usuario usuario : usuarioRepository.findByLembretesAtivosTrueAndAtivoTrue()) {
             ZonedDateTime local;
             try {
                 local = agoraUtc.withZoneSameInstant(ZoneId.of(usuario.getFusoHorario()));

@@ -23,6 +23,9 @@ jobs:
       - name: Build e testes
         # O runner do GitHub tem Docker, então MigrationsNoMySQLTest roda de
         # verdade aqui — na máquina de quem não tem, ela é pulada.
+        #
+        # verify, e não test: é na fase verify que o piso de cobertura é
+        # conferido.
         run: mvn -B verify
 
       - name: Publicar relatórios de teste
@@ -32,6 +35,38 @@ jobs:
           name: relatorios-surefire
           path: target/surefire-reports/
           if-no-files-found: ignore
+
+      - name: Publicar relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-jacoco
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+
+  interface:
+    name: Interface web
+    runs-on: ubuntu-latest
+
+    # A interface é perto de 40% do código do projeto e não passava por
+    # verificação nenhuma: um erro de digitação em app.js atravessava o CI
+    # verde e só aparecia para quem abrisse a página. Isto não é teste de
+    # fluxo, mas pega a classe de erro que mais custa num arquivo sem
+    # compilação por trás.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Verificar o JavaScript
+        run: npm run lint
 
   imagem:
     name: Imagem Docker

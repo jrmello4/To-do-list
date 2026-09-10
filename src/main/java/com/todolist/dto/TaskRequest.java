@@ -17,6 +17,21 @@ import java.util.List;
 @Schema(name = "TaskRequest", description = "Dados enviados para criar ou atualizar uma tarefa")
 public class TaskRequest {
 
+    /**
+     * Versão que o cliente tinha na tela, devolvida por qualquer leitura da
+     * tarefa. Opcional: quando vem, a atualização é recusada com 409 se a
+     * tarefa mudou nesse meio-tempo; quando não vem, grava por cima como
+     * antes — é o que mantém a importação e os clientes antigos funcionando.
+     */
+    @Schema(
+            description = "Versão da tarefa como o cliente a leu. Enviando este campo, uma "
+                    + "edição feita sobre dado desatualizado é recusada com 409 em vez de "
+                    + "apagar em silêncio o que a outra aba salvou.",
+            example = "3",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private Integer versao;
+
     @NotBlank(message = "O título é obrigatório")
     @Size(max = 200, message = "O título deve ter no máximo 200 caracteres")
     @Schema(

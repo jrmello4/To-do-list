@@ -13,6 +13,8 @@ import com.todolist.repository.TaskRepository;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,18 +34,21 @@ public class PainelService {
             "URGENTE", "rosa");
 
     private final TaskRepository taskRepository;
+    private final FusoDaConta fusoDaConta;
     private final TaskService taskService;
     private final ProjetoService projetoService;
     private final HabitoService habitoService;
 
     @Transactional(readOnly = true)
     public PainelResponse montar(Long usuarioId, LocalDate referencia, int dias) {
-        LocalDate hoje = referencia != null ? referencia : LocalDate.now();
+        // O fuso decide em que coluna do gráfico cada conclusão cai.
+        ZoneId zona = fusoDaConta.de(usuarioId);
+        LocalDate hoje = fusoDaConta.hoje(usuarioId, referencia);
         int janela = Math.min(Math.max(dias, 7), 365);
 
         return PainelResponse.builder()
                 .resumo(taskService.resumo(usuarioId, hoje))
-                .concluidasPorDia(concluidasPorDia(usuarioId, hoje, janela))
+                .concluidasPorDia(concluidasPorDia(usuarioId, zona, hoje, janela))
                 .pendentesPorProjeto(pendentesPorProjeto(usuarioId))
                 .pendentesPorPrioridade(pendentesPorPrioridade(usuarioId))
                 .horasMediasParaConcluir(horasMediasParaConcluir(usuarioId))
@@ -55,19 +60,25 @@ public class PainelService {
      * Série contínua: os dias sem conclusão vêm com zero. Devolver só os dias
      * com registro faria o gráfico comprimir os intervalos vazios e mentir
      * sobre o ritmo.
+     *
+     * O dia de cada conclusão é o dia no fuso da conta. As bordas da janela
+     * fazem o caminho inverso — da meia-noite local para o instante em UTC —
+     * porque é assim que dataConclusao está gravada.
      */
-    private List<PainelResponse.PontoDoDia> concluidasPorDia(Long usuarioId, LocalDate hoje,
-                                                             int dias) {
+    private List<PainelResponse.PontoDoDia> concluidasPorDia(Long usuarioId, ZoneId zona,
+                                                             LocalDate hoje, int dias) {
         LocalDate inicio = hoje.minusDays(dias - 1L);
 
+        LocalDateTime inicioUtc = emUtc(inicio.atStartOfDay(zona));
+        LocalDateTime fimUtc = emUtc(hoje.plusDays(1).atStartOfDay(zona));
+
         Map<LocalDate, Long> porDia = new HashMap<>();
-        for (Object[] linha : taskRepository.contarConcluidasPorDia(
-                usuarioId, inicio.atStartOfDay())) {
-            LocalDate data = LocalDate.of(
-                    ((Number) linha[0]).intValue(),
-                    ((Number) linha[1]).intValue(),
-                    ((Number) linha[2]).intValue());
-            porDia.put(data, ((Number) linha[3]).longValue());
+        for (LocalDateTime conclusao
+                : taskRepository.buscarConclusoesEntre(usuarioId, inicioUtc, fimUtc)) {
+            LocalDate diaLocal = conclusao.atOffset(ZoneOffset.UTC)
+                    .atZoneSameInstant(zona)
+                    .toLocalDate();
+            porDia.merge(diaLocal, 1L, Long::sum);
         }
 
         List<PainelResponse.PontoDoDia> serie = new ArrayList<>();
@@ -141,6 +152,10 @@ public class PainelService {
         }
 
         return Math.round(minutos / (double) tempos.size() / 60 * 10) / 10.0;
+    }
+
+    private static LocalDateTime emUtc(java.time.ZonedDateTime instante) {
+        return instante.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
     private List<PainelResponse.SequenciaDeHabito> sequencias(Long usuarioId, LocalDate hoje) {

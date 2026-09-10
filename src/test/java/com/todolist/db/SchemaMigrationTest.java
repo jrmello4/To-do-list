@@ -56,7 +56,7 @@ class SchemaMigrationTest {
         assertThat(aplicadas)
                 .extracting(migration -> String.valueOf(migration.getVersion()))
                 .as("todas as migrations de db/migration precisam constar como aplicadas")
-                .contains("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
+                .containsAll(EsquemaEsperado.versoesDeMigration());
     }
 
     @Test
@@ -74,11 +74,7 @@ class SchemaMigrationTest {
             }
         }
 
-        // Gêmea da lista de MigrationsNoMySQLTest, que roda a mesma conferência
-        // contra MySQL de verdade. Coluna nova entra nas duas.
-        assertThat(colunas).containsExactlyInAnyOrder(
-                "id", "titulo", "descricao", "concluida",
-                "data_criacao", "data_atualizacao", "usuario_id",
-                "projeto_id", "prazo", "prioridade", "data_conclusao", "ordem");
+        assertThat(colunas).containsExactlyInAnyOrderElementsOf(
+                EsquemaEsperado.COLUNAS_DE_TASKS);
     }
 }

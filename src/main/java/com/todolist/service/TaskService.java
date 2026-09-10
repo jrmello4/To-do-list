@@ -6,8 +6,10 @@ import com.todolist.entity.Etiqueta;
 import com.todolist.entity.Projeto;
 import com.todolist.entity.Subtarefa;
 import com.todolist.entity.Task;
+import com.todolist.exception.ConflitoDeVersaoException;
 import com.todolist.exception.ResourceNotFoundException;
 import com.todolist.repository.EtiquetaRepository;
+import com.todolist.repository.OrdenacaoDeTarefas;
 import com.todolist.repository.ProjetoRepository;
 import com.todolist.repository.TaskRepository;
 import com.todolist.repository.TaskSpecifications;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,6 +36,7 @@ public class TaskService {
     private final ProjetoRepository projetoRepository;
     private final EtiquetaRepository etiquetaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final FusoDaConta fusoDaConta;
 
     @Transactional
     public TaskResponse criar(Long usuarioId, TaskRequest request) {
@@ -56,11 +60,15 @@ public class TaskService {
             aplicarConclusao(task, true);
         }
 
-        return toResponse(taskRepository.save(task));
+        return toResponse(taskRepository.saveAndFlush(task));
     }
 
     @Transactional(readOnly = true)
     public Page<TaskResponse> listar(Long usuarioId, TaskFiltro filtro, Pageable paginacao) {
+        // Ordenação conferida aqui, e não no controlador: LembreteService
+        // também chama esta rota, e a regra vale para todo mundo que lista.
+        OrdenacaoDeTarefas.verificar(paginacao.getSort());
+
         // A especificação do dono vem primeiro e não é opcional: é ela que
         // mantém o isolamento entre contas também nesta rota.
         Specification<Task> criterios = Specification.allOf(
@@ -85,7 +93,10 @@ public class TaskService {
      */
     @Transactional(readOnly = true)
     public ResumoResponse resumo(Long usuarioId, LocalDate referencia) {
-        LocalDate hoje = referencia != null ? referencia : LocalDate.now();
+        // Sem a data informada, o hoje é o da conta e não o do servidor: em
+        // UTC, "atrasada" mudaria de significado três horas antes da meia-noite
+        // de quem está em São Paulo.
+        LocalDate hoje = fusoDaConta.hoje(usuarioId, referencia);
 
         long total = taskRepository.countByUsuarioId(usuarioId);
         long concluidas = taskRepository.countByUsuarioIdAndConcluidaTrue(usuarioId);
@@ -108,6 +119,7 @@ public class TaskService {
     @Transactional
     public TaskResponse atualizar(Long usuarioId, Long id, TaskRequest request) {
         Task task = buscarDoUsuario(usuarioId, id);
+        conferirVersao(task, request.getVersao());
 
         task.setTitulo(request.getTitulo());
         task.setDescricao(request.getDescricao());
@@ -124,14 +136,14 @@ public class TaskService {
             aplicarConclusao(task, request.getConcluida());
         }
 
-        return toResponse(taskRepository.save(task));
+        return toResponse(taskRepository.saveAndFlush(task));
     }
 
     @Transactional
     public TaskResponse definirConclusao(Long usuarioId, Long id, boolean concluida) {
         Task task = buscarDoUsuario(usuarioId, id);
         aplicarConclusao(task, concluida);
-        return toResponse(taskRepository.save(task));
+        return toResponse(taskRepository.saveAndFlush(task));
     }
 
     /**
@@ -171,7 +183,7 @@ public class TaskService {
         Task movida = buscarDoUsuario(usuarioId, id);
         movida.setOrdem(destino);
 
-        return toResponse(taskRepository.save(movida));
+        return toResponse(taskRepository.saveAndFlush(movida));
     }
 
     /* --------------------------------------------------------- Subtarefas */
@@ -207,7 +219,7 @@ public class TaskService {
                 .ordem(proximaOrdem(task))
                 .build());
 
-        return toResponse(taskRepository.save(task));
+        return toResponse(taskRepository.saveAndFlush(task));
     }
 
     @Transactional
@@ -223,7 +235,7 @@ public class TaskService {
             passo.setConcluida(request.getConcluida());
         }
 
-        return toResponse(taskRepository.save(task));
+        return toResponse(taskRepository.saveAndFlush(task));
     }
 
     @Transactional
@@ -237,7 +249,7 @@ public class TaskService {
         // quebrou antes.
         task.getSubtarefas().remove(passo);
 
-        return toResponse(taskRepository.save(task));
+        return toResponse(taskRepository.saveAndFlush(task));
     }
 
     /**
@@ -307,6 +319,23 @@ public class TaskService {
         return new LinkedHashSet<>(encontradas);
     }
 
+    /**
+     * Recusa a edição feita sobre uma versão que já foi substituída.
+     *
+     * A conferência é aqui, e não na coluna @Version sozinha: cada PUT abre a
+     * sua própria transação e lê a versão atual, então duas abas nunca
+     * colidiriam no banco — a segunda simplesmente apagaria o que a primeira
+     * escreveu. Quem sabe o que estava na tela é o cliente.
+     *
+     * Sem o campo, grava como sempre gravou: a importação não tem versão para
+     * mandar, e um cliente antigo não deve parar de funcionar por causa disto.
+     */
+    private void conferirVersao(Task task, Integer versaoEnviada) {
+        if (versaoEnviada != null && !versaoEnviada.equals(task.getVersao())) {
+            throw new ConflitoDeVersaoException();
+        }
+    }
+
     /** Mantém dataConclusao coerente com concluida, sem mexer no que não mudou. */
     private void aplicarConclusao(Task task, boolean concluida) {
         if (concluida == Boolean.TRUE.equals(task.getConcluida())) {
@@ -314,8 +343,21 @@ public class TaskService {
         }
 
         task.setConcluida(concluida);
-        task.setDataConclusao(concluida ? LocalDateTime.now() : null);
+        // UTC, pelo mesmo motivo dos carimbos da entidade: é o painel que
+        // depois converte para o fuso de quem lê.
+        task.setDataConclusao(concluida ? LocalDateTime.now(ZoneOffset.UTC) : null);
     }
+
+    /*
+     * As gravações usam saveAndFlush, e não save.
+     *
+     * A versão é incrementada pelo Hibernate no flush, que sem isto só
+     * acontece no commit — depois de a resposta já ter sido montada. O corpo
+     * saía com a versão anterior, e um cliente que a guardasse seria recusado
+     * na edição seguinte por estar "desatualizado" em relação a uma alteração
+     * que foi ele mesmo quem fez. O flush aconteceria de qualquer forma um
+     * instante depois; o que muda é só a resposta contar a verdade.
+     */
 
     private static TaskResponse toResponse(Task task) {
         Projeto projeto = task.getProjeto();
@@ -352,6 +394,7 @@ public class TaskService {
                 .prazo(task.getPrazo())
                 .prioridade(task.getPrioridade())
                 .ordem(task.getOrdem())
+                .versao(task.getVersao())
                 .dataConclusao(task.getDataConclusao())
                 .dataCriacao(task.getDataCriacao())
                 .dataAtualizacao(task.getDataAtualizacao())

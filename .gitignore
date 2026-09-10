@@ -15,3 +15,7 @@ maven/
 
 # Variáveis de ambiente locais
 .env
+
+# Dependências do ESLint, que verifica a interface. Instaladas por npm ci no
+# CI e por npm install na máquina de quem desenvolve; nunca versionadas.
+node_modules/
