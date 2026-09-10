@@ -107,6 +107,15 @@ app:
 jwt:
   expiration: 86400000
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
 springdoc:
   api-docs:
     path: /api-docs

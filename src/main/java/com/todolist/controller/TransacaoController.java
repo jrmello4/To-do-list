@@ -62,4 +62,26 @@ public class TransacaoController {
         transacaoService.excluir(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/transferencias")
+    @Operation(summary = "Transferir valor entre duas contas (liquidação imediata)")
+    public ResponseEntity<java.util.Map<String, Object>> transferir(
+            @Valid @RequestBody com.todolist.dto.TransferenciaRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(transacaoService.transferir(request));
+    }
+
+    @GetMapping("/orcamento")
+    @Operation(summary = "Orçamento do mês por categoria (limite vs gasto)")
+    public ResponseEntity<List<com.todolist.dto.OrcamentoItemResponse>> orcamento(
+            @RequestParam(required = false) Integer ano,
+            @RequestParam(required = false) Integer mes) {
+        return ResponseEntity.ok(transacaoService.listarOrcamento(ano, mes));
+    }
+
+    @GetMapping("/projecao")
+    @Operation(summary = "Projeção de saldo para os próximos N dias (default 90)")
+    public ResponseEntity<com.todolist.dto.ProjecaoResponse> projecao(
+            @RequestParam(required = false, defaultValue = "90") Integer dias) {
+        return ResponseEntity.ok(transacaoService.projetarSaldo(dias));
+    }
 }

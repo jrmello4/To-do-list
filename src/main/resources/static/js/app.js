@@ -712,6 +712,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok) return;
       const notifications = await response.json();
       renderNotifications(notifications);
+
+      // Alertas de jogos (proxima hora) — injeta na central
+      try {
+        const alertRes = await apiFetch('/api/esportes/alertas');
+        if (alertRes.ok) {
+          const alertas = await alertRes.json();
+          const extras = (alertas || []).map(a => ({
+            tipo: 'VENCE_BREVE',
+            taskId: a.eventoId,
+            titulo: a.titulo,
+            mensagem: a.mensagem
+          }));
+          const merged = [...(notifications || []), ...extras];
+          renderNotifications(merged);
+        }
+      } catch { /* silencioso */ }
     } catch {
       // Silencioso se não autenticado
     }

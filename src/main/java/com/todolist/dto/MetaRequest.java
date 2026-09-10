@@ -35,4 +35,9 @@ public class MetaRequest {
     private String cor;
 
     private String icone;
+
+    /** % da receita paga que vira aporte automático nesta meta (ex: 10 = 10%). */
+    private BigDecimal autoAportePercentual;
+
+    private Boolean autoAporteAtivo;
 }

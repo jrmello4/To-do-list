@@ -47,6 +47,7 @@ public class CategoriaTransacaoService {
                 .tipo(request.getTipo())
                 .icone(icone)
                 .cor(cor)
+                .limiteMensal(request.getLimiteMensal())
                 .usuario(user)
                 .build();
 
@@ -95,6 +96,7 @@ public class CategoriaTransacaoService {
                 .tipo(categoria.getTipo())
                 .icone(categoria.getIcone())
                 .cor(categoria.getCor())
+                .limiteMensal(categoria.getLimiteMensal())
                 .build();
     }
 }

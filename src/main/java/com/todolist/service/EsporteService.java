@@ -224,9 +224,45 @@ public class EsporteService {
     }
 
     /**
-     * Tenta carregar o catálogo real (TheSportsDB). Em caso de falha ou lista vazia,
-     * cai para um catálogo de demonstração local.
+     * Alertas de jogos que começam em até 1h (eventos de Esportes no calendário).
+     * Marca como alertados para não repetir.
      */
+    @Transactional
+    public List<com.todolist.dto.AlertaEsporteResponse> coletarAlertasProximos() {
+        User usuario = authService.obterUsuarioAutenticado();
+        LocalDate hoje = LocalDate.now();
+        LocalTime agora = LocalTime.now();
+        List<EventoCalendario> candidatos = eventoCalendarioRepository
+                .findEsportesSemAlertaHoje(usuario, hoje);
+
+        List<com.todolist.dto.AlertaEsporteResponse> alertas = new ArrayList<>();
+        for (EventoCalendario ev : candidatos) {
+            if (ev.getHoraInicio() == null) {
+                continue;
+            }
+            long minutos = java.time.Duration.between(agora, ev.getHoraInicio()).toMinutes();
+            if (minutos < 0 || minutos > 60) {
+                continue;
+            }
+            alertas.add(com.todolist.dto.AlertaEsporteResponse.builder()
+                    .eventoId(ev.getId())
+                    .titulo(ev.getTitulo())
+                    .descricao(ev.getDescricao())
+                    .data(ev.getDataEvento())
+                    .hora(ev.getHoraInicio())
+                    .minutosParaInicio(minutos)
+                    .tipo("ESPORTE_BREVE")
+                    .mensagem(minutos <= 5
+                            ? ("Começa agora: " + ev.getTitulo())
+                            : ("Em " + minutos + " min: " + ev.getTitulo()))
+                    .build());
+            ev.setAlertaEnviado(true);
+            eventoCalendarioRepository.save(ev);
+        }
+        return alertas;
+    }
+
+    /** Preferências de demonstração / seed. */
     private List<EsporteEventoResponse> carregarCatalogo() {
         try {
             List<TheSportsDbDtos.Event> remotos = sportsDbClient.buscarCatalogo(LocalDate.now());

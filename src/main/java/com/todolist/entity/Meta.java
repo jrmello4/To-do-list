@@ -59,6 +59,13 @@ public class Meta {
     @Builder.Default
     private Boolean ativo = true;
 
+    @Column(name = "auto_aporte_percentual", precision = 5, scale = 2)
+    private BigDecimal autoAportePercentual;
+
+    @Column(name = "auto_aporte_ativo", nullable = false)
+    @Builder.Default
+    private Boolean autoAporteAtivo = false;
+
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;
 

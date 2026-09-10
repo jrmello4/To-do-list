@@ -52,6 +52,8 @@ public class MetaService {
                 .icone(request.getIcone() != null ? request.getIcone() : "target")
                 .concluida(concluida)
                 .ativo(true)
+                .autoAportePercentual(request.getAutoAportePercentual())
+                .autoAporteAtivo(Boolean.TRUE.equals(request.getAutoAporteAtivo()))
                 .usuario(usuario)
                 .build();
 
@@ -90,6 +92,8 @@ public class MetaService {
         meta.setPrazo(request.getPrazo());
         if (request.getCor() != null) meta.setCor(request.getCor());
         if (request.getIcone() != null) meta.setIcone(request.getIcone());
+        if (request.getAutoAportePercentual() != null) meta.setAutoAportePercentual(request.getAutoAportePercentual());
+        if (request.getAutoAporteAtivo() != null) meta.setAutoAporteAtivo(request.getAutoAporteAtivo());
 
         return toResponse(metaRepository.save(meta));
     }
@@ -128,6 +132,8 @@ public class MetaService {
                 .icone(m.getIcone())
                 .concluida(m.getConcluida())
                 .percentualConcluido(pct)
+                .autoAportePercentual(m.getAutoAportePercentual())
+                .autoAporteAtivo(m.getAutoAporteAtivo())
                 .dataCriacao(m.getDataCriacao())
                 .dataAtualizacao(m.getDataAtualizacao())
                 .build();

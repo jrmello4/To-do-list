@@ -24,6 +24,8 @@ public class MetaResponse {
     private String icone;
     private Boolean concluida;
     private Double percentualConcluido;
+    private BigDecimal autoAportePercentual;
+    private Boolean autoAporteAtivo;
     private LocalDateTime dataCriacao;
     private LocalDateTime dataAtualizacao;
 }
