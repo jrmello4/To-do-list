@@ -37,13 +37,10 @@ public class TransacaoService {
             fim = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
         }
 
-        List<Transacao> transacoes = transacaoRepository.findByUsuarioIdAndDataVencimentoBetweenOrderByDataVencimentoAsc(
-                user.getId(), inicio, fim);
+        List<Transacao> transacoes = transacaoRepository.buscarComFiltros(
+                user.getId(), inicio, fim, status, tipo, contaId);
 
         return transacoes.stream()
-                .filter(t -> status == null || t.getStatus() == status)
-                .filter(t -> tipo == null || t.getTipo() == tipo)
-                .filter(t -> contaId == null || t.getConta().getId().equals(contaId))
                 .map(this::paraResponse)
                 .collect(Collectors.toList());
     }

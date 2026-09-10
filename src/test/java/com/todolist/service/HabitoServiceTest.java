@@ -23,6 +23,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,7 +66,8 @@ class HabitoServiceTest {
                 RegistroHabito.builder().id(3L).habito(h).dataRegistro(hoje.minusDays(2)).concluido(true).build()
         );
 
-        when(registroHabitoRepository.findByHabitoIdOrderByDataRegistroDesc(1L)).thenReturn(registros);
+        when(registroHabitoRepository.findByHabitoIdAndDataRegistroGreaterThanEqualAndConcluidoTrue(
+                eq(1L), any(LocalDate.class))).thenReturn(registros);
 
         HabitoResponse resp = habitoService.paraResponse(h);
 

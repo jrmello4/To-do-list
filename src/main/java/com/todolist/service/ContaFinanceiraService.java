@@ -23,22 +23,10 @@ public class ContaFinanceiraService {
 
     public List<ContaResponse> listarTodas() {
         User user = authService.obterUsuarioAutenticado();
-        List<ContaFinanceira> contas = contaRepository.findByUsuarioIdAndAtivoTrueOrderByNomeAsc(user.getId());
-        if (contas.isEmpty()) {
-            // Cria uma conta padrão inicial se o usuário não tiver nenhuma
-            ContaFinanceira padrao = ContaFinanceira.builder()
-                    .nome("Conta Principal")
-                    .tipo(com.todolist.entity.TipoConta.CORRENTE)
-                    .saldoInicial(BigDecimal.ZERO)
-                    .saldoAtual(BigDecimal.ZERO)
-                    .cor("#6366f1")
-                    .ativo(true)
-                    .usuario(user)
-                    .build();
-            contaRepository.save(padrao);
-            contas = List.of(padrao);
-        }
-        return contas.stream().map(this::paraResponse).collect(Collectors.toList());
+        return contaRepository.findByUsuarioIdAndAtivoTrueOrderByNomeAsc(user.getId())
+                .stream()
+                .map(this::paraResponse)
+                .collect(Collectors.toList());
     }
 
     public ContaResponse buscarPorId(Long id) {

@@ -32,6 +32,23 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
     List<Transacao> findByGrupoParcelaIdAndUsuarioIdOrderByNumeroParcelaAsc(
             String grupoParcelaId, Long usuarioId);
 
+    @Query("""
+            SELECT t FROM Transacao t
+            WHERE t.usuario.id = :usuarioId
+              AND t.dataVencimento BETWEEN :inicio AND :fim
+              AND (:status IS NULL OR t.status = :status)
+              AND (:tipo IS NULL OR t.tipo = :tipo)
+              AND (:contaId IS NULL OR t.conta.id = :contaId)
+            ORDER BY t.dataVencimento ASC
+            """)
+    List<Transacao> buscarComFiltros(
+            @Param("usuarioId") Long usuarioId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim,
+            @Param("status") StatusTransacao status,
+            @Param("tipo") TipoTransacao tipo,
+            @Param("contaId") Long contaId);
+
     @Query("SELECT COALESCE(SUM(t.valor), 0) FROM Transacao t WHERE t.usuario.id = :usuarioId AND t.tipo = :tipo AND t.dataVencimento BETWEEN :inicio AND :fim")
     BigDecimal sumValorByUsuarioIdAndTipoAndDataVencimentoBetween(
             @Param("usuarioId") Long usuarioId,

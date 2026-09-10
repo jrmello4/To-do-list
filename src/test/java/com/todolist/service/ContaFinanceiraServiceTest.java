@@ -73,20 +73,14 @@ class ContaFinanceiraServiceTest {
     }
 
     @Test
-    @DisplayName("Deve criar conta padrão se o usuário não possuir nenhuma conta")
-    void deveCriarContaPadraoSeNaoHouver() {
+    @DisplayName("Deve retornar lista vazia quando usuário não tem contas (sem seed em GET)")
+    void deveRetornarVazioQuandoNaoHouverContas() {
         when(contaRepository.findByUsuarioIdAndAtivoTrueOrderByNomeAsc(1L)).thenReturn(new ArrayList<>());
-        when(contaRepository.save(any(ContaFinanceira.class))).thenAnswer(inv -> {
-            ContaFinanceira c = inv.getArgument(0);
-            c.setId(10L);
-            return c;
-        });
 
         List<ContaResponse> contas = contaService.listarTodas();
 
-        assertThat(contas).hasSize(1);
-        assertThat(contas.get(0).getNome()).isEqualTo("Conta Principal");
-        verify(contaRepository).save(any(ContaFinanceira.class));
+        assertThat(contas).isEmpty();
+        verify(contaRepository, never()).save(any(ContaFinanceira.class));
     }
 
     @Test

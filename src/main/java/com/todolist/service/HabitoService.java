@@ -13,34 +13,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class HabitoService {
 
+    /** Janela máxima para cálculo de streak (evita full table scan). */
+    private static final int JANELA_STREAK_DIAS = 365;
+
     private final HabitoRepository habitoRepository;
     private final RegistroHabitoRepository registroHabitoRepository;
     private final AuthService authService;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<HabitoResponse> listarTodos() {
         User user = authService.obterUsuarioAutenticado();
         List<Habito> habitos = habitoRepository.findByUsuarioIdAndAtivoTrueOrderByNomeAsc(user.getId());
-
-        if (habitos.isEmpty()) {
-            // Hábitos iniciais sugeridos
-            List<Habito> padroes = List.of(
-                    Habito.builder().nome("Beber 2L de Água").icone("droplet").cor("#06b6d4").ativo(true).usuario(user).build(),
-                    Habito.builder().nome("Exercício Físico / Caminhada").icone("activity").cor("#10b981").ativo(true).usuario(user).build(),
-                    Habito.builder().nome("Leitura / Estudo 20min").icone("book-open").cor("#8b5cf6").ativo(true).usuario(user).build()
-            );
-            habitos = habitoRepository.saveAll(padroes);
-        }
-
         return habitos.stream().map(this::paraResponse).collect(Collectors.toList());
     }
 
@@ -94,25 +86,20 @@ public class HabitoService {
 
     public HabitoResponse paraResponse(Habito h) {
         LocalDate hoje = LocalDate.now();
-        List<RegistroHabito> registros = registroHabitoRepository.findByHabitoIdOrderByDataRegistroDesc(h.getId());
+        LocalDate inicio = hoje.minusDays(JANELA_STREAK_DIAS);
+        Set<LocalDate> datasConcluidas = registroHabitoRepository
+                .findByHabitoIdAndDataRegistroGreaterThanEqualAndConcluidoTrue(h.getId(), inicio)
+                .stream()
+                .map(RegistroHabito::getDataRegistro)
+                .collect(Collectors.toSet());
 
-        boolean concluidoHoje = registros.stream()
-                .anyMatch(r -> r.getDataRegistro().isEqual(hoje) && Boolean.TRUE.equals(r.getConcluido()));
+        boolean concluidoHoje = datasConcluidas.contains(hoje);
 
-        // Cálculo de Streak
         int streak = 0;
         LocalDate cursor = concluidoHoje ? hoje : hoje.minusDays(1);
-
-        while (true) {
-            final LocalDate checkData = cursor;
-            boolean bateu = registros.stream()
-                    .anyMatch(r -> r.getDataRegistro().isEqual(checkData) && Boolean.TRUE.equals(r.getConcluido()));
-            if (bateu) {
-                streak++;
-                cursor = cursor.minusDays(1);
-            } else {
-                break;
-            }
+        while (datasConcluidas.contains(cursor) && streak < JANELA_STREAK_DIAS) {
+            streak++;
+            cursor = cursor.minusDays(1);
         }
 
         return HabitoResponse.builder()

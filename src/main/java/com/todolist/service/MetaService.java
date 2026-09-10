@@ -24,12 +24,9 @@ public class MetaService {
     private final MetaRepository metaRepository;
     private final AuthService authService;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<MetaResponse> listarMetas() {
         User usuario = authService.obterUsuarioAutenticado();
-        if (metaRepository.countByUsuarioAndAtivoTrue(usuario) == 0) {
-            inicializarMetasPadrao(usuario);
-        }
         return metaRepository.findByUsuarioAndAtivoTrueOrderByConcluidaAscPrazoAsc(usuario)
                 .stream()
                 .map(this::toResponse)
@@ -109,40 +106,6 @@ public class MetaService {
         return metaRepository.findById(id)
                 .filter(m -> m.getAtivo() && m.getUsuario().getId().equals(usuario.getId()))
                 .orElseThrow(() -> new ResourceNotFoundException("Meta", id));
-    }
-
-    private void inicializarMetasPadrao(User usuario) {
-        Meta reserva = Meta.builder()
-                .titulo("Reserva de Emergência")
-                .descricao("Guardar 6 meses de custo fixo para segurança financeira")
-                .categoria("FINANCEIRA")
-                .valorAlvo(new BigDecimal("10000.00"))
-                .valorAtual(new BigDecimal("3500.00"))
-                .unidade("R$")
-                .prazo(LocalDate.now().plusMonths(6))
-                .cor("#10b981")
-                .icone("shield")
-                .concluida(false)
-                .ativo(true)
-                .usuario(usuario)
-                .build();
-
-        Meta leitura = Meta.builder()
-                .titulo("Ler 12 Livros no Ano")
-                .descricao("Manter o hábito constante de leitura e auto-desenvolvimento")
-                .categoria("ESTUDO")
-                .valorAlvo(new BigDecimal("12.00"))
-                .valorAtual(new BigDecimal("4.00"))
-                .unidade("livros")
-                .prazo(LocalDate.now().plusMonths(4))
-                .cor("#6366f1")
-                .icone("book")
-                .concluida(false)
-                .ativo(true)
-                .usuario(usuario)
-                .build();
-
-        metaRepository.saveAll(List.of(reserva, leitura));
     }
 
     public MetaResponse toResponse(Meta m) {

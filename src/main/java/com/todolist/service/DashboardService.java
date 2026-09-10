@@ -46,18 +46,24 @@ public class DashboardService {
             boolean concluida = Boolean.TRUE.equals(t.getConcluida());
             if (concluida) {
                 tarefasConcluidas++;
-            } else {
-                tarefasPendentes++;
-                if (t.getDataVencimento() != null) {
-                    if (t.getDataVencimento().isEqual(hoje)) {
-                        tarefasHojeLista.add(taskService.toResponse(t));
-                    } else if (t.getDataVencimento().isBefore(hoje)) {
-                        tarefasAtrasadas++;
-                        tarefasHojeLista.add(taskService.toResponse(t));
-                    }
+                continue;
+            }
+            tarefasPendentes++;
+
+            boolean ehUrgente = t.getPrioridade() == Prioridade.ALTA || t.getPrioridade() == Prioridade.URGENTE;
+            boolean venceHoje = t.getDataVencimento() != null && t.getDataVencimento().isEqual(hoje);
+            boolean atrasada = t.getDataVencimento() != null && t.getDataVencimento().isBefore(hoje);
+
+            if (ehUrgente || venceHoje || atrasada) {
+                TaskResponse resp = taskService.toResponse(t);
+                if (venceHoje || atrasada) {
+                    tarefasHojeLista.add(resp);
                 }
-                if (t.getPrioridade() == Prioridade.ALTA || t.getPrioridade() == Prioridade.URGENTE) {
-                    tarefasUrgentesLista.add(taskService.toResponse(t));
+                if (atrasada) {
+                    tarefasAtrasadas++;
+                }
+                if (ehUrgente) {
+                    tarefasUrgentesLista.add(resp);
                 }
             }
         }
