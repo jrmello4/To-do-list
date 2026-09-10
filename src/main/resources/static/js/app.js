@@ -200,6 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- Toast Notifications ---
+  // Enter/exit same direction for spatial consistency (Emil Kowalski / Sonner)
   const showToast = (message, type = 'success') => {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -207,10 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
     toastContainer.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateX(100%)';
-      toast.style.transition = 'all 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
+      toast.classList.add('is-leaving');
+      setTimeout(() => toast.remove(), 180);
     }, 3200);
   };
 
@@ -320,6 +319,11 @@ document.addEventListener('DOMContentLoaded', () => {
     authAlert.textContent = message;
     authAlert.className = `auth-alert ${type}`;
     authAlert.classList.remove('hidden');
+    if (type === 'error' || type === 'danger') {
+      authAlert.classList.remove('shake');
+      void authAlert.offsetWidth;
+      authAlert.classList.add('shake');
+    }
   };
 
   // --- Unified Authenticated Fetch Wrapper ---
@@ -361,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tagFilter) tagFilter.innerHTML = '<option value="">Todas as Tags</option>';
     if (createTaskTagsList) createTaskTagsList.innerHTML = '<span class="text-muted" style="font-size:0.82rem;">Faça login para gerenciar tags.</span>';
     if (notificationBadge) notificationBadge.classList.add('hidden');
-    if (notificationList) notificationList.innerHTML = '<div class="notification-empty">Nenhum alerta pendente 🎉</div>';
+    if (notificationList) notificationList.innerHTML = '<div class="notification-empty"><strong>Tudo em dia</strong>Nenhum alerta pendente no radar.</div>';
     if (notificationPollInterval) clearInterval(notificationPollInterval);
   };
 
@@ -454,19 +458,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (activeFocusTaskId) {
         try {
           await apiFetch(`/api/tarefas/${activeFocusTaskId}/pomodoro/increment`, { method: 'PATCH' });
-          showToast(`🍅 Pomodoro concluído para "${activeFocusTaskTitle}"!`);
+          showToast(`Pomodoro concluído para "${activeFocusTaskTitle}"!`);
           await refreshData();
           if (currentView === 'stats') fetchStats();
         } catch (err) {
           console.error(err);
         }
       } else {
-        showToast('🍅 Ciclo de Pomodoro de 25 minutos concluído! Hora da pausa.');
+        showToast('Ciclo de Pomodoro de 25 minutos concluído! Hora da pausa.');
       }
       // Alterna automaticamente para pausa curta
       switchPomodoroMode('short', 300);
     } else {
-      showToast('☕ Pausa concluída! Pronto para o próximo foco?');
+      showToast('Pausa concluída! Pronto para o próximo foco?');
       switchPomodoroMode('pomodoro', 1500);
     }
   };
@@ -502,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
     switchPomodoroMode('pomodoro', 1500);
     pomodoroSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     startPomodoro();
-    showToast(`🍅 Foco iniciado para "${taskTitle}"!`);
+    showToast(`Foco iniciado para "${taskTitle}"!`);
   };
 
   // --- Helper Functions: Tags & Anexos ---
@@ -544,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </a>`;
       } else {
         return `<a href="${fullUrl}" target="_blank" class="attachment-file-pill" title="Baixar ${escapeHtml(a.nomeOriginal)}">
-          📎 ${escapeHtml(a.nomeOriginal)} (${formatFileSize(a.tamanho)})
+          ${escapeHtml(a.nomeOriginal)} (${formatFileSize(a.tamanho)})
         </a>`;
       }
     }).join('') + '</div>';
@@ -745,7 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (count === 0) {
-      notificationList.innerHTML = '<div class="notification-empty">Nenhum alerta pendente 🎉</div>';
+      notificationList.innerHTML = '<div class="notification-empty">Nenhum alerta pendente </div>';
       return;
     }
 
@@ -867,7 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Chart 2: Barras Prioridades
     const prioOrder = ['BAIXA', 'MEDIA', 'ALTA', 'URGENTE'];
-    const prioLabels = ['🟢 Baixa', '🟡 Média', '🟠 Alta', '🔴 Urgente'];
+    const prioLabels = ['Baixa', 'Média', 'Alta', 'Urgente'];
     const prioValues = prioOrder.map(p => stats.porPrioridade[p] || 0);
 
     if (priorityChartInstance) priorityChartInstance.destroy();
@@ -1002,7 +1006,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="task-actions">
           <button class="action-btn btn-focus" title="Focar nesta tarefa no Pomodoro" aria-label="Focar">
-            🍅
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="13" r="8"></circle>
+              <path d="M12 9v4l2 2"></path>
+              <path d="M9 2h6"></path>
+            </svg>
           </button>
           <button class="action-btn btn-edit" title="Editar tarefa" aria-label="Editar">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1111,7 +1119,13 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="kanban-card-footer">
         <span>${task.totalSubtarefas > 0 ? `Subtarefas: ${task.subtarefasConcluidas}/${task.totalSubtarefas}` : ''}</span>
         <div class="task-actions">
-          <button class="action-btn btn-focus" title="Focar Pomodoro" aria-label="Focar">🍅</button>
+          <button class="action-btn btn-focus" title="Focar Pomodoro" aria-label="Focar">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="13" r="8"></circle>
+              <path d="M12 9v4l2 2"></path>
+              <path d="M9 2h6"></path>
+            </svg>
+          </button>
           <button class="action-btn btn-edit" title="Editar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
           <button class="action-btn btn-delete" title="Lixeira"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
         </div>
@@ -1245,7 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="subtask-row ${s.concluida ? 'is-done' : ''}" data-subtask-id="${s.id}">
         <input type="checkbox" class="subtask-checkbox" ${s.concluida ? 'checked' : ''}>
         <span class="subtask-title">${escapeHtml(s.titulo)}</span>
-        <button type="button" class="btn-edit-sub" data-task-id="${task.id}" data-sub-id="${s.id}" data-title="${escapeHtml(s.titulo)}" title="Editar subtarefa">✏️</button>
+        <button type="button" class="btn-edit-sub" data-task-id="${task.id}" data-sub-id="${s.id}" data-title="${escapeHtml(s.titulo)}" title="Editar subtarefa">Editar</button>
         <button type="button" class="btn-subtask-del" title="Excluir subtarefa">&times;</button>
       </div>
     `).join('');
@@ -1470,7 +1484,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
       <div class="attachment-modal-item">
         <div class="attachment-modal-item-left">
-          ${a.isImagem ? `<img src="${fullUrl}" class="attachment-thumb-small">` : '📎'}
+          ${a.isImagem ? `<img src="${fullUrl}" class="attachment-thumb-small">` : ''}
           <a href="${fullUrl}" target="_blank" title="Baixar / Visualizar">${escapeHtml(a.nomeOriginal)}</a>
           <span class="text-muted" style="font-size:0.75rem;">(${formatFileSize(a.tamanho)})</span>
         </div>
@@ -1847,7 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <circle cx="8.5" cy="7" r="4"></circle>
             <polyline points="17 11 19 13 23 9"></polyline>
           </svg>
-          ⚡ Entrar como Convidado (Acesso Completo)
+          Entrar como convidado
         `;
       }
       if (btnHeaderGuest) {
@@ -1873,7 +1887,7 @@ document.addEventListener('DOMContentLoaded', () => {
       resetViewData();
       activeFocusTaskId = null;
       activeFocusTaskTitle = null;
-      pomodoroTaskLabel.textContent = 'Nenhuma tarefa em foco (clique em "🍅 Focar" em um card)';
+      pomodoroTaskLabel.textContent = 'Nenhuma tarefa em foco (clique em Focar em um card)';
       resetPomodoro();
       showToast('Você saiu da sua conta.');
       openAuthModal('login');
@@ -2024,20 +2038,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date().toISOString().split('T')[0];
 
     if (task.estaAtrasada) {
-      return `<span class="badge badge-overdue">⚠️ Atrasada (${formatDateOnly(task.dataVencimento)})</span>`;
+      return `<span class="badge badge-overdue">Atrasada (${formatDateOnly(task.dataVencimento)})</span>`;
     } else if (task.dataVencimento === today) {
-      return `<span class="badge badge-due" style="border: 1px solid var(--warning);">📅 Vence Hoje</span>`;
+      return `<span class="badge badge-due" style="border: 1px solid var(--warning);">Vence Hoje</span>`;
     } else {
-      return `<span class="badge badge-due">📅 ${formatDateOnly(task.dataVencimento)}</span>`;
+      return `<span class="badge badge-due">${formatDateOnly(task.dataVencimento)}</span>`;
     }
   };
 
   const getRecurrenceBadge = (task) => {
     if (!task.recorrencia || task.recorrencia === 'NENHUMA') return '';
     const map = {
-      DIARIA: '🔁 Diária',
-      SEMANAL: '🔁 Semanal',
-      MENSAL: '🔁 Mensal'
+      DIARIA: 'Diária',
+      SEMANAL: 'Semanal',
+      MENSAL: 'Mensal'
     };
     return `<span class="badge badge-recurrence">${map[task.recorrencia] || task.recorrencia}</span>`;
   };
@@ -2045,27 +2059,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const getPomodoroBadge = (task) => {
     const done = task.pomodorosRealizados || 0;
     const est = task.pomodorosEstimados || 1;
-    return `<span class="badge badge-pomodoro" title="${done} de ${est} pomodoros concluídos">🍅 ${done}/${est}</span>`;
+    return `<span class="badge badge-pomodoro" title="${done} de ${est} pomodoros concluídos">${done}/${est}</span>`;
   };
 
   const getPriorityLabel = (p) => {
     switch (p) {
-      case 'URGENTE': return '🔴 Urgente';
-      case 'ALTA': return '🟠 Alta';
-      case 'MEDIA': return '🟡 Média';
-      case 'BAIXA': return '🟢 Baixa';
+      case 'URGENTE': return 'Urgente';
+      case 'ALTA': return 'Alta';
+      case 'MEDIA': return 'Média';
+      case 'BAIXA': return 'Baixa';
       default: return p || '';
     }
   };
 
   const getCategoryLabel = (c) => {
     switch (c) {
-      case 'TRABALHO': return '💼 Trabalho';
-      case 'ESTUDOS': return '🎓 Estudos';
-      case 'PESSOAL': return '🏠 Pessoal';
-      case 'FINANCAS': return '💰 Finanças';
-      case 'SAUDE': return '🏃 Saúde';
-      case 'GERAL': default: return '📁 Geral';
+      case 'TRABALHO': return 'Trabalho';
+      case 'ESTUDOS': return 'Estudos';
+      case 'PESSOAL': return 'Pessoal';
+      case 'FINANCAS': return 'Finanças';
+      case 'SAUDE': return 'Saúde';
+      case 'GERAL': default: return 'Geral';
     }
   };
 
@@ -2289,7 +2303,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnPomoSound = document.getElementById('btnPomoSound');
   const updatePomoSoundButtonUI = () => {
     if (btnPomoSound) {
-      btnPomoSound.textContent = pomoSoundEnabled ? '🔔 Som: Ativo' : '🔕 Som: Mudo';
+      btnPomoSound.textContent = pomoSoundEnabled ? 'Som ligado' : 'Som mudo';
       btnPomoSound.style.opacity = pomoSoundEnabled ? '1' : '0.65';
     }
   };
@@ -2338,7 +2352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = user ? (user.nome ? user.nome.split(' ')[0] : 'Usuário') : 'Visitante';
 
     if (headerGreeting) {
-      headerGreeting.textContent = `👋 ${getGreeting()}, ${name}!`;
+      headerGreeting.textContent = `${getGreeting()}, ${name}!`;
     }
 
     if (headerDateFormatted) {
@@ -2462,13 +2476,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const weatherChip = document.getElementById('weatherChip');
 
   const getWeatherInterpretation = (code) => {
-    if (code === 0) return { icon: '☀️', text: 'Céu Limpo' };
-    if ([1, 2, 3].includes(code)) return { icon: '⛅', text: 'Parcialmente Nublado' };
-    if ([45, 48].includes(code)) return { icon: '🌫️', text: 'Nevoeiro' };
-    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return { icon: '🌧️', text: 'Chuva' };
-    if ([71, 73, 75, 77, 85, 86].includes(code)) return { icon: '❄️', text: 'Neve' };
-    if ([95, 96, 99].includes(code)) return { icon: '⛈️', text: 'Tempestade' };
-    return { icon: '🌤️', text: 'Tempo Firme' };
+    if (code === 0) return { icon: '', text: 'Céu limpo' };
+    if ([1, 2, 3].includes(code)) return { icon: '', text: 'Parcialmente nublado' };
+    if ([45, 48].includes(code)) return { icon: '', text: 'Nevoeiro' };
+    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return { icon: '', text: 'Chuva' };
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return { icon: '', text: 'Neve' };
+    if ([95, 96, 99].includes(code)) return { icon: '', text: 'Tempestade' };
+    return { icon: '', text: 'Tempo firme' };
   };
 
   const fetchWeatherData = async () => {
@@ -2532,16 +2546,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const getHabitIconEmoji = (icon) => {
     const map = {
-      'droplet': '💧',
-      'activity': '🏋️',
-      'book-open': '📚',
-      'smile': '🧘',
-      'code': '💻',
-      'heart': '❤️',
-      'sun': '☀️',
-      'check': '✅'
+      'droplet': 'Água',
+      'activity': 'Atividade',
+      'book-open': 'Leitura',
+      'smile': 'Bem-estar',
+      'code': 'Código',
+      'heart': 'Saúde',
+      'sun': 'Manhã',
+      'check': 'Rotina'
     };
-    return map[icon] || icon || '🎯';
+    return map[icon] || icon || 'Hábito';
   };
 
   const fetchHabitsData = async () => {
@@ -2568,19 +2582,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (habitsProgressBarFill) habitsProgressBarFill.style.width = `${pct}%`;
 
     if (habitos.length === 0) {
-      dashHabitsList.innerHTML = '<div class="dash-empty">Sem hábitos ainda. Clique em <strong>+ Novo Hábito</strong> acima. ✨</div>';
+      dashHabitsList.innerHTML = '<div class="dash-empty"><strong>Sem hábitos ainda</strong>Crie um ritual diário para manter o cockpit em ritmo.</div>';
       return;
     }
 
     dashHabitsList.innerHTML = habitos.map(h => `
       <div class="habit-item ${h.concluidoHoje ? 'habit-completed' : ''}" data-id="${h.id}">
         <div class="habit-item-left">
-          <div class="habit-icon-badge" style="background:${h.cor ? h.cor + '22' : 'rgba(99,102,241,0.15)'}; color:${h.cor || '#6366f1'};">
+          <div class="habit-icon-badge" style="background:${h.cor ? h.cor + '18' : 'var(--panel-3)'}; color:${h.cor || 'var(--ink)'};">
             ${getHabitIconEmoji(h.icone)}
           </div>
           <div class="habit-info">
             <span class="habit-name">${escapeHtml(h.nome)}</span>
-            <span class="habit-streak">🔥 ${h.streakDias || h.streakAtual || 0} ${(h.streakDias || h.streakAtual || 0) === 1 ? 'dia' : 'dias'} de ofensiva</span>
+            <span class="habit-streak">${h.streakDias || h.streakAtual || 0} ${(h.streakDias || h.streakAtual || 0) === 1 ? 'dia' : 'dias'} de sequência</span>
           </div>
         </div>
         <button type="button" class="habit-check-btn ${h.concluidoHoje ? 'checked' : ''}" data-id="${h.id}" title="${h.concluidoHoje ? 'Desmarcar hábito' : 'Concluir hoje!'}">
@@ -2596,7 +2610,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const res = await apiFetch(`/api/habitos/${habitId}/toggle-hoje`, { method: 'POST' });
           if (res.ok) {
             const updated = await res.json();
-            showToast(updated.concluidoHoje ? 'Parabéns! Hábito concluído hoje! 🔥' : 'Hábito desmarcado.');
+            showToast(updated.concluidoHoje ? 'Parabéns! Hábito concluído hoje! ' : 'Hábito desmarcado.');
             await fetchHabitsData();
           }
         } catch (err) {
@@ -2639,7 +2653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (res.ok) {
-          showToast(`Hábito "${nome}" criado com sucesso! 🎯`);
+          showToast(`Hábito "${nome}" criado com sucesso! `);
           habitForm.reset();
           closeHabitModal();
           await fetchHabitsData();
@@ -2675,7 +2689,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scratchpadCharCount.textContent = `${(nota.conteudo || '').length} caracteres`;
           }
           if (scratchpadStatus) {
-            scratchpadStatus.textContent = 'Salvo automaticamente ✅';
+            scratchpadStatus.textContent = 'Salvo';
           }
         }
       }
@@ -2688,7 +2702,7 @@ document.addEventListener('DOMContentLoaded', () => {
     scratchpadTextarea.addEventListener('input', () => {
       const len = scratchpadTextarea.value.length;
       if (scratchpadCharCount) scratchpadCharCount.textContent = `${len} caracteres`;
-      if (scratchpadStatus) scratchpadStatus.textContent = 'Salvando... ⏳';
+      if (scratchpadStatus) scratchpadStatus.textContent = 'Salvando…';
 
       clearTimeout(scratchpadDebounceTimer);
       scratchpadDebounceTimer = setTimeout(async () => {
@@ -2704,13 +2718,13 @@ document.addEventListener('DOMContentLoaded', () => {
           });
 
           if (res.ok) {
-            if (scratchpadStatus) scratchpadStatus.textContent = 'Salvo automaticamente ✅';
+            if (scratchpadStatus) scratchpadStatus.textContent = 'Salvo';
           } else {
-            if (scratchpadStatus) scratchpadStatus.textContent = 'Erro ao salvar ⚠️';
+            if (scratchpadStatus) scratchpadStatus.textContent = 'Erro ao salvar';
           }
         } catch (err) {
           console.error(err);
-          if (scratchpadStatus) scratchpadStatus.textContent = 'Erro ao salvar ⚠️';
+          if (scratchpadStatus) scratchpadStatus.textContent = 'Erro ao salvar';
         }
       }, 500);
     });
@@ -2732,7 +2746,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (res.ok) {
-          showToast('Tarefa criada com sucesso a partir da anotação! 🚀');
+          showToast('Tarefa criada com sucesso a partir da anotação! ');
           await Promise.all([fetchDashboardData(), fetchSummary()]);
         } else {
           showToast('Erro ao converter anotação em tarefa.', 'error');
@@ -2807,7 +2821,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!eventos || eventos.length === 0) {
-      dashSportsList.innerHTML = '<div class="dash-empty">Nenhum evento agora. Tente outro filtro ou recarregue — o radar busca jogos reais em tempo quase real.</div>';
+      dashSportsList.innerHTML = '<div class="dash-empty"><strong>Nenhum evento no radar</strong>Tente outro filtro ou recarregue — o radar busca jogos reais em tempo quase real.</div>';
       return;
     }
 
@@ -2840,7 +2854,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isSynced = ev.noCalendario === true;
       const calBtnHtml = isSynced
         ? `<button type="button" class="btn btn-xs btn-sync-cal synced btn-toggle-sport-cal" data-id="${ev.id}" data-synced="true" title="Remover este evento da sua agenda">✓ Na Agenda</button>`
-        : `<button type="button" class="btn btn-xs btn-outline btn-sync-cal btn-toggle-sport-cal" data-id="${ev.id}" data-synced="false" title="Adicionar este evento ao seu Calendário Unificado">📅 Salvar na Agenda</button>`;
+        : `<button type="button" class="btn btn-xs btn-outline btn-sync-cal btn-toggle-sport-cal" data-id="${ev.id}" data-synced="false" title="Adicionar este evento ao seu Calendário Unificado">Salvar na agenda</button>`;
 
       return `
         <div class="sports-match-card" data-event-id="${ev.id}">
@@ -2853,7 +2867,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="sports-match-footer">
             <div class="sports-match-meta">
               <span>${escapeHtml(ev.transmissao || 'Transmissão a confirmar')}</span>
-              <span class="sports-match-date">📅 ${escapeHtml(ev.dataHoraFormatada || '')}</span>
+              <span class="sports-match-date">${escapeHtml(ev.dataHoraFormatada || '')}</span>
             </div>
             ${calBtnHtml}
           </div>
@@ -2880,7 +2894,7 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
             const res = await apiFetch(`/api/esportes/eventos/${eventId}/salvar-calendario`, { method: 'POST' });
             if (res.ok) {
-              showToast('Evento esportivo salvo no seu Calendário! 📅✨');
+              showToast('Evento esportivo salvo no seu Calendário! ');
               await fetchSportsData();
               if (currentAppView === 'calendar') fetchCalendarData();
             }
@@ -2950,7 +2964,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     activeSportsPrefsContainer.innerHTML = cachedSportsPreferences.map(p => `
       <span class="sports-pref-tag" style="border-left:3px solid ${p.cor || '#10b981'};">
-        <span>${escapeHtml(p.icone || '🏆')}</span>
+        
         <span>${escapeHtml(p.nomeInteresse)}</span>
         <button type="button" class="sports-pref-remove btn-remove-pref" data-id="${p.id}" title="Deixar de seguir">&times;</button>
       </span>
@@ -3003,7 +3017,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (res.ok) {
-          showToast(`"${nomeInteresse}" adicionado aos seus esportes seguidos! 🏆`);
+          showToast(`"${nomeInteresse}" adicionado aos seus esportes seguidos! `);
           await fetchSportsPreferences();
           await fetchSportsData();
         }
@@ -3030,7 +3044,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (res.ok) {
-          showToast(`"${nomeInteresse}" adicionado com sucesso! 🎯`);
+          showToast(`"${nomeInteresse}" adicionado com sucesso! `);
           document.getElementById('customPrefName').value = '';
           await fetchSportsPreferences();
           await fetchSportsData();
@@ -3102,7 +3116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Cockpit Widget
     if (dashGoalsList) {
       if (cachedGoalsList.length === 0) {
-        dashGoalsList.innerHTML = '<div class="dash-empty">Nenhuma meta ainda. Clique em <strong>+ Nova</strong> para começar. 🎯</div>';
+        dashGoalsList.innerHTML = '<div class="dash-empty"><strong>Nenhuma meta ainda</strong>Defina um alvo para acompanhar o progresso no cockpit.</div>';
       } else {
         const topGoals = cachedGoalsList.slice(0, 3);
         dashGoalsList.innerHTML = topGoals.map(g => {
@@ -3146,7 +3160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         : cachedGoalsList.filter(g => (g.categoria || '').toUpperCase() === currentGoalsCategoryFilter.toUpperCase());
 
       if (filtered.length === 0) {
-        goalsCardsGrid.innerHTML = '<div class="dash-empty" style="grid-column: 1 / -1;">Nenhuma meta encontrada nesta categoria. ✨</div>';
+        goalsCardsGrid.innerHTML = '<div class="dash-empty" style="grid-column: 1 / -1;">Nenhuma meta encontrada nesta categoria. </div>';
         return;
       }
 
@@ -3159,12 +3173,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return `
           <div class="goal-card ${g.concluida ? 'goal-completed' : ''}" data-id="${g.id}">
             <div class="goal-card-header">
-              <span class="goal-card-badge" style="background:${g.cor ? g.cor + '22' : '#e0e7ff'};color:${g.cor || '#6366f1'};">
+              <span class="goal-card-badge" style="background:${g.cor ? g.cor + '18' : 'var(--panel-3)'};color:${g.cor || 'var(--ink-2)'};">
                 ${escapeHtml(g.categoria || 'GERAL')}
               </span>
               <div class="goal-card-actions">
-                <button type="button" class="btn btn-xs btn-outline btn-edit-goal" data-id="${g.id}" title="Editar Meta">✏️</button>
-                <button type="button" class="btn btn-xs btn-outline btn-delete-goal" data-id="${g.id}" title="Excluir Meta" style="color:var(--danger);">🗑️</button>
+                <button type="button" class="btn btn-xs btn-outline btn-edit-goal" data-id="${g.id}" title="Editar Meta">Editar</button>
+                <button type="button" class="btn btn-xs btn-outline btn-delete-goal" data-id="${g.id}" title="Excluir Meta" style="color:var(--danger);">Excluir</button>
               </div>
             </div>
             <div>
@@ -3182,8 +3196,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="goal-card-fill" style="width:${pct}%;background:${g.cor || '#10b981'};"></div>
             </div>
             <div class="goal-card-footer">
-              <span>📅 ${prazoStr}</span>
-              ${!g.concluida ? `<button type="button" class="btn btn-xs btn-primary btn-card-aporte" data-id="${g.id}" data-title="${escapeHtml(g.titulo)}">+ Aporte</button>` : `<span style="color:var(--success);font-weight:700;">Concluída ✅</span>`}
+              <span>${prazoStr}</span>
+              ${!g.concluida ? `<button type="button" class="btn btn-xs btn-primary btn-card-aporte" data-id="${g.id}" data-title="${escapeHtml(g.titulo)}">+ Aporte</button>` : `<span style="color:var(--success);font-weight:700;">Concluída</span>`}
             </div>
           </div>
         `;
@@ -3290,7 +3304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (res.ok) {
-          showToast(editingGoalId ? 'Meta atualizada com sucesso!' : 'Meta criada com sucesso! 🎯');
+          showToast(editingGoalId ? 'Meta atualizada com sucesso!' : 'Meta criada com sucesso! ');
           goalForm.reset();
           closeGoalModal();
           await fetchGoalsData();
@@ -3341,9 +3355,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (res.ok) {
           const updated = await res.json();
           if (updated.concluida) {
-            showToast('Sensacional! Meta atingida com 100% de sucesso! 🏆🎉');
+            showToast('Sensacional! Meta atingida com 100% de sucesso! ');
           } else {
-            showToast(`Aporte de +${formatCurrency(valorAporte)} registrado! 🚀`);
+            showToast(`Aporte de +${formatCurrency(valorAporte)} registrado! `);
           }
           closeAporteModal();
           await fetchGoalsData();
@@ -3435,20 +3449,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const itemsHtml = dayItems.map(item => {
         let chipClass = 'chip-task';
-        let icon = '📋';
+        let icon = '';
         let label = item.titulo;
 
         if (item.tipo === 'DESPESA') {
           chipClass = 'chip-expense';
-          icon = '🔴';
+          icon = '';
           label = item.valor ? `-${formatCurrency(item.valor)} ${item.titulo}` : item.titulo;
         } else if (item.tipo === 'RECEITA') {
           chipClass = 'chip-income';
-          icon = '🟢';
+          icon = '';
           label = item.valor ? `+${formatCurrency(item.valor)} ${item.titulo}` : item.titulo;
         } else if (item.tipo === 'EVENTO') {
           chipClass = 'chip-event';
-          icon = '🟣';
+          icon = '';
           label = item.hora ? `${item.hora.substring(0, 5)} ${item.titulo}` : item.titulo;
         }
 
@@ -3503,7 +3517,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (dayDetailsList) {
       if (items.length === 0) {
-        dayDetailsList.innerHTML = '<div class="dash-empty">Nenhum compromisso ou vencimento agendado para este dia. ✨</div>';
+        dayDetailsList.innerHTML = '<div class="dash-empty">Nenhum compromisso ou vencimento agendado para este dia. </div>';
       } else {
         dayDetailsList.innerHTML = items.map(it => {
           let badgeColor = '#3b82f6';
@@ -3530,7 +3544,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="font-weight:600;font-size:0.9rem;">${escapeHtml(it.titulo)}${valText}</div>
                 <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
                   <span style="color:${badgeColor};font-weight:700;">${it.tipo}</span> | ${escapeHtml(it.detalhe || '')}
-                  ${it.hora ? ` • ⏰ ${it.hora.substring(0, 5)}` : ''}
+                  ${it.hora ? ` • ${it.hora.substring(0, 5)}` : ''}
                 </div>
               </div>
               <div>${actionBtn}</div>
@@ -3661,7 +3675,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (res.ok) {
-          showToast('Compromisso agendado com sucesso! 📅');
+          showToast('Compromisso agendado com sucesso! ');
           eventForm.reset();
           closeEventModal();
           await fetchCalendarData();
@@ -3777,7 +3791,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
       } else {
-        dashTasksList.innerHTML = '<div class="dash-empty">Nenhuma tarefa para hoje. <button type="button" class="btn btn-xs btn-primary btn-cta-new-task">+ Criar tarefa</button> ✨</div>';
+        dashTasksList.innerHTML = '<div class="dash-empty"><strong>Nenhuma tarefa para hoje</strong>Crie uma tarefa e comece pelo essencial.<br><button type="button" class="btn btn-xs btn-primary btn-cta-new-task">+ Criar tarefa</button></div>';
       }
     }
 
@@ -3791,7 +3805,7 @@ document.addEventListener('DOMContentLoaded', () => {
           urgentItemsHtml += `
             <div class="dash-item" style="border-left: 3px solid var(--danger);">
               <div class="dash-item-left">
-                <span style="font-size:1.1rem;">🚨</span>
+                
                 <div>
                   <div class="dash-item-title">${escapeHtml(c.descricao)} (${formatCurrency(c.valor)})</div>
                   <div class="dash-item-meta" style="color:var(--danger);font-weight:600;">Venceu em ${formatDateOnly(c.dataVencimento)}</div>
@@ -3808,7 +3822,7 @@ document.addEventListener('DOMContentLoaded', () => {
           urgentItemsHtml += `
             <div class="dash-item" style="border-left: 3px solid var(--warning);">
               <div class="dash-item-left">
-                <span style="font-size:1.1rem;">⚡</span>
+                
                 <div>
                   <div class="dash-item-title">${escapeHtml(t.titulo)}</div>
                   <div class="dash-item-meta">Urgente | ${t.categoria}</div>
@@ -3834,7 +3848,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
       } else {
-        dashUrgentList.innerHTML = '<div class="dash-empty">Tudo em dia! Nenhum item atrasado ou urgente. 👍</div>';
+        dashUrgentList.innerHTML = '<div class="dash-empty"><strong>Tudo em dia</strong>Nenhum item atrasado ou urgente agora.</div>';
       }
     }
 
@@ -3870,7 +3884,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
       } else {
-        dashBillsList.innerHTML = '<div class="dash-empty">Nenhum pagamento pendente para os próximos 7 dias. 🎉</div>';
+        dashBillsList.innerHTML = '<div class="dash-empty"><strong>Sem vencimentos próximos</strong>Nenhum pagamento pendente para os próximos 7 dias.</div>';
       }
     }
 
@@ -3879,7 +3893,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dashAccountsGrid) {
       if (data.contas && data.contas.length > 0) {
         dashAccountsGrid.innerHTML = data.contas.map(a => `
-          <div class="account-card-mini" style="background:${a.cor || '#6366f1'};">
+          <div class="account-card-mini">
             <div class="acc-mini-name">${escapeHtml(a.nome)}</div>
             <div class="acc-mini-val">${formatCurrency(a.saldoAtual)}</div>
           </div>
@@ -4012,7 +4026,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (finAccountsList) {
       if (cachedAccountsList.length > 0) {
         finAccountsList.innerHTML = cachedAccountsList.map(a => `
-          <div class="account-full-card" style="background:${a.cor || '#6366f1'};">
+          <div class="account-full-card">
             <div class="acc-card-top">
               <span class="acc-card-name">${escapeHtml(a.nome)}</span>
               <span class="acc-card-type">${a.tipo}</span>
@@ -4059,15 +4073,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const isExp = t.tipo === 'DESPESA';
         const isPaid = t.status === 'PAGO';
         const isOverdue = t.estaAtrasada;
-        const catIcon = t.categoriaIcone === 'utensils' ? '🍽️' :
-                        t.categoriaIcone === 'home' ? '🏠' :
-                        t.categoriaIcone === 'car' ? '🚗' :
-                        t.categoriaIcone === 'gamepad' ? '🎮' :
-                        t.categoriaIcone === 'heartbeat' ? '❤️' :
-                        t.categoriaIcone === 'graduation-cap' ? '🎓' :
-                        t.categoriaIcone === 'money-bill-wave' ? '💵' :
-                        t.categoriaIcone === 'laptop-code' ? '💻' :
-                        t.categoriaIcone === 'chart-line' ? '📈' : '🏷️';
+        const catIcon = t.categoriaIcone === 'utensils' ? 'Alimentação' :
+                        t.categoriaIcone === 'home' ? 'Casa' :
+                        t.categoriaIcone === 'car' ? 'Transporte' :
+                        t.categoriaIcone === 'gamepad' ? 'Lazer' :
+                        t.categoriaIcone === 'heartbeat' ? 'Saúde' :
+                        t.categoriaIcone === 'graduation-cap' ? 'Educação' :
+                        t.categoriaIcone === 'money-bill-wave' ? 'Renda' :
+                        t.categoriaIcone === 'laptop-code' ? 'Trabalho' :
+                        t.categoriaIcone === 'chart-line' ? 'Investimentos' : 'Outros';
 
         let statusClass = 'pending';
         let statusText = 'Pendente';
@@ -4082,7 +4096,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `
           <div class="trans-item-row" data-id="${t.id}">
             <div class="trans-item-left">
-              <div class="trans-cat-badge" style="background:${t.categoriaCor || '#6366f1'};">
+              <div class="trans-cat-badge" style="background:${t.categoriaCor ? t.categoriaCor + '18' : 'var(--panel-3)'};color:${t.categoriaCor || 'var(--ink)'};">
                 ${catIcon}
               </div>
               <div class="trans-item-center">
