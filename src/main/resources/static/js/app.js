@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const statsView = document.getElementById('statsView');
   const createTaskSection = document.getElementById('createTaskSection');
   const mainToolbar = document.getElementById('mainToolbar');
-  const trashCountBadge = document.getElementById('trashCountBadge');
+  const trashCountBadge = document.getElementById('sidebarTrashBadge');
 
   // Metrics (Dashboard cards no topo)
   const metricTotal = document.getElementById('metricTotal');
@@ -2564,7 +2564,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="habit-info">
             <span class="habit-name">${escapeHtml(h.nome)}</span>
-            <span class="habit-streak">🔥 ${h.streakAtual || 0} ${h.streakAtual === 1 ? 'dia' : 'dias'} de ofensiva</span>
+            <span class="habit-streak">🔥 ${h.streakDias || h.streakAtual || 0} ${(h.streakDias || h.streakAtual || 0) === 1 ? 'dia' : 'dias'} de ofensiva</span>
           </div>
         </div>
         <button type="button" class="habit-check-btn ${h.concluidoHoje ? 'checked' : ''}" data-id="${h.id}" title="${h.concluidoHoje ? 'Desmarcar hábito' : 'Concluir hoje!'}">

@@ -6,9 +6,7 @@ import com.todolist.dto.RegisterRequest;
 import com.todolist.dto.UserResponse;
 import com.todolist.entity.*;
 import com.todolist.exception.ResourceNotFoundException;
-import com.todolist.repository.TagRepository;
-import com.todolist.repository.TaskRepository;
-import com.todolist.repository.UserRepository;
+import com.todolist.repository.*;
 import com.todolist.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +33,13 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final TaskRepository taskRepository;
     private final TagRepository tagRepository;
+    private final ContaFinanceiraRepository contaFinanceiraRepository;
+    private final CategoriaTransacaoRepository categoriaTransacaoRepository;
+    private final TransacaoRepository transacaoRepository;
+    private final HabitoRepository habitoRepository;
+    private final RegistroHabitoRepository registroHabitoRepository;
+    private final MetaRepository metaRepository;
+    private final NotaRapidaRepository notaRapidaRepository;
 
     @Transactional
     public AuthResponse cadastrar(RegisterRequest request) {
@@ -122,9 +128,11 @@ public class AuthService {
             return userRepository.save(guest);
         });
 
-        // Inicializa dados de demonstração caso o usuário convidado não tenha tarefas
         if (taskRepository.countByUsuarioIdAndDeletadaFalse(user.getId()) == 0) {
             inicializarDadosConvidado(user);
+        }
+        if (contaFinanceiraRepository.findByUsuarioIdAndAtivoTrueOrderByNomeAsc(user.getId()).isEmpty()) {
+            inicializarLifeHubConvidado(user);
         }
 
         String token = jwtService.gerarToken(user);
@@ -150,7 +158,6 @@ public class AuthService {
 
         LocalDate hoje = LocalDate.now();
 
-        // 1. Tarefa Pomodoro / Foco (Em Andamento)
         Task task1 = Task.builder()
                 .titulo("🎯 Explorar Modo Foco Pomodoro")
                 .descricao("Inicie o cronômetro Pomodoro de 25 minutos e foque nesta tarefa!")
@@ -168,7 +175,6 @@ public class AuthService {
         task1.getSubtarefas().add(Subtask.builder().titulo("Completar sessão de foco").concluida(false).task(task1).build());
         taskRepository.save(task1);
 
-        // 2. Tarefa Dashboard / Gráficos (A Fazer)
         Task task2 = Task.builder()
                 .titulo("📊 Analisar Dashboard Gráfico")
                 .descricao("Acesse a aba 'Gráficos & Métricas' para ver a distribuição por categoria e prioridade.")
@@ -186,7 +192,6 @@ public class AuthService {
         task2.getSubtarefas().add(Subtask.builder().titulo("Ver taxa de pontualidade").concluida(false).task(task2).build());
         taskRepository.save(task2);
 
-        // 3. Tarefa Crítica para Notificações (Vencimento ontem para acionar alerta atrasada)
         Task task3 = Task.builder()
                 .titulo("⚠️ Alerta de Prazo Crítico")
                 .descricao("Tarefa com prazo expirado para testar o alerta no sino 🔔 de notificações.")
@@ -202,7 +207,6 @@ public class AuthService {
                 .build();
         taskRepository.save(task3);
 
-        // 4. Tarefa Concluída / PDF
         Task task4 = Task.builder()
                 .titulo("📄 Gerar Relatório Executivo em PDF")
                 .descricao("Clique no botão 'Exportar PDF' no cabeçalho para gerar o relatório corporativo.")
@@ -217,7 +221,6 @@ public class AuthService {
                 .build();
         taskRepository.save(task4);
 
-        // 5. Tarefa Recorrente Semanal
         Task task5 = Task.builder()
                 .titulo("🔁 Alinhamento Semanal de Sprint")
                 .descricao("Tarefa configurada com recorrência semanal para teste de replicação automática.")
@@ -232,5 +235,136 @@ public class AuthService {
                 .usuario(user)
                 .build();
         taskRepository.save(task5);
+    }
+
+    /** Popula finanças, hábitos, metas e notas do modo convidado (sem seed em GET). */
+    private void inicializarLifeHubConvidado(User user) {
+        LocalDate hoje = LocalDate.now();
+
+        ContaFinanceira contaPrincipal = contaFinanceiraRepository.save(ContaFinanceira.builder()
+                .nome("Nubank")
+                .tipo(TipoConta.CORRENTE)
+                .saldoInicial(new BigDecimal("2500.00"))
+                .saldoAtual(new BigDecimal("3200.00"))
+                .cor("#820AD1")
+                .ativo(true)
+                .usuario(user)
+                .build());
+
+        ContaFinanceira carteira = contaFinanceiraRepository.save(ContaFinanceira.builder()
+                .nome("Carteira")
+                .tipo(TipoConta.DINHEIRO)
+                .saldoInicial(new BigDecimal("180.00"))
+                .saldoAtual(new BigDecimal("120.00"))
+                .cor("#10B981")
+                .ativo(true)
+                .usuario(user)
+                .build());
+
+        CategoriaTransacao catMoradia = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
+                .nome("Moradia").tipo(TipoTransacao.DESPESA).icone("home").cor("#F59E0B").usuario(user).build());
+        CategoriaTransacao catSalario = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
+                .nome("Salário").tipo(TipoTransacao.RECEITA).icone("briefcase").cor("#10B981").usuario(user).build());
+        CategoriaTransacao catMercado = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
+                .nome("Mercado").tipo(TipoTransacao.DESPESA).icone("shopping-cart").cor("#3B82F6").usuario(user).build());
+        CategoriaTransacao catLazer = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
+                .nome("Lazer").tipo(TipoTransacao.DESPESA).icone("film").cor("#8B5CF6").usuario(user).build());
+
+        transacaoRepository.save(Transacao.builder()
+                .descricao("Salário Mensal")
+                .tipo(TipoTransacao.RECEITA)
+                .valor(new BigDecimal("5500.00"))
+                .dataVencimento(hoje.withDayOfMonth(5))
+                .dataPagamento(hoje.withDayOfMonth(5))
+                .status(StatusTransacao.PAGO)
+                .conta(contaPrincipal)
+                .categoria(catSalario)
+                .usuario(user)
+                .build());
+
+        transacaoRepository.save(Transacao.builder()
+                .descricao("Aluguel")
+                .tipo(TipoTransacao.DESPESA)
+                .valor(new BigDecimal("1450.00"))
+                .dataVencimento(hoje.plusDays(3))
+                .status(StatusTransacao.PENDENTE)
+                .conta(contaPrincipal)
+                .categoria(catMoradia)
+                .usuario(user)
+                .build());
+
+        transacaoRepository.save(Transacao.builder()
+                .descricao("Supermercado da semana")
+                .tipo(TipoTransacao.DESPESA)
+                .valor(new BigDecimal("280.00"))
+                .dataVencimento(hoje.minusDays(2))
+                .dataPagamento(hoje.minusDays(2))
+                .status(StatusTransacao.PAGO)
+                .conta(carteira)
+                .categoria(catMercado)
+                .usuario(user)
+                .build());
+
+        transacaoRepository.save(Transacao.builder()
+                .descricao("Cinema")
+                .tipo(TipoTransacao.DESPESA)
+                .valor(new BigDecimal("65.00"))
+                .dataVencimento(hoje.plusDays(1))
+                .status(StatusTransacao.PENDENTE)
+                .conta(carteira)
+                .categoria(catLazer)
+                .usuario(user)
+                .build());
+
+        Habito agua = habitoRepository.save(Habito.builder()
+                .nome("Beber 2L de Água").icone("droplet").cor("#06b6d4").ativo(true).usuario(user).build());
+        Habito leitura = habitoRepository.save(Habito.builder()
+                .nome("Leitura / Estudo 20min").icone("book-open").cor("#8b5cf6").ativo(true).usuario(user).build());
+        Habito caminhada = habitoRepository.save(Habito.builder()
+                .nome("Exercício Físico / Caminhada").icone("activity").cor("#10b981").ativo(true).usuario(user).build());
+
+        registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje).concluido(true).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje.minusDays(1)).concluido(true).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje.minusDays(2)).concluido(true).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(leitura).dataRegistro(hoje).concluido(true).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(leitura).dataRegistro(hoje.minusDays(1)).concluido(false).build());
+
+        metaRepository.save(Meta.builder()
+                .titulo("Reserva de Emergência")
+                .descricao("Guardar 6 meses de custo fixo")
+                .categoria("FINANCEIRA")
+                .valorAlvo(new BigDecimal("10000.00"))
+                .valorAtual(new BigDecimal("3500.00"))
+                .unidade("R$")
+                .prazo(hoje.plusMonths(6))
+                .cor("#10b981")
+                .icone("shield")
+                .concluida(false)
+                .ativo(true)
+                .usuario(user)
+                .build());
+
+        metaRepository.save(Meta.builder()
+                .titulo("Ler 12 Livros no Ano")
+                .descricao("Manter o hábito de leitura")
+                .categoria("ESTUDO")
+                .valorAlvo(new BigDecimal("12.00"))
+                .valorAtual(new BigDecimal("4.00"))
+                .unidade("livros")
+                .prazo(hoje.plusMonths(4))
+                .cor("#6366f1")
+                .icone("book")
+                .concluida(false)
+                .ativo(true)
+                .usuario(user)
+                .build());
+
+        notaRapidaRepository.save(NotaRapida.builder()
+                .titulo("Ideias da semana")
+                .conteudo("Este é o seu bloco de notas rápidas! Use para rascunhos, links úteis ou insights.")
+                .cor("#fff7ed")
+                .fixada(true)
+                .usuario(user)
+                .build());
     }
 }
