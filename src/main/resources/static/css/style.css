@@ -2100,3 +2100,66 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 #authModal { z-index: 200; }
 .modal-overlay { z-index: 150; }
 #sportsPreferencesModal { z-index: 160; }
+
+/* Onboarding */
+.onboarding-card { width: min(560px, 100%); }
+.onboarding-steps { display:flex; gap:8px; justify-content:center; margin: 4px 0 16px; }
+.onboarding-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--panel-3); border: 1px solid var(--edge);
+}
+.onboarding-dot.active { background: var(--volt); box-shadow: 0 0 0 3px var(--volt-dim); }
+.onboarding-panel h4 { margin: 0 0 8px; font-size: 1.05rem; color: var(--ink); }
+.onboarding-panel p { color: var(--ink-2); font-size: 0.92rem; margin-bottom: 12px; }
+.onboarding-list { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.88rem; }
+.onboarding-list li { margin-bottom: 4px; }
+
+/* Empty state CTA */
+.dash-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center; padding: 22px 14px;
+}
+.dash-empty .btn { margin-top: 4px; }
+
+/* Kanban WIP */
+.kanban-column[data-status="EM_ANDAMENTO"] { position: relative; }
+.kanban-wip-badge {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--amber-dim); color: var(--amber);
+  border: 1px solid rgba(255,176,32,0.3);
+}
+.kanban-wip-badge.wip-over {
+  background: var(--coral-dim); color: var(--coral);
+  border-color: rgba(255,107,122,0.35);
+}
+.kanban-column.wip-blocked {
+  outline: 1px dashed var(--coral);
+  outline-offset: -1px;
+}
+
+/* Light theme day ops refinements */
+[data-theme="light"] body {
+  background:
+    radial-gradient(1000px 480px at 90% -8%, rgba(59,91,219,0.06), transparent 55%),
+    var(--void);
+}
+[data-theme="light"] .modal-card {
+  border-radius: 18px;
+}
+[data-theme="light"] .cockpit-kpi-card,
+[data-theme="light"] .fin-card,
+[data-theme="light"] .metric-card {
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 20px rgba(15,23,42,0.04);
+}
+[data-theme="light"] .app-header { border-bottom-color: rgba(15,23,42,0.08); }
+[data-theme="light"] .btn-primary { box-shadow: 0 4px 14px rgba(59,91,219,0.25); }
+
+/* Shortcut kbd */
+.shortcut-kbd, kbd.shortcut-kbd {
+  display: inline-block; min-width: 1.4em; padding: 2px 6px;
+  border-radius: 6px; border: 1px solid var(--edge-strong);
+  background: var(--panel-2); color: var(--ink);
+  font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700;
+  text-align: center;
+}

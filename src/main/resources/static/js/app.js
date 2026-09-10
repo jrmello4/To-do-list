@@ -2568,7 +2568,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (habitsProgressBarFill) habitsProgressBarFill.style.width = `${pct}%`;
 
     if (habitos.length === 0) {
-      dashHabitsList.innerHTML = '<div class="dash-empty">Nenhum hábito diário cadastrado. Clique em "+ Novo" para começar sua rotina! ✨</div>';
+      dashHabitsList.innerHTML = '<div class="dash-empty">Sem hábitos ainda. Clique em <strong>+ Novo Hábito</strong> acima. ✨</div>';
       return;
     }
 
@@ -3102,7 +3102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Cockpit Widget
     if (dashGoalsList) {
       if (cachedGoalsList.length === 0) {
-        dashGoalsList.innerHTML = '<div class="dash-empty">Nenhuma meta cadastrada. Clique em "+ Nova" para definir seus objetivos! 🎯</div>';
+        dashGoalsList.innerHTML = '<div class="dash-empty">Nenhuma meta ainda. Clique em <strong>+ Nova</strong> para começar. 🎯</div>';
       } else {
         const topGoals = cachedGoalsList.slice(0, 3);
         dashGoalsList.innerHTML = topGoals.map(g => {
@@ -3777,7 +3777,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
       } else {
-        dashTasksList.innerHTML = '<div class="dash-empty">Nenhuma tarefa agendada para hoje. Aproveite o dia! ✨</div>';
+        dashTasksList.innerHTML = '<div class="dash-empty">Nenhuma tarefa para hoje. <button type="button" class="btn btn-xs btn-primary btn-cta-new-task">+ Criar tarefa</button> ✨</div>';
       }
     }
 
@@ -4370,5 +4370,139 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   switchAppView('dashboard');
+
+  // ==========================================================================
+  // ONBOARDING (primeira visita)
+  // ==========================================================================
+  const onboardingModal = document.getElementById('onboardingModal');
+  const onboardingBackdrop = document.getElementById('onboardingBackdrop');
+  const btnCloseOnboarding = document.getElementById('btnCloseOnboarding');
+  const btnOnboardingSkip = document.getElementById('btnOnboardingSkip');
+  const btnOnboardingPrev = document.getElementById('btnOnboardingPrev');
+  const btnOnboardingNext = document.getElementById('btnOnboardingNext');
+  let onboardingStep = 0;
+
+  const renderOnboarding = () => {
+    if (!onboardingModal) return;
+    onboardingModal.querySelectorAll('.onboarding-panel').forEach(p => {
+      p.classList.toggle('hidden', Number(p.dataset.panel) !== onboardingStep);
+    });
+    onboardingModal.querySelectorAll('.onboarding-dot').forEach(d => {
+      d.classList.toggle('active', Number(d.dataset.step) === onboardingStep);
+    });
+    if (btnOnboardingPrev) btnOnboardingPrev.classList.toggle('hidden', onboardingStep === 0);
+    if (btnOnboardingNext) {
+      btnOnboardingNext.textContent = onboardingStep >= 2 ? 'Começar' : 'Próximo';
+    }
+  };
+
+  const closeOnboarding = () => {
+    if (onboardingModal) onboardingModal.classList.add('hidden');
+    try { localStorage.setItem('lifehub_onboarding_done', '1'); } catch (_) {}
+  };
+
+  const openOnboarding = () => {
+    onboardingStep = 0;
+    renderOnboarding();
+    if (onboardingModal) onboardingModal.classList.remove('hidden');
+  };
+
+  if (btnOnboardingNext) {
+    btnOnboardingNext.addEventListener('click', () => {
+      if (onboardingStep >= 2) {
+        closeOnboarding();
+        return;
+      }
+      onboardingStep++;
+      renderOnboarding();
+    });
+  }
+  if (btnOnboardingPrev) {
+    btnOnboardingPrev.addEventListener('click', () => {
+      onboardingStep = Math.max(0, onboardingStep - 1);
+      renderOnboarding();
+    });
+  }
+  if (btnOnboardingSkip) btnOnboardingSkip.addEventListener('click', closeOnboarding);
+  if (btnCloseOnboarding) btnCloseOnboarding.addEventListener('click', closeOnboarding);
+  if (onboardingBackdrop) onboardingBackdrop.addEventListener('click', closeOnboarding);
+
+  const maybeShowOnboarding = () => {
+    try {
+      if (!localStorage.getItem('lifehub_onboarding_done')) {
+        setTimeout(openOnboarding, 600);
+      }
+    } catch (_) {}
+  };
+
+  // ==========================================================================
+  // EMPTY STATES COM CTA
+  // ==========================================================================
+  const enhanceEmptyStates = () => {
+    const map = [
+      { id: 'dashTasksList', html: '<div class="dash-empty">Nenhuma tarefa para hoje.<br><button type="button" class="btn btn-primary btn-sm btn-cta-new-task">+ Criar tarefa</button></div>' },
+      { id: 'dashHabitsList', html: '<div class="dash-empty">Sem hábitos ainda.<br><button type="button" class="btn btn-primary btn-sm" id="btnOpenNewHabitEmpty">+ Novo hábito</button></div>' },
+      { id: 'dashGoalsList', html: '<div class="dash-empty">Nenhuma meta cadastrada.<br><button type="button" class="btn btn-primary btn-sm" id="btnOpenNewGoalEmpty">+ Nova meta</button></div>' },
+      { id: 'dashAccountsGrid', html: '<div class="dash-empty">Nenhuma conta.<br><button type="button" class="btn btn-primary btn-sm" id="btnDashAddAccountEmpty">+ Nova conta</button></div>' },
+      { id: 'dashSportsList', html: '<div class="dash-empty">Sem eventos agora. Tente outro filtro ou recarregue.</div>' }
+    ];
+    // CTAs são religados nos handlers de empty dinâmicos dos módulos
+  };
+
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    if (t.classList.contains('btn-cta-new-task') || t.closest('.btn-cta-new-task')) {
+      switchAppView('tasks');
+      const input = document.getElementById('taskTitle');
+      if (input) input.focus();
+    }
+    if (t.id === 'btnOpenNewHabitEmpty' || t.closest('#btnOpenNewHabitEmpty')) {
+      const btn = document.getElementById('btnOpenNewHabit');
+      if (btn) btn.click();
+    }
+    if (t.id === 'btnOpenNewGoalEmpty' || t.closest('#btnOpenNewGoalEmpty')) {
+      const btn = document.getElementById('btnOpenNewGoalCockpit');
+      if (btn) btn.click();
+    }
+    if (t.id === 'btnDashAddAccountEmpty' || t.closest('#btnDashAddAccountEmpty')) {
+      const btn = document.getElementById('btnDashAddAccount');
+      if (btn) btn.click();
+    }
+  });
+
+  // ==========================================================================
+  // KANBAN WIP (limite em Em Andamento)
+  // ==========================================================================
+  const KANBAN_WIP_LIMIT = 5;
+  const updateKanbanWip = () => {
+    const col = document.querySelector('.kanban-column[data-status="EM_ANDAMENTO"]');
+    const countEl = document.getElementById('countEmAndamento');
+    if (!col || !countEl) return;
+    const n = Number(countEl.textContent) || 0;
+    let badge = col.querySelector('.kanban-wip-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'kanban-wip-badge';
+      countEl.insertAdjacentElement('afterend', badge);
+    }
+    badge.textContent = n + '/' + KANBAN_WIP_LIMIT + ' WIP';
+    badge.classList.toggle('wip-over', n > KANBAN_WIP_LIMIT);
+    col.classList.toggle('wip-blocked', n > KANBAN_WIP_LIMIT);
+  };
+
+  // Observa contagens do kanban
+  const kanbanCounts = ['countAFazer', 'countEmAndamento', 'countConcluida'];
+  kanbanCounts.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.MutationObserver) {
+      new MutationObserver(() => updateKanbanWip()).observe(el, { childList: true, characterData: true, subtree: true });
+    }
+  });
+  setTimeout(updateKanbanWip, 1200);
+
+  // Hook no final do boot
+  const _origCheckInitialAuth = typeof checkInitialAuth === 'function' ? checkInitialAuth : null;
   checkInitialAuth();
+  maybeShowOnboarding();
 });
