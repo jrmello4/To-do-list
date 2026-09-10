@@ -17,7 +17,9 @@ public class EsportesApiProperties {
     private int connectTimeoutMs = 4000;
     private int readTimeoutMs = 6000;
     private List<Liga> ligas = new ArrayList<>();
-    private List<String> esportesDia = List.of("Soccer", "Basketball", "Fighting", "Motorsport");
+    private List<String> esportesDia = List.of("Soccer", "Basketball", "Fighting", "Motorsport", "American Football");
+    private List<String> ligasPermitidasNomes = new ArrayList<>();
+    private List<String> ligasBloqueadasNomes = new ArrayList<>();
 
     public boolean isEnabled() {
         return enabled;
@@ -81,6 +83,30 @@ public class EsportesApiProperties {
 
     public void setEsportesDia(List<String> esportesDia) {
         this.esportesDia = esportesDia;
+    }
+
+    public List<String> getLigasPermitidasNomes() {
+        return ligasPermitidasNomes;
+    }
+
+    public void setLigasPermitidasNomes(List<String> ligasPermitidasNomes) {
+        this.ligasPermitidasNomes = ligasPermitidasNomes;
+    }
+
+    public List<String> getLigasBloqueadasNomes() {
+        return ligasBloqueadasNomes;
+    }
+
+    public void setLigasBloqueadasNomes(List<String> ligasBloqueadasNomes) {
+        this.ligasBloqueadasNomes = ligasBloqueadasNomes;
+    }
+
+    public java.util.Set<Integer> idsLigasPermitidas() {
+        java.util.Set<Integer> ids = new java.util.LinkedHashSet<>();
+        for (Liga l : ligas) {
+            ids.add(l.getId());
+        }
+        return ids;
     }
 
     public static class Liga {

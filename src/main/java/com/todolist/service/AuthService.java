@@ -500,10 +500,22 @@ public class AuthService {
             return;
         }
         preferenciaEsporteRepository.saveAll(List.of(
-                PreferenciaEsporte.builder().esporte("FUTEBOL").nomeInteresse("Flamengo").icone("âš½").cor("#10b981").ativo(true).usuario(user).build(),
-                PreferenciaEsporte.builder().esporte("UFC").nomeInteresse("UFC / MMA").icone("ðŸ¥Š").cor("#ef4444").ativo(true).usuario(user).build(),
-                PreferenciaEsporte.builder().esporte("BASQUETE").nomeInteresse("NBA").icone("ðŸ€").cor("#f59e0b").ativo(true).usuario(user).build(),
-                PreferenciaEsporte.builder().esporte("F1").nomeInteresse("FÃ³rmula 1").icone("ðŸŽï¸").cor("#dc2626").ativo(true).usuario(user).build()
+                PreferenciaEsporte.builder().esporte("FUTEBOL").nomeInteresse("Premier League")
+                        .icone("PL").cor("#3d195b").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("FUTEBOL").nomeInteresse("Champions League")
+                        .icone("UCL").cor("#0b1c3d").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("FUTEBOL").nomeInteresse("Brasileirao")
+                        .icone("BR").cor("#009c3b").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("FUTEBOL").nomeInteresse("Libertadores")
+                        .icone("LIB").cor("#c4a35a").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("UFC").nomeInteresse("UFC")
+                        .icone("UFC").cor("#ef4444").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("F1").nomeInteresse("Formula 1")
+                        .icone("F1").cor("#e10600").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("BASQUETE").nomeInteresse("NBA")
+                        .icone("NBA").cor("#f59e0b").ativo(true).usuario(user).build(),
+                PreferenciaEsporte.builder().esporte("NFL").nomeInteresse("NFL")
+                        .icone("NFL").cor("#013369").ativo(true).usuario(user).build()
         ));
     }
 }

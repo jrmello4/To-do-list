@@ -1,5 +1,6 @@
 package com.todolist.service;
 
+import com.todolist.config.EsportesApiProperties;
 import com.todolist.dto.EsporteEventoResponse;
 import com.todolist.dto.EsporteJogoResponse;
 import com.todolist.dto.PreferenciaEsporteRequest;
@@ -38,6 +39,7 @@ public class EsporteService {
     private final AuthService authService;
     private final TheSportsDbClient sportsDbClient;
     private final EsporteEventMapper eventMapper;
+    private final EsportesApiProperties props;
 
     // --- Preferências de Esportes do Usuário ---
     @Transactional(readOnly = true)
@@ -229,13 +231,73 @@ public class EsporteService {
         try {
             List<TheSportsDbDtos.Event> remotos = sportsDbClient.buscarCatalogo(LocalDate.now());
             if (remotos != null && !remotos.isEmpty()) {
-                return new ArrayList<>(eventMapper.toResponseList(remotos));
+                List<EsporteEventoResponse> filtrados = eventMapper.toResponseList(remotos).stream()
+                        .filter(this::ligaPermitida)
+                        .collect(Collectors.toList());
+                if (!filtrados.isEmpty()) {
+                    return new ArrayList<>(filtrados);
+                }
             }
-            log.info("TheSportsDB não retornou eventos; usando catálogo de demonstração.");
+            log.info("TheSportsDB nao retornou eventos das ligas permitidas; usando catalogo de demonstracao.");
         } catch (Exception ex) {
-            log.warn("Falha ao consultar TheSportsDB, usando catálogo de demonstração: {}", ex.getMessage());
+            log.warn("Falha ao consultar TheSportsDB, usando catalogo de demonstracao: {}", ex.getMessage());
         }
         return gerarCatalogoDemo();
+    }
+
+    /**
+     * Radar curado: so Premier League, La Liga, Serie A, Bundesliga, Ligue 1,
+     * Champions, Brasileirao, Libertadores, F1, NBA, NFL e UFC.
+     */
+    private boolean ligaPermitida(EsporteEventoResponse ev) {
+        String liga = ev.getSubtitulo() == null ? "" : ev.getSubtitulo().toLowerCase(Locale.ROOT);
+        String titulo = ev.getTitulo() == null ? "" : ev.getTitulo().toLowerCase(Locale.ROOT);
+        String esporte = ev.getEsporte() == null ? "" : ev.getEsporte().toUpperCase(Locale.ROOT);
+
+        // IDs de demo sempre passam (fallback offline)
+        if (ev.getId() != null && ev.getId().startsWith("DEMO-")) {
+            return true;
+        }
+
+        for (String bloqueada : props.getLigasBloqueadasNomes()) {
+            if (bloqueada != null && !bloqueada.isBlank()
+                    && (liga.contains(bloqueada.toLowerCase(Locale.ROOT))
+                    || titulo.contains(bloqueada.toLowerCase(Locale.ROOT)))) {
+                return false;
+            }
+        }
+
+        // UFC estrito: ignora AEW/WWE/PFL (ja bloqueadas acima) e exige UFC no rotulo
+        if ("UFC".equals(esporte)) {
+            return liga.contains("ufc") || titulo.contains("ufc");
+        }
+        if ("F1".equals(esporte)) {
+            return liga.contains("formula 1") || liga.contains("f1") || titulo.contains("formula") || titulo.contains("grand prix");
+        }
+        if ("BASQUETE".equals(esporte)) {
+            return liga.contains("nba");
+        }
+        if ("NFL".equals(esporte)) {
+            return liga.contains("nfl") || titulo.contains("nfl");
+        }
+        if ("FUTEBOL".equals(esporte)) {
+            for (String ok : List.of(
+                    "premier league", "la liga", "serie a", "bundesliga", "ligue 1",
+                    "champions league", "brasileirao", "brasileirão", "brazilian serie a",
+                    "libertadores")) {
+                if (liga.contains(ok)) {
+                    return true;
+                }
+            }
+            // Serie A italiana vs outras "Serie A": so aceita se for italiana/internacional top
+            if (liga.contains("serie a") && (liga.contains("italian") || liga.contains("italia") || liga.contains("italy"))) {
+                return true;
+            }
+            return false;
+        }
+
+        // Demais modalidades: bloqueia por padrao
+        return false;
     }
 
     private EsporteEventoResponse buscarEventoPorId(String eventoId) {
