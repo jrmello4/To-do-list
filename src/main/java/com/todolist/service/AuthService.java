@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +42,7 @@ public class AuthService {
     private final MetaRepository metaRepository;
     private final NotaRapidaRepository notaRapidaRepository;
     private final PreferenciaEsporteRepository preferenciaEsporteRepository;
+    private final EventoCalendarioRepository eventoCalendarioRepository;
 
     @Transactional
     public AuthResponse cadastrar(RegisterRequest request) {
@@ -159,9 +161,14 @@ public class AuthService {
                 .orElseGet(() -> tagRepository.save(Tag.builder().nome("Revisão").cor("#10B981").usuario(user).build()));
         Tag tagApi = tagRepository.findByUsuarioIdAndNomeIgnoreCase(user.getId(), "API")
                 .orElseGet(() -> tagRepository.save(Tag.builder().nome("API").cor("#8B5CF6").usuario(user).build()));
+        Tag tagPessoal = tagRepository.findByUsuarioIdAndNomeIgnoreCase(user.getId(), "Pessoal")
+                .orElseGet(() -> tagRepository.save(Tag.builder().nome("Pessoal").cor("#F59E0B").usuario(user).build()));
+        Tag tagCasa = tagRepository.findByUsuarioIdAndNomeIgnoreCase(user.getId(), "Casa")
+                .orElseGet(() -> tagRepository.save(Tag.builder().nome("Casa").cor("#06B6D4").usuario(user).build()));
 
         LocalDate hoje = LocalDate.now();
 
+        // 1. Foco / Pomodoro
         Task task1 = Task.builder()
                 .titulo("🎯 Explorar Modo Foco Pomodoro")
                 .descricao("Inicie o cronômetro Pomodoro de 25 minutos e foque nesta tarefa!")
@@ -179,9 +186,10 @@ public class AuthService {
         task1.getSubtarefas().add(Subtask.builder().titulo("Completar sessão de foco").concluida(false).task(task1).build());
         taskRepository.save(task1);
 
+        // 2. Dashboard / Gráficos
         Task task2 = Task.builder()
                 .titulo("📊 Analisar Dashboard Gráfico")
-                .descricao("Acesse a aba 'Gráficos & Métricas' para ver a distribuição por categoria e prioridade.")
+                .descricao("Acesse a aba 'Produtividade' para ver a distribuição por categoria e prioridade.")
                 .categoria(Categoria.ESTUDOS)
                 .prioridade(Prioridade.MEDIA)
                 .status(StatusTarefa.A_FAZER)
@@ -196,6 +204,7 @@ public class AuthService {
         task2.getSubtarefas().add(Subtask.builder().titulo("Ver taxa de pontualidade").concluida(false).task(task2).build());
         taskRepository.save(task2);
 
+        // 3. Crítica / atrasada
         Task task3 = Task.builder()
                 .titulo("⚠️ Alerta de Prazo Crítico")
                 .descricao("Tarefa com prazo expirado para testar o alerta no sino 🔔 de notificações.")
@@ -211,6 +220,7 @@ public class AuthService {
                 .build();
         taskRepository.save(task3);
 
+        // 4. Concluída
         Task task4 = Task.builder()
                 .titulo("📄 Gerar Relatório Executivo em PDF")
                 .descricao("Clique no botão 'Exportar PDF' no cabeçalho para gerar o relatório corporativo.")
@@ -225,6 +235,7 @@ public class AuthService {
                 .build();
         taskRepository.save(task4);
 
+        // 5. Recorrente
         Task task5 = Task.builder()
                 .titulo("🔁 Alinhamento Semanal de Sprint")
                 .descricao("Tarefa configurada com recorrência semanal para teste de replicação automática.")
@@ -239,9 +250,85 @@ public class AuthService {
                 .usuario(user)
                 .build();
         taskRepository.save(task5);
+
+        // 6. Projeto pessoal — Kanban
+        Task task6 = Task.builder()
+                .titulo("🚀 Lançar portfólio pessoal")
+                .descricao("Montar landing page, revisar cases e publicar no domínio próprio.")
+                .categoria(Categoria.ESTUDOS)
+                .prioridade(Prioridade.ALTA)
+                .status(StatusTarefa.EM_ANDAMENTO)
+                .concluida(false)
+                .pomodorosEstimados(8)
+                .pomodorosRealizados(3)
+                .dataVencimento(hoje.plusDays(10))
+                .usuario(user)
+                .tags(new HashSet<>(List.of(tagFrontend, tagPessoal)))
+                .build();
+        task6.getSubtarefas().add(Subtask.builder().titulo("Escrever about me").concluida(true).task(task6).build());
+        task6.getSubtarefas().add(Subtask.builder().titulo("Exportar screenshots dos projetos").concluida(false).task(task6).build());
+        task6.getSubtarefas().add(Subtask.builder().titulo("Configurar deploy").concluida(false).task(task6).build());
+        taskRepository.save(task6);
+
+        // 7. Casa / manutenção
+        Task task7 = Task.builder()
+                .titulo("🏠 Trocar filtro de água")
+                .descricao("Comprar filtro novo na farmácia e agendar troca.")
+                .categoria(Categoria.PESSOAL)
+                .prioridade(Prioridade.MEDIA)
+                .status(StatusTarefa.A_FAZER)
+                .concluida(false)
+                .dataVencimento(hoje.plusDays(2))
+                .usuario(user)
+                .tags(new HashSet<>(List.of(tagCasa)))
+                .build();
+        taskRepository.save(task7);
+
+        // 8. Compras
+        Task task8 = Task.builder()
+                .titulo("🛒 Lista do mercado da semana")
+                .descricao("Arroz, feijão, frutas, café e itens de limpeza.")
+                .categoria(Categoria.PESSOAL)
+                .prioridade(Prioridade.BAIXA)
+                .status(StatusTarefa.A_FAZER)
+                .concluida(false)
+                .dataVencimento(hoje.plusDays(1))
+                .usuario(user)
+                .tags(new HashSet<>(List.of(tagPessoal)))
+                .build();
+        task8.getSubtarefas().add(Subtask.builder().titulo("Arroz e feijão").concluida(false).task(task8).build());
+        task8.getSubtarefas().add(Subtask.builder().titulo("Frutas da estação").concluida(false).task(task8).build());
+        taskRepository.save(task8);
+
+        // 9. Saúde
+        Task task9 = Task.builder()
+                .titulo("🩺 Agendar check-up anual")
+                .descricao("Ligar na clínica e reservar horário com clínico geral.")
+                .categoria(Categoria.SAUDE)
+                .prioridade(Prioridade.MEDIA)
+                .status(StatusTarefa.A_FAZER)
+                .concluida(false)
+                .dataVencimento(hoje.plusDays(7))
+                .usuario(user)
+                .build();
+        taskRepository.save(task9);
+
+        // 10. Concluída extra (gráfico mais cheio)
+        Task task10 = Task.builder()
+                .titulo("✅ Organizar caixa de entrada do e-mail")
+                .descricao("Zerar unread e criar filtros de labels.")
+                .categoria(Categoria.TRABALHO)
+                .prioridade(Prioridade.BAIXA)
+                .status(StatusTarefa.CONCLUIDA)
+                .concluida(true)
+                .dataVencimento(hoje.minusDays(2))
+                .usuario(user)
+                .tags(new HashSet<>(List.of(tagRevisao)))
+                .build();
+        taskRepository.save(task10);
     }
 
-    /** Popula finanças, hábitos, metas e notas do modo convidado (sem seed em GET). */
+    /** Popula finanças, hábitos, metas, notas e calendário do modo convidado. */
     private void inicializarLifeHubConvidado(User user) {
         LocalDate hoje = LocalDate.now();
 
@@ -265,6 +352,16 @@ public class AuthService {
                 .usuario(user)
                 .build());
 
+        ContaFinanceira invest = contaFinanceiraRepository.save(ContaFinanceira.builder()
+                .nome("Investimentos")
+                .tipo(TipoConta.INVESTIMENTO)
+                .saldoInicial(new BigDecimal("8000.00"))
+                .saldoAtual(new BigDecimal("8450.00"))
+                .cor("#6366F1")
+                .ativo(true)
+                .usuario(user)
+                .build());
+
         CategoriaTransacao catMoradia = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
                 .nome("Moradia").tipo(TipoTransacao.DESPESA).icone("home").cor("#F59E0B").usuario(user).build());
         CategoriaTransacao catSalario = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
@@ -273,103 +370,122 @@ public class AuthService {
                 .nome("Mercado").tipo(TipoTransacao.DESPESA).icone("shopping-cart").cor("#3B82F6").usuario(user).build());
         CategoriaTransacao catLazer = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
                 .nome("Lazer").tipo(TipoTransacao.DESPESA).icone("film").cor("#8B5CF6").usuario(user).build());
+        CategoriaTransacao catTransporte = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
+                .nome("Transporte").tipo(TipoTransacao.DESPESA).icone("car").cor("#06B6D4").usuario(user).build());
+        CategoriaTransacao catSaude = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
+                .nome("Saúde").tipo(TipoTransacao.DESPESA).icone("heartbeat").cor("#EF4444").usuario(user).build());
+        CategoriaTransacao catFreela = categoriaTransacaoRepository.save(CategoriaTransacao.builder()
+                .nome("Freela").tipo(TipoTransacao.RECEITA).icone("laptop-code").cor("#22C55E").usuario(user).build());
 
         transacaoRepository.save(Transacao.builder()
-                .descricao("Salário Mensal")
-                .tipo(TipoTransacao.RECEITA)
-                .valor(new BigDecimal("5500.00"))
-                .dataVencimento(hoje.withDayOfMonth(5))
-                .dataPagamento(hoje.withDayOfMonth(5))
-                .status(StatusTransacao.PAGO)
-                .conta(contaPrincipal)
-                .categoria(catSalario)
-                .usuario(user)
-                .build());
+                .descricao("Salário Mensal").tipo(TipoTransacao.RECEITA).valor(new BigDecimal("5500.00"))
+                .dataVencimento(hoje.withDayOfMonth(5)).dataPagamento(hoje.withDayOfMonth(5))
+                .status(StatusTransacao.PAGO).conta(contaPrincipal).categoria(catSalario).usuario(user).build());
 
         transacaoRepository.save(Transacao.builder()
-                .descricao("Aluguel")
-                .tipo(TipoTransacao.DESPESA)
-                .valor(new BigDecimal("1450.00"))
-                .dataVencimento(hoje.plusDays(3))
-                .status(StatusTransacao.PENDENTE)
-                .conta(contaPrincipal)
-                .categoria(catMoradia)
-                .usuario(user)
-                .build());
+                .descricao("Aluguel").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("1450.00"))
+                .dataVencimento(hoje.plusDays(3)).status(StatusTransacao.PENDENTE)
+                .conta(contaPrincipal).categoria(catMoradia).usuario(user).build());
 
         transacaoRepository.save(Transacao.builder()
-                .descricao("Supermercado da semana")
-                .tipo(TipoTransacao.DESPESA)
-                .valor(new BigDecimal("280.00"))
-                .dataVencimento(hoje.minusDays(2))
-                .dataPagamento(hoje.minusDays(2))
-                .status(StatusTransacao.PAGO)
-                .conta(carteira)
-                .categoria(catMercado)
-                .usuario(user)
-                .build());
+                .descricao("Supermercado da semana").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("280.00"))
+                .dataVencimento(hoje.minusDays(2)).dataPagamento(hoje.minusDays(2))
+                .status(StatusTransacao.PAGO).conta(carteira).categoria(catMercado).usuario(user).build());
 
         transacaoRepository.save(Transacao.builder()
-                .descricao("Cinema")
-                .tipo(TipoTransacao.DESPESA)
-                .valor(new BigDecimal("65.00"))
-                .dataVencimento(hoje.plusDays(1))
-                .status(StatusTransacao.PENDENTE)
-                .conta(carteira)
-                .categoria(catLazer)
-                .usuario(user)
-                .build());
+                .descricao("Cinema").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("65.00"))
+                .dataVencimento(hoje.plusDays(1)).status(StatusTransacao.PENDENTE)
+                .conta(carteira).categoria(catLazer).usuario(user).build());
 
+        transacaoRepository.save(Transacao.builder()
+                .descricao("Combustível / apps").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("220.00"))
+                .dataVencimento(hoje.minusDays(5)).dataPagamento(hoje.minusDays(5))
+                .status(StatusTransacao.PAGO).conta(carteira).categoria(catTransporte).usuario(user).build());
+
+        transacaoRepository.save(Transacao.builder()
+                .descricao("Plano de saúde").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("390.00"))
+                .dataVencimento(hoje.plusDays(8)).status(StatusTransacao.PENDENTE)
+                .conta(contaPrincipal).categoria(catSaude).usuario(user).build());
+
+        transacaoRepository.save(Transacao.builder()
+                .descricao("Freela landing page").tipo(TipoTransacao.RECEITA).valor(new BigDecimal("1200.00"))
+                .dataVencimento(hoje.plusDays(12)).status(StatusTransacao.PENDENTE)
+                .conta(contaPrincipal).categoria(catFreela).usuario(user).build());
+
+        transacaoRepository.save(Transacao.builder()
+                .descricao("Internet fibra").tipo(TipoTransacao.DESPESA).valor(new BigDecimal("129.90"))
+                .dataVencimento(hoje.withDayOfMonth(Math.min(hoje.getDayOfMonth() + 2, 28)))
+                .status(StatusTransacao.PENDENTE).conta(contaPrincipal).categoria(catMoradia).usuario(user).build());
+
+        // Hábitos + streaks
         Habito agua = habitoRepository.save(Habito.builder()
                 .nome("Beber 2L de Água").icone("droplet").cor("#06b6d4").ativo(true).usuario(user).build());
         Habito leitura = habitoRepository.save(Habito.builder()
                 .nome("Leitura / Estudo 20min").icone("book-open").cor("#8b5cf6").ativo(true).usuario(user).build());
         Habito caminhada = habitoRepository.save(Habito.builder()
                 .nome("Exercício Físico / Caminhada").icone("activity").cor("#10b981").ativo(true).usuario(user).build());
+        Habito dormir = habitoRepository.save(Habito.builder()
+                .nome("Dormir até 23h").icone("moon").cor("#6366f1").ativo(true).usuario(user).build());
 
         registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje).concluido(true).build());
         registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje.minusDays(1)).concluido(true).build());
         registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje.minusDays(2)).concluido(true).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(agua).dataRegistro(hoje.minusDays(3)).concluido(true).build());
         registroHabitoRepository.save(RegistroHabito.builder().habito(leitura).dataRegistro(hoje).concluido(true).build());
-        registroHabitoRepository.save(RegistroHabito.builder().habito(leitura).dataRegistro(hoje.minusDays(1)).concluido(false).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(leitura).dataRegistro(hoje.minusDays(1)).concluido(true).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(caminhada).dataRegistro(hoje).concluido(false).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(caminhada).dataRegistro(hoje.minusDays(1)).concluido(true).build());
+        registroHabitoRepository.save(RegistroHabito.builder().habito(dormir).dataRegistro(hoje).concluido(true).build());
 
+        // Metas
         metaRepository.save(Meta.builder()
-                .titulo("Reserva de Emergência")
-                .descricao("Guardar 6 meses de custo fixo")
-                .categoria("FINANCEIRA")
-                .valorAlvo(new BigDecimal("10000.00"))
-                .valorAtual(new BigDecimal("3500.00"))
-                .unidade("R$")
-                .prazo(hoje.plusMonths(6))
-                .cor("#10b981")
-                .icone("shield")
-                .concluida(false)
-                .ativo(true)
-                .usuario(user)
-                .build());
-
+                .titulo("Reserva de Emergência").descricao("Guardar 6 meses de custo fixo")
+                .categoria("FINANCEIRA").valorAlvo(new BigDecimal("10000.00")).valorAtual(new BigDecimal("3500.00"))
+                .unidade("R$").prazo(hoje.plusMonths(6)).cor("#10b981").icone("shield")
+                .concluida(false).ativo(true).usuario(user).build());
         metaRepository.save(Meta.builder()
-                .titulo("Ler 12 Livros no Ano")
-                .descricao("Manter o hábito de leitura")
-                .categoria("ESTUDO")
-                .valorAlvo(new BigDecimal("12.00"))
-                .valorAtual(new BigDecimal("4.00"))
-                .unidade("livros")
-                .prazo(hoje.plusMonths(4))
-                .cor("#6366f1")
-                .icone("book")
-                .concluida(false)
-                .ativo(true)
-                .usuario(user)
-                .build());
+                .titulo("Ler 12 Livros no Ano").descricao("Manter o hábito de leitura")
+                .categoria("ESTUDO").valorAlvo(new BigDecimal("12.00")).valorAtual(new BigDecimal("4.00"))
+                .unidade("livros").prazo(hoje.plusMonths(4)).cor("#6366f1").icone("book")
+                .concluida(false).ativo(true).usuario(user).build());
+        metaRepository.save(Meta.builder()
+                .titulo("Viagem para o Chile").descricao("Passagens + hospedagem para 7 dias")
+                .categoria("PESSOAL").valorAlvo(new BigDecimal("8000.00")).valorAtual(new BigDecimal("2100.00"))
+                .unidade("R$").prazo(hoje.plusMonths(9)).cor("#06b6d4").icone("plane")
+                .concluida(false).ativo(true).usuario(user).build());
+        metaRepository.save(Meta.builder()
+                .titulo("Correr 10km").descricao("Preparar prova de 10k no parque")
+                .categoria("SAUDE").valorAlvo(new BigDecimal("10.00")).valorAtual(new BigDecimal("6.50"))
+                .unidade("km").prazo(hoje.plusMonths(2)).cor("#f59e0b").icone("running")
+                .concluida(false).ativo(true).usuario(user).build());
 
+        // Notas
         notaRapidaRepository.save(NotaRapida.builder()
                 .titulo("Ideias da semana")
                 .conteudo("Este é o seu bloco de notas rápidas! Use para rascunhos, links úteis ou insights.")
-                .cor("#fff7ed")
-                .fixada(true)
-                .usuario(user)
-                .build());
+                .cor("#fff7ed").fixada(true).usuario(user).build());
+        notaRapidaRepository.save(NotaRapida.builder()
+                .titulo("Compras online")
+                .conteudo("Comparar preço de monitor 27\\\" e cadeira ergonômica antes da Black Friday.")
+                .cor("#eff6ff").fixada(false).usuario(user).build());
+
+        // Calendário
+        eventoCalendarioRepository.save(EventoCalendario.builder()
+                .titulo("Dentista").descricao("Limpeza semestral")
+                .dataEvento(hoje.plusDays(4)).horaInicio(LocalTime.of(10, 0)).horaFim(LocalTime.of(11, 0))
+                .cor("#06b6d4").categoria("Saúde").ativo(true).usuario(user).build());
+        eventoCalendarioRepository.save(EventoCalendario.builder()
+                .titulo("Almoço com a equipe").descricao("Comemorar release do sprint")
+                .dataEvento(hoje.plusDays(2)).horaInicio(LocalTime.of(12, 30)).horaFim(LocalTime.of(14, 0))
+                .cor("#8b5cf6").categoria("Trabalho").ativo(true).usuario(user).build());
+        eventoCalendarioRepository.save(EventoCalendario.builder()
+                .titulo("Aniversário da Ana").descricao("Jantar às 20h")
+                .dataEvento(hoje.plusDays(6)).horaInicio(LocalTime.of(20, 0))
+                .cor("#f59e0b").categoria("Pessoal").ativo(true).usuario(user).build());
+        eventoCalendarioRepository.save(EventoCalendario.builder()
+                .titulo("Reunião 1:1 com gestor").descricao("Feedback trimestral")
+                .dataEvento(hoje.plusDays(1)).horaInicio(LocalTime.of(9, 0)).horaFim(LocalTime.of(9, 45))
+                .cor("#3b82f6").categoria("Trabalho").ativo(true).usuario(user).build());
     }
 
     private void inicializarEsportesConvidado(User user) {

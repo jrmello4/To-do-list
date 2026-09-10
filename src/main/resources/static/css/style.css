@@ -1778,9 +1778,20 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 }
 
 #dashSportsList, .dash-sports-list {
-  max-height: 520px;
+  max-height: 640px;
   overflow-y: auto;
   padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sports-more-hint {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding: 10px;
+  border: 1px dashed var(--edge);
+  border-radius: 10px;
 }
 
 /* ========== RESPONSIVE ========== */

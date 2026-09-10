@@ -2785,7 +2785,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (live) {
         sportsHighlightText.textContent = `AO VIVO: ${live.icone} ${live.titulo} (${live.resultado || 'Em andamento'})`;
       } else {
-        const next = eventos[0];
+        const next = eventos.find(e => e.status === 'AGENDADO') || eventos[0];
         sportsHighlightText.textContent = `${next.icone} ${next.titulo} • ${next.dataHoraFormatada || ''}`;
       }
     }
@@ -2795,7 +2795,18 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    dashSportsList.innerHTML = eventos.map(ev => {
+    // Ordena: AO VIVO > AGENDADO > ENCERRADO; depois por data
+    const ordemStatus = { 'AO VIVO': 0, 'AGENDADO': 1, 'ENCERRADO': 2 };
+    const lista = [...eventos].sort((a, b) => {
+      const oa = ordemStatus[a.status] ?? 3;
+      const ob = ordemStatus[b.status] ?? 3;
+      if (oa !== ob) return oa - ob;
+      return String(a.data || a.dataHoraFormatada || '').localeCompare(String(b.data || b.dataHoraFormatada || ''));
+    });
+    const visiveis = lista.slice(0, 12);
+    const restantes = lista.length - visiveis.length;
+
+    dashSportsList.innerHTML = visiveis.map(ev => {
       let statusClass = 'scheduled';
       let statusLabel = ev.status;
       if (ev.status === 'AO VIVO') {
@@ -2832,7 +2843,9 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `;
-    }).join('');
+    }).join('') + (restantes > 0
+      ? `<div class="sports-more-hint">+ ${restantes} evento(s) — refine a busca ou os filtros acima</div>`
+      : '');
 
     // Attach calendar sync toggle handlers
     dashSportsList.querySelectorAll('.btn-toggle-sport-cal').forEach(btn => {
