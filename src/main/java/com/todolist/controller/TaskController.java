@@ -185,6 +185,15 @@ public class TaskController {
         return ResponseEntity.ok(taskService.alternarSubtarefa(taskId, subtaskId));
     }
 
+    @PutMapping("/{taskId}/subtarefas/{subtaskId}")
+    @Operation(summary = "Atualizar título ou status de uma subtarefa")
+    public ResponseEntity<TaskResponse> atualizarSubtarefa(
+            @PathVariable Long taskId,
+            @PathVariable Long subtaskId,
+            @Valid @RequestBody SubtaskRequest request) {
+        return ResponseEntity.ok(taskService.atualizarSubtarefa(taskId, subtaskId, request));
+    }
+
     @DeleteMapping("/{taskId}/subtarefas/{subtaskId}")
     @Operation(summary = "Remover uma subtarefa")
     public ResponseEntity<TaskResponse> deletarSubtarefa(

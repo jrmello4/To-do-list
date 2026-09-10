@@ -19,6 +19,8 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     List<Task> findByUsuarioIdAndDeletadaFalseOrderByDataCriacaoDesc(Long usuarioId);
 
+    List<Task> findByUsuarioIdAndDeletadaFalseAndDataVencimentoBetween(Long usuarioId, LocalDate inicio, LocalDate fim);
+
     List<Task> findByUsuarioIdAndDeletadaTrueOrderByDataDelecaoDesc(Long usuarioId);
 
     Optional<Task> findByIdAndUsuarioIdAndDeletadaFalse(Long id, Long usuarioId);

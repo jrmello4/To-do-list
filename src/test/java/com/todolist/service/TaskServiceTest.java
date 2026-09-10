@@ -250,11 +250,11 @@ class TaskServiceTest {
         @Test
         @DisplayName("Deve excluir definitivamente")
         void deveExcluirDefinitivamente() {
-            when(taskRepository.existsByIdAndUsuarioId(1L, 1L)).thenReturn(true);
+            when(taskRepository.findByIdAndUsuarioId(1L, 1L)).thenReturn(Optional.of(task));
 
             taskService.excluirDefinitivamente(1L);
 
-            verify(taskRepository).deleteById(1L);
+            verify(taskRepository).delete(task);
         }
 
         @Test
@@ -279,6 +279,23 @@ class TaskServiceTest {
             TaskResponse response = taskService.adicionarSubtarefa(1L, subRequest);
 
             assertThat(response.getTotalSubtarefas()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Deve atualizar título de uma subtarefa existente")
+        void deveAtualizarSubtarefa() {
+            Subtask sub = Subtask.builder().id(10L).titulo("Título Antigo").concluida(false).task(task).build();
+            task.getSubtarefas().add(sub);
+
+            when(taskRepository.findByIdAndUsuarioIdAndDeletadaFalse(1L, 1L)).thenReturn(Optional.of(task));
+            when(taskRepository.save(any(Task.class))).thenAnswer(i -> i.getArgument(0));
+
+            SubtaskRequest updateReq = SubtaskRequest.builder().titulo("Título Novo").concluida(true).build();
+            TaskResponse response = taskService.atualizarSubtarefa(1L, 10L, updateReq);
+
+            assertThat(response.getSubtarefas()).hasSize(1);
+            assertThat(response.getSubtarefas().get(0).getTitulo()).isEqualTo("Título Novo");
+            assertThat(response.getSubtarefas().get(0).getConcluida()).isTrue();
         }
     }
 

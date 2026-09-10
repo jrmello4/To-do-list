@@ -215,7 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- Web Audio Chime Synthesizer (Nativo e Offline) ---
+  let pomoSoundEnabled = localStorage.getItem('pomo_sound') !== 'false';
+
   const playPomodoroChime = () => {
+    if (!pomoSoundEnabled) return;
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
@@ -531,17 +534,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const renderAttachmentsHtml = (anexos) => {
     if (!anexos || anexos.length === 0) return '';
+    const token = getStoredToken();
+    const tokenSuffix = token ? `?token=${encodeURIComponent(token)}` : '';
     return '<div class="task-attachments-section">' + anexos.map(a => {
+      const fullUrl = a.urlDownload + tokenSuffix;
       if (a.isImagem) {
-        return `<a href="${a.urlDownload}" target="_blank" class="attachment-thumbnail-card" title="${escapeHtml(a.nomeOriginal)} (${formatFileSize(a.tamanho)})">
-          <img src="${a.urlDownload}" alt="${escapeHtml(a.nomeOriginal)}" loading="lazy">
+        return `<a href="${fullUrl}" target="_blank" class="attachment-thumbnail-card" title="${escapeHtml(a.nomeOriginal)} (${formatFileSize(a.tamanho)})">
+          <img src="${fullUrl}" alt="${escapeHtml(a.nomeOriginal)}" loading="lazy">
         </a>`;
       } else {
-        return `<a href="${a.urlDownload}" target="_blank" class="attachment-file-pill" title="Baixar ${escapeHtml(a.nomeOriginal)}">
+        return `<a href="${fullUrl}" target="_blank" class="attachment-file-pill" title="Baixar ${escapeHtml(a.nomeOriginal)}">
           📎 ${escapeHtml(a.nomeOriginal)} (${formatFileSize(a.tamanho)})
         </a>`;
       }
     }).join('') + '</div>';
+  };
+
+  // --- Period Filter Logic ---
+  let currentPeriodFilter = 'all'; // 'all' | 'overdue' | 'today' | 'week' | 'nodate'
+
+  const filterTasksByPeriod = (tasks) => {
+    if (!tasks || currentPeriodFilter === 'all') return tasks;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const nextWeekStr = nextWeek.toISOString().split('T')[0];
+
+    return tasks.filter(t => {
+      if (currentPeriodFilter === 'nodate') {
+        return !t.dataVencimento;
+      }
+      if (!t.dataVencimento) return false;
+      if (currentPeriodFilter === 'overdue') {
+        return t.dataVencimento < todayStr && !t.concluida;
+      }
+      if (currentPeriodFilter === 'today') {
+        return t.dataVencimento === todayStr;
+      }
+      if (currentPeriodFilter === 'week') {
+        return t.dataVencimento >= todayStr && t.dataVencimento <= nextWeekStr;
+      }
+      return true;
+    });
   };
 
   // --- API Calls ---
@@ -559,7 +596,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await apiFetch(url);
       if (!response.ok) throw new Error('Falha ao carregar tarefas');
 
-      cachedTasks = await response.json();
+      const rawTasks = await response.json();
+      cachedTasks = filterTasksByPeriod(rawTasks);
       if (currentView === 'list') {
         renderListView(cachedTasks);
       } else if (currentView === 'kanban') {
@@ -727,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
           lastNotifiedTaskIds.add(n.taskId);
           new Notification(n.titulo, {
             body: n.mensagem,
-            icon: '/favicon.ico'
+            icon: '/favicon.svg'
           });
         }
       });
@@ -1191,6 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="subtask-row ${s.concluida ? 'is-done' : ''}" data-subtask-id="${s.id}">
         <input type="checkbox" class="subtask-checkbox" ${s.concluida ? 'checked' : ''}>
         <span class="subtask-title">${escapeHtml(s.titulo)}</span>
+        <button type="button" class="btn-edit-sub" data-task-id="${task.id}" data-sub-id="${s.id}" data-title="${escapeHtml(s.titulo)}" title="Editar subtarefa">✏️</button>
         <button type="button" class="btn-subtask-del" title="Excluir subtarefa">&times;</button>
       </div>
     `).join('');
@@ -1211,6 +1250,14 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Erro ao alternar subtarefa.', 'error');
           }
         }
+      });
+    });
+
+    const editButtons = container.querySelectorAll('.btn-edit-sub');
+    editButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSubtaskEditModal(btn.dataset.taskId, btn.dataset.subId, btn.dataset.title);
       });
     });
 
@@ -1399,16 +1446,22 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    editTaskAttachmentsList.innerHTML = anexos.map(a => `
+    const token = getStoredToken();
+    const tokenSuffix = token ? `?token=${encodeURIComponent(token)}` : '';
+
+    editTaskAttachmentsList.innerHTML = anexos.map(a => {
+      const fullUrl = a.urlDownload + tokenSuffix;
+      return `
       <div class="attachment-modal-item">
         <div class="attachment-modal-item-left">
-          ${a.isImagem ? `<img src="${a.urlDownload}" class="attachment-thumb-small">` : '📎'}
-          <a href="${a.urlDownload}" target="_blank" title="Baixar / Visualizar">${escapeHtml(a.nomeOriginal)}</a>
+          ${a.isImagem ? `<img src="${fullUrl}" class="attachment-thumb-small">` : '📎'}
+          <a href="${fullUrl}" target="_blank" title="Baixar / Visualizar">${escapeHtml(a.nomeOriginal)}</a>
           <span class="text-muted" style="font-size:0.75rem;">(${formatFileSize(a.tamanho)})</span>
         </div>
         <button type="button" class="btn-del-attachment" data-anexo-id="${a.id}" title="Excluir este anexo">&times;</button>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     editTaskAttachmentsList.querySelectorAll('.btn-del-attachment').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -1669,7 +1722,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Notificações ativadas com sucesso!');
         new Notification('To-do List Pro', {
           body: 'Notificações na área de trabalho ativadas com sucesso!',
-          icon: '/favicon.ico'
+          icon: '/favicon.svg'
         });
         fetchNotifications();
       } else {
@@ -1931,9 +1984,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const refreshData = async () => {
     fetchTags();
     fetchNotifications();
-    if (currentView === 'trash') {
+    updateHeaderGreeting();
+    if (typeof fetchDashboardData === 'function' && currentAppView === 'dashboard') {
+      await Promise.all([fetchDashboardData(), fetchSummary()]);
+    } else if (typeof fetchFinancesData === 'function' && currentAppView === 'finances') {
+      await Promise.all([fetchFinancesData(), fetchSummary()]);
+    } else if (typeof fetchCalendarData === 'function' && currentAppView === 'calendar') {
+      await Promise.all([fetchCalendarData(), fetchSummary()]);
+    } else if (typeof fetchGoalsData === 'function' && currentAppView === 'goals') {
+      await Promise.all([fetchGoalsData(), fetchSummary()]);
+    } else if (currentAppView === 'trash') {
       await Promise.all([fetchTrash(), fetchSummary()]);
-    } else if (currentView === 'stats') {
+    } else if (currentAppView === 'stats') {
       await Promise.all([fetchStats(), fetchSummary()]);
     } else {
       await Promise.all([fetchTasks(), fetchSummary()]);
@@ -2060,5 +2122,2234 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  // --- Subtask Edit Modal ---
+  const subtaskEditModal = document.getElementById('subtaskEditModal');
+  const subtaskEditModalBackdrop = document.getElementById('subtaskEditModalBackdrop');
+  const btnCloseSubtaskEdit = document.getElementById('btnCloseSubtaskEdit');
+  const btnCancelSubtaskEdit = document.getElementById('btnCancelSubtaskEdit');
+  const subtaskEditForm = document.getElementById('subtaskEditForm');
+  const editSubtaskTaskId = document.getElementById('editSubtaskTaskId');
+  const editSubtaskSubId = document.getElementById('editSubtaskSubId');
+  const editSubtaskTitle = document.getElementById('editSubtaskTitle');
+
+  const openSubtaskEditModal = (taskId, subId, currentTitle) => {
+    if (!subtaskEditModal) return;
+    editSubtaskTaskId.value = taskId;
+    editSubtaskSubId.value = subId;
+    editSubtaskTitle.value = currentTitle || '';
+    subtaskEditModal.classList.remove('hidden');
+    setTimeout(() => editSubtaskTitle.focus(), 100);
+  };
+
+  const closeSubtaskEditModal = () => {
+    if (subtaskEditModal) subtaskEditModal.classList.add('hidden');
+  };
+
+  if (btnCloseSubtaskEdit) btnCloseSubtaskEdit.addEventListener('click', closeSubtaskEditModal);
+  if (btnCancelSubtaskEdit) btnCancelSubtaskEdit.addEventListener('click', closeSubtaskEditModal);
+  if (subtaskEditModalBackdrop) subtaskEditModalBackdrop.addEventListener('click', closeSubtaskEditModal);
+
+  if (subtaskEditForm) {
+    subtaskEditForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const taskId = editSubtaskTaskId.value;
+      const subId = editSubtaskSubId.value;
+      const novoTitulo = editSubtaskTitle.value.trim();
+      if (!novoTitulo) return;
+
+      try {
+        const res = await apiFetch(`/api/tarefas/${taskId}/subtarefas/${subId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo: novoTitulo })
+        });
+        if (!res.ok) throw new Error('Falha ao atualizar subtarefa');
+        showToast('Subtarefa atualizada com sucesso!');
+        closeSubtaskEditModal();
+        await refreshData();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  }
+
+  // --- Keyboard Shortcuts Modal & Handlers ---
+  const shortcutsModal = document.getElementById('shortcutsModal');
+  const shortcutsModalBackdrop = document.getElementById('shortcutsModalBackdrop');
+  const btnCloseShortcuts = document.getElementById('btnCloseShortcuts');
+  const btnOkShortcuts = document.getElementById('btnOkShortcuts');
+  const btnShortcuts = document.getElementById('btnShortcuts');
+
+  const openShortcutsModal = () => {
+    if (shortcutsModal) shortcutsModal.classList.remove('hidden');
+  };
+  const closeShortcutsModal = () => {
+    if (shortcutsModal) shortcutsModal.classList.add('hidden');
+  };
+
+  if (btnShortcuts) btnShortcuts.addEventListener('click', openShortcutsModal);
+  if (btnCloseShortcuts) btnCloseShortcuts.addEventListener('click', closeShortcutsModal);
+  if (btnOkShortcuts) btnOkShortcuts.addEventListener('click', closeShortcutsModal);
+  if (shortcutsModalBackdrop) shortcutsModalBackdrop.addEventListener('click', closeShortcutsModal);
+
+  window.addEventListener('keydown', (e) => {
+    const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
+
+    if (e.key === 'Escape') {
+      if (editModal && !editModal.classList.contains('hidden')) closeEditModal();
+      if (authModal && !authModal.classList.contains('hidden')) closeAuthModal();
+      if (tagModal && !tagModal.classList.contains('hidden')) closeTagModal();
+      if (shortcutsModal && !shortcutsModal.classList.contains('hidden')) closeShortcutsModal();
+      if (subtaskEditModal && !subtaskEditModal.classList.contains('hidden')) closeSubtaskEditModal();
+      if (notificationDropdown) notificationDropdown.classList.add('hidden');
+      return;
+    }
+
+    if (isInput) return;
+
+    if (e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      const taskTitleInput = document.getElementById('taskTitle');
+      if (taskTitleInput) {
+        taskTitleInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => taskTitleInput.focus(), 150);
+      }
+    } else if (e.key === '/') {
+      e.preventDefault();
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+    } else if (e.key === 'p' || e.key === 'P') {
+      e.preventDefault();
+      if (pomoInterval) {
+        pausePomodoro();
+        showToast('Pomodoro pausado');
+      } else {
+        startPomodoro();
+        showToast('Pomodoro iniciado!');
+      }
+    } else if (e.key === '1') {
+      e.preventDefault();
+      switchAppView('dashboard');
+    } else if (e.key === '2') {
+      e.preventDefault();
+      switchAppView('tasks');
+    } else if (e.key === '3') {
+      e.preventDefault();
+      switchAppView('finances');
+    } else if (e.key === 'f' || e.key === 'F') {
+      e.preventDefault();
+      openTransactionModal('DESPESA');
+    } else if (e.key === 'k' || e.key === 'K') {
+      e.preventDefault();
+      if (currentAppView !== 'tasks') switchAppView('tasks');
+      switchView('kanban');
+    } else if (e.key === 'l' || e.key === 'L') {
+      e.preventDefault();
+      if (currentAppView !== 'tasks') switchAppView('tasks');
+      switchView('list');
+    } else if (e.key === '?') {
+      e.preventDefault();
+      openShortcutsModal();
+    }
+  });
+
+  // --- Period Filter Pills Handler ---
+  const periodFilterGroup = document.getElementById('periodFilterGroup');
+  if (periodFilterGroup) {
+    periodFilterGroup.querySelectorAll('.period-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        periodFilterGroup.querySelectorAll('.period-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        currentPeriodFilter = pill.dataset.period;
+        fetchTasks();
+      });
+    });
+  }
+
+  // --- Pomodoro Sound Toggle ---
+  const btnPomoSound = document.getElementById('btnPomoSound');
+  const updatePomoSoundButtonUI = () => {
+    if (btnPomoSound) {
+      btnPomoSound.textContent = pomoSoundEnabled ? '🔔 Som: Ativo' : '🔕 Som: Mudo';
+      btnPomoSound.style.opacity = pomoSoundEnabled ? '1' : '0.65';
+    }
+  };
+  if (btnPomoSound) {
+    updatePomoSoundButtonUI();
+    btnPomoSound.addEventListener('click', () => {
+      pomoSoundEnabled = !pomoSoundEnabled;
+      localStorage.setItem('pomo_sound', pomoSoundEnabled ? 'true' : 'false');
+      updatePomoSoundButtonUI();
+      showToast(pomoSoundEnabled ? 'Alarme sonoro do Pomodoro ativado.' : 'Alarme sonoro do Pomodoro mutado.', 'info');
+    });
+  }
+
+  // --- Service Worker (PWA Offline & Shell Cache) ---
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.warn('Registro do Service Worker falhou:', err);
+      });
+    });
+  }
+
+  
+
+  // =========================================================================
+  // LIFEHUB COCKPIT & FINANCIAL DASHBOARD CONTROLLER
+  // =========================================================================
+
+  // --- Currency & Date Formatting Helpers ---
+  const formatCurrency = (val) => {
+    const num = Number(val) || 0;
+    return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Bom dia';
+    if (hour >= 12 && hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
+  const updateHeaderGreeting = () => {
+    const headerGreeting = document.getElementById('headerGreeting');
+    const headerDateFormatted = document.getElementById('headerDateFormatted');
+    const user = getStoredUser();
+    const name = user ? (user.nome ? user.nome.split(' ')[0] : 'Usuário') : 'Visitante';
+
+    if (headerGreeting) {
+      headerGreeting.textContent = `👋 ${getGreeting()}, ${name}!`;
+    }
+
+    if (headerDateFormatted) {
+      const now = new Date();
+      const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+      const formatted = now.toLocaleDateString('pt-BR', options);
+      headerDateFormatted.textContent = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    }
+  };
+
+  // --- App Views Navigation (Sidebar) ---
+  let currentAppView = 'dashboard';
+  const appSidebar = document.getElementById('appSidebar');
+  const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+  const btnMobileMenu = document.getElementById('btnMobileMenu');
+  const sidebarNavItems = document.querySelectorAll('.sidebar-nav-item');
+  const sidebarSaldoTotal = document.getElementById('sidebarSaldoTotal');
+  const sidebarTrashBadge = document.getElementById('sidebarTrashBadge');
+
+  const dashboardView = document.getElementById('dashboardView');
+  const tasksView = document.getElementById('tasksView');
+  const financesView = document.getElementById('financesView');
+  const calendarView = document.getElementById('calendarView');
+  const goalsView = document.getElementById('goalsView');
+
+  // Load saved sidebar state
+  if (localStorage.getItem('sidebar_collapsed') === 'true' && appSidebar) {
+    appSidebar.classList.add('collapsed');
+  }
+
+  if (btnToggleSidebar && appSidebar) {
+    btnToggleSidebar.addEventListener('click', () => {
+      appSidebar.classList.toggle('collapsed');
+      localStorage.setItem('sidebar_collapsed', appSidebar.classList.contains('collapsed') ? 'true' : 'false');
+    });
+  }
+
+  if (btnMobileMenu && appSidebar) {
+    btnMobileMenu.addEventListener('click', () => {
+      appSidebar.classList.toggle('mobile-open');
+    });
+  }
+
+  const switchAppView = (viewName) => {
+    currentAppView = viewName;
+
+    sidebarNavItems.forEach(item => {
+      item.classList.toggle('active', item.dataset.appView === viewName);
+    });
+
+    if (dashboardView) dashboardView.classList.add('hidden');
+    if (tasksView) tasksView.classList.add('hidden');
+    if (financesView) financesView.classList.add('hidden');
+    if (statsView) statsView.classList.add('hidden');
+    if (trashView) trashView.classList.add('hidden');
+    if (calendarView) calendarView.classList.add('hidden');
+    if (goalsView) goalsView.classList.add('hidden');
+
+    if (viewName === 'dashboard') {
+      if (dashboardView) dashboardView.classList.remove('hidden');
+      fetchDashboardData();
+    } else if (viewName === 'tasks') {
+      if (tasksView) tasksView.classList.remove('hidden');
+      fetchTasks();
+    } else if (viewName === 'finances') {
+      if (financesView) financesView.classList.remove('hidden');
+      fetchFinancesData();
+    } else if (viewName === 'calendar') {
+      if (calendarView) calendarView.classList.remove('hidden');
+      fetchCalendarData();
+    } else if (viewName === 'goals') {
+      if (goalsView) goalsView.classList.remove('hidden');
+      fetchGoalsData();
+    } else if (viewName === 'stats') {
+      if (statsView) statsView.classList.remove('hidden');
+      fetchStats();
+    } else if (viewName === 'trash') {
+      if (trashView) trashView.classList.remove('hidden');
+      fetchTrash();
+    }
+
+    if (appSidebar && appSidebar.classList.contains('mobile-open')) {
+      appSidebar.classList.remove('mobile-open');
+    }
+  };
+
+  sidebarNavItems.forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchAppView(btn.dataset.appView);
+    });
+  });
+
+  // Quick Action Buttons in Header
+  const btnQuickNewTask = document.getElementById('btnQuickNewTask');
+  const btnQuickNewTrans = document.getElementById('btnQuickNewTrans');
+
+  if (btnQuickNewTask) {
+    btnQuickNewTask.addEventListener('click', () => {
+      switchAppView('tasks');
+      const titleInput = document.getElementById('taskTitle');
+      if (titleInput) {
+        titleInput.scrollIntoView({ behavior: 'smooth' });
+        titleInput.focus();
+      }
+    });
+  }
+
+  if (btnQuickNewTrans) {
+    btnQuickNewTrans.addEventListener('click', () => {
+      openTransactionModal('DESPESA');
+    });
+  }
+
+  // ==========================================================================
+  // LIFEHUB EXTENSIONS: CLIMA, HÁBITOS, NOTAS RÁPIDAS & RADAR ESPORTIVO
+  // ==========================================================================
+
+  // --- Clima Local (Open-Meteo API) ---
+  const weatherIconEl = document.getElementById('weatherIcon');
+  const weatherTextEl = document.getElementById('weatherText');
+  const weatherChip = document.getElementById('weatherChip');
+
+  const getWeatherInterpretation = (code) => {
+    if (code === 0) return { icon: '☀️', text: 'Céu Limpo' };
+    if ([1, 2, 3].includes(code)) return { icon: '⛅', text: 'Parcialmente Nublado' };
+    if ([45, 48].includes(code)) return { icon: '🌫️', text: 'Nevoeiro' };
+    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return { icon: '🌧️', text: 'Chuva' };
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return { icon: '❄️', text: 'Neve' };
+    if ([95, 96, 99].includes(code)) return { icon: '⛈️', text: 'Tempestade' };
+    return { icon: '🌤️', text: 'Tempo Firme' };
+  };
+
+  const fetchWeatherData = async () => {
+    if (!weatherTextEl) return;
+    try {
+      let lat = -23.5505;
+      let lon = -46.6333;
+
+      const getCoords = () => new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve({ lat, lon });
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          () => resolve({ lat, lon }),
+          { timeout: 3000 }
+        );
+      });
+
+      const coords = await getCoords();
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        const current = data.current_weather;
+        const daily = data.daily;
+        const temp = Math.round(current.temperature);
+        const max = daily && daily.temperature_2m_max ? Math.round(daily.temperature_2m_max[0]) : null;
+        const min = daily && daily.temperature_2m_min ? Math.round(daily.temperature_2m_min[0]) : null;
+        const info = getWeatherInterpretation(current.weathercode);
+
+        if (weatherIconEl) weatherIconEl.textContent = info.icon;
+        let details = `${temp}°C ${info.text}`;
+        if (max !== null && min !== null) {
+          details += ` • ${min}° / ${max}°`;
+        }
+        weatherTextEl.textContent = details;
+      }
+    } catch (err) {
+      console.warn('Não foi possível obter clima em tempo real:', err);
+      if (weatherTextEl) weatherTextEl.textContent = 'Clima indisponível';
+    }
+  };
+
+  if (weatherChip) {
+    weatherChip.addEventListener('click', () => {
+      if (weatherTextEl) weatherTextEl.textContent = 'Atualizando...';
+      fetchWeatherData();
+    });
+  }
+
+  // --- Módulo de Hábitos & Rotinas ---
+  const dashHabitsList = document.getElementById('dashHabitsList');
+  const habitsProgressText = document.getElementById('habitsProgressText');
+  const habitsProgressBarFill = document.getElementById('habitsProgressBarFill');
+  const btnOpenNewHabit = document.getElementById('btnOpenNewHabit');
+  const habitModal = document.getElementById('habitModal');
+  const habitModalBackdrop = document.getElementById('habitModalBackdrop');
+  const btnCloseHabitModal = document.getElementById('btnCloseHabitModal');
+  const btnCancelHabit = document.getElementById('btnCancelHabit');
+  const habitForm = document.getElementById('habitForm');
+
+  const getHabitIconEmoji = (icon) => {
+    const map = {
+      'droplet': '💧',
+      'activity': '🏋️',
+      'book-open': '📚',
+      'smile': '🧘',
+      'code': '💻',
+      'heart': '❤️',
+      'sun': '☀️',
+      'check': '✅'
+    };
+    return map[icon] || icon || '🎯';
+  };
+
+  const fetchHabitsData = async () => {
+    if (!dashHabitsList || !getStoredToken()) return;
+    try {
+      const response = await apiFetch('/api/habitos');
+      if (response.ok) {
+        const habitos = await response.json();
+        renderHabits(habitos);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar hábitos:', err);
+    }
+  };
+
+  const renderHabits = (habitos) => {
+    if (!dashHabitsList) return;
+
+    const total = habitos.length;
+    const completed = habitos.filter(h => h.concluidoHoje).length;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    if (habitsProgressText) habitsProgressText.textContent = `${completed} / ${total} (${pct}%)`;
+    if (habitsProgressBarFill) habitsProgressBarFill.style.width = `${pct}%`;
+
+    if (habitos.length === 0) {
+      dashHabitsList.innerHTML = '<div class="dash-empty">Nenhum hábito diário cadastrado. Clique em "+ Novo" para começar sua rotina! ✨</div>';
+      return;
+    }
+
+    dashHabitsList.innerHTML = habitos.map(h => `
+      <div class="habit-item ${h.concluidoHoje ? 'habit-completed' : ''}" data-id="${h.id}">
+        <div class="habit-item-left">
+          <div class="habit-icon-badge" style="background:${h.cor ? h.cor + '22' : 'rgba(99,102,241,0.15)'}; color:${h.cor || '#6366f1'};">
+            ${getHabitIconEmoji(h.icone)}
+          </div>
+          <div class="habit-info">
+            <span class="habit-name">${escapeHtml(h.nome)}</span>
+            <span class="habit-streak">🔥 ${h.streakAtual || 0} ${h.streakAtual === 1 ? 'dia' : 'dias'} de ofensiva</span>
+          </div>
+        </div>
+        <button type="button" class="habit-check-btn ${h.concluidoHoje ? 'checked' : ''}" data-id="${h.id}" title="${h.concluidoHoje ? 'Desmarcar hábito' : 'Concluir hoje!'}">
+          ${h.concluidoHoje ? '✓' : ''}
+        </button>
+      </div>
+    `).join('');
+
+    dashHabitsList.querySelectorAll('.habit-check-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const habitId = btn.dataset.id;
+        try {
+          const res = await apiFetch(`/api/habitos/${habitId}/toggle-hoje`, { method: 'POST' });
+          if (res.ok) {
+            const updated = await res.json();
+            showToast(updated.concluidoHoje ? 'Parabéns! Hábito concluído hoje! 🔥' : 'Hábito desmarcado.');
+            await fetchHabitsData();
+          }
+        } catch (err) {
+          console.error('Erro ao alternar hábito:', err);
+        }
+      });
+    });
+  };
+
+  const openHabitModal = () => {
+    if (!habitModal) return;
+    habitModal.classList.remove('hidden');
+    const input = document.getElementById('habitNome');
+    if (input) setTimeout(() => input.focus(), 100);
+  };
+
+  const closeHabitModal = () => {
+    if (habitModal) habitModal.classList.add('hidden');
+  };
+
+  if (btnOpenNewHabit) btnOpenNewHabit.addEventListener('click', openHabitModal);
+  if (btnCloseHabitModal) btnCloseHabitModal.addEventListener('click', closeHabitModal);
+  if (btnCancelHabit) btnCancelHabit.addEventListener('click', closeHabitModal);
+  if (habitModalBackdrop) habitModalBackdrop.addEventListener('click', closeHabitModal);
+
+  if (habitForm) {
+    habitForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nome = document.getElementById('habitNome').value.trim();
+      const icone = document.getElementById('habitIcone').value;
+      const cor = document.getElementById('habitCor').value;
+
+      if (!nome) return;
+
+      try {
+        const res = await apiFetch('/api/habitos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, icone, cor, diasSemana: 'TODOS' })
+        });
+
+        if (res.ok) {
+          showToast(`Hábito "${nome}" criado com sucesso! 🎯`);
+          habitForm.reset();
+          closeHabitModal();
+          await fetchHabitsData();
+        } else {
+          showToast('Erro ao cadastrar hábito.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  // --- Bloco de Notas Rápidas (Scratchpad) ---
+  const scratchpadTextarea = document.getElementById('scratchpadTextarea');
+  const scratchpadStatus = document.getElementById('scratchpadStatus');
+  const scratchpadCharCount = document.getElementById('scratchpadCharCount');
+  const btnConvertNoteToTask = document.getElementById('btnConvertNoteToTask');
+
+  let currentScratchpadNoteId = null;
+  let scratchpadDebounceTimer = null;
+
+  const fetchScratchpadData = async () => {
+    if (!scratchpadTextarea || !getStoredToken()) return;
+    try {
+      const response = await apiFetch('/api/notas');
+      if (response.ok) {
+        const notas = await response.json();
+        if (notas && notas.length > 0) {
+          const nota = notas[0];
+          currentScratchpadNoteId = nota.id;
+          scratchpadTextarea.value = nota.conteudo || '';
+          if (scratchpadCharCount) {
+            scratchpadCharCount.textContent = `${(nota.conteudo || '').length} caracteres`;
+          }
+          if (scratchpadStatus) {
+            scratchpadStatus.textContent = 'Salvo automaticamente ✅';
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao buscar anotações rápidas:', err);
+    }
+  };
+
+  if (scratchpadTextarea) {
+    scratchpadTextarea.addEventListener('input', () => {
+      const len = scratchpadTextarea.value.length;
+      if (scratchpadCharCount) scratchpadCharCount.textContent = `${len} caracteres`;
+      if (scratchpadStatus) scratchpadStatus.textContent = 'Salvando... ⏳';
+
+      clearTimeout(scratchpadDebounceTimer);
+      scratchpadDebounceTimer = setTimeout(async () => {
+        if (!currentScratchpadNoteId) return;
+        try {
+          const res = await apiFetch(`/api/notas/${currentScratchpadNoteId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              titulo: 'Rascunho Rápido',
+              conteudo: scratchpadTextarea.value
+            })
+          });
+
+          if (res.ok) {
+            if (scratchpadStatus) scratchpadStatus.textContent = 'Salvo automaticamente ✅';
+          } else {
+            if (scratchpadStatus) scratchpadStatus.textContent = 'Erro ao salvar ⚠️';
+          }
+        } catch (err) {
+          console.error(err);
+          if (scratchpadStatus) scratchpadStatus.textContent = 'Erro ao salvar ⚠️';
+        }
+      }, 500);
+    });
+  }
+
+  if (btnConvertNoteToTask) {
+    btnConvertNoteToTask.addEventListener('click', async () => {
+      const text = scratchpadTextarea ? scratchpadTextarea.value.trim() : '';
+      if (!text) {
+        showToast('Escreva uma anotação antes de converter em tarefa.', 'warning');
+        return;
+      }
+
+      if (!currentScratchpadNoteId) return;
+
+      try {
+        const res = await apiFetch(`/api/notas/${currentScratchpadNoteId}/converter-em-tarefa`, {
+          method: 'POST'
+        });
+
+        if (res.ok) {
+          showToast('Tarefa criada com sucesso a partir da anotação! 🚀');
+          await Promise.all([fetchDashboardData(), fetchSummary()]);
+        } else {
+          showToast('Erro ao converter anotação em tarefa.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Erro ao converter anotação em tarefa.', 'error');
+      }
+    });
+  }
+
+  // ==========================================================================
+  // RADAR MULTI-ESPORTES, PREFERÊNCIAS & SINCRONIZAÇÃO COM CALENDÁRIO
+  // ==========================================================================
+  const dashSportsList = document.getElementById('dashSportsList');
+  const sportsFilterInput = document.getElementById('sportsFilterInput');
+  const sportsHighlightText = document.getElementById('sportsHighlightText');
+  const sportsChip = document.getElementById('sportsChip');
+  const btnOpenSportsPrefs = document.getElementById('btnOpenSportsPrefs');
+  const sportsSportPills = document.getElementById('sportsSportPills');
+
+  const sportsPreferencesModal = document.getElementById('sportsPreferencesModal');
+  const sportsPreferencesModalBackdrop = document.getElementById('sportsPreferencesModalBackdrop');
+  const btnCloseSportsPrefsModal = document.getElementById('btnCloseSportsPrefsModal');
+  const btnCloseSportsPrefsBtn = document.getElementById('btnCloseSportsPrefsBtn');
+  const activeSportsPrefsContainer = document.getElementById('activeSportsPrefsContainer');
+  const addSportsPrefForm = document.getElementById('addSportsPrefForm');
+
+  let currentSportCategory = 'all';
+  let currentSportsSearch = '';
+  let sportsFilterDebounce = null;
+  let cachedSportsEvents = [];
+  let cachedSportsPreferences = [];
+
+  const fetchSportsData = async (esporte = currentSportCategory, busca = currentSportsSearch) => {
+    if (!dashSportsList || !getStoredToken()) return;
+    currentSportCategory = esporte;
+    currentSportsSearch = busca;
+
+    try {
+      let queryParams = [];
+      if (currentSportCategory && currentSportCategory !== 'all') {
+        queryParams.push(`esporte=${encodeURIComponent(currentSportCategory)}`);
+      }
+      if (currentSportsSearch) {
+        queryParams.push(`busca=${encodeURIComponent(currentSportsSearch)}`);
+      }
+      const qs = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+
+      const response = await apiFetch(`/api/esportes/eventos${qs}`);
+      if (response.ok) {
+        cachedSportsEvents = await response.json();
+        renderSports(cachedSportsEvents);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar eventos esportivos:', err);
+    }
+  };
+
+  const renderSports = (eventos) => {
+    if (!dashSportsList) return;
+
+    // Atualiza chip de destaque no topo (Header Ticker)
+    if (sportsHighlightText && eventos && eventos.length > 0) {
+      const live = eventos.find(e => e.status === 'AO VIVO');
+      if (live) {
+        sportsHighlightText.textContent = `AO VIVO: ${live.icone} ${live.titulo} (${live.resultado || 'Em andamento'})`;
+      } else {
+        const next = eventos[0];
+        sportsHighlightText.textContent = `${next.icone} ${next.titulo} • ${next.dataHoraFormatada || ''}`;
+      }
+    }
+
+    if (!eventos || eventos.length === 0) {
+      dashSportsList.innerHTML = '<div class="dash-empty">Nenhum evento encontrado para os filtros aplicados. Clique em "⚙️ Meus Esportes" para adicionar modalidades! 🏆</div>';
+      return;
+    }
+
+    dashSportsList.innerHTML = eventos.map(ev => {
+      let statusClass = 'scheduled';
+      let statusLabel = ev.status;
+      if (ev.status === 'AO VIVO') {
+        statusClass = 'live';
+        statusLabel = `AO VIVO ${ev.resultado ? `(${ev.resultado})` : ''}`;
+      } else if (ev.status === 'ENCERRADO') {
+        statusClass = 'finished';
+      }
+
+      let sportBadgeClass = 'sports-badge-futebol';
+      if (ev.esporte === 'UFC') sportBadgeClass = 'sports-badge-ufc';
+      else if (ev.esporte === 'F1') sportBadgeClass = 'sports-badge-f1';
+      else if (ev.esporte === 'BASQUETE') sportBadgeClass = 'sports-badge-basquete';
+
+      const isSynced = ev.noCalendario === true;
+      const calBtnHtml = isSynced
+        ? `<button type="button" class="btn btn-xs btn-sync-cal synced btn-toggle-sport-cal" data-id="${ev.id}" data-synced="true" title="Remover este evento da sua agenda">✓ Na Agenda</button>`
+        : `<button type="button" class="btn btn-xs btn-outline btn-sync-cal btn-toggle-sport-cal" data-id="${ev.id}" data-synced="false" title="Adicionar este evento ao seu Calendário Unificado">📅 Salvar na Agenda</button>`;
+
+      return `
+        <div class="sports-match-card" data-event-id="${ev.id}">
+          <div class="sports-match-header">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="sports-status-badge ${sportBadgeClass}">${escapeHtml(ev.icone)} ${escapeHtml(ev.esporte)}</span>
+              <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${escapeHtml(ev.subtitulo || '')}</span>
+            </div>
+            <span class="sports-status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>
+          </div>
+
+          <div style="padding:4px 0;">
+            <h4 style="font-size:0.92rem;font-weight:700;color:var(--text-primary);margin:0;">
+              ${escapeHtml(ev.titulo)}
+            </h4>
+          </div>
+
+          <div class="sports-match-footer" style="margin-top:2px;">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span>${escapeHtml(ev.transmissao || 'Transmissão a confirmar')}</span>
+              <span style="font-weight:600;color:var(--text-secondary);">📅 ${escapeHtml(ev.dataHoraFormatada || '')}</span>
+            </div>
+            <div>
+              ${calBtnHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Attach calendar sync toggle handlers
+    dashSportsList.querySelectorAll('.btn-toggle-sport-cal').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const eventId = btn.dataset.id;
+        const isSynced = btn.dataset.synced === 'true';
+
+        try {
+          if (isSynced) {
+            const res = await apiFetch(`/api/esportes/eventos/${eventId}/remover-calendario`, { method: 'DELETE' });
+            if (res.ok) {
+              showToast('Evento removido da sua agenda.');
+              await fetchSportsData();
+              if (currentAppView === 'calendar') fetchCalendarData();
+            }
+          } else {
+            const res = await apiFetch(`/api/esportes/eventos/${eventId}/salvar-calendario`, { method: 'POST' });
+            if (res.ok) {
+              showToast('Evento esportivo salvo no seu Calendário! 📅✨');
+              await fetchSportsData();
+              if (currentAppView === 'calendar') fetchCalendarData();
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
+  };
+
+  // Filter Pills (Todos, UFC, F1, Futebol, Basquete)
+  if (sportsSportPills) {
+    sportsSportPills.querySelectorAll('.sport-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        sportsSportPills.querySelectorAll('.sport-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        const sport = pill.dataset.sport || 'all';
+        fetchSportsData(sport, currentSportsSearch);
+      });
+    });
+  }
+
+  // Filter search input
+  if (sportsFilterInput) {
+    sportsFilterInput.addEventListener('input', (e) => {
+      clearTimeout(sportsFilterDebounce);
+      sportsFilterDebounce = setTimeout(() => {
+        fetchSportsData(currentSportCategory, e.target.value.trim());
+      }, 300);
+    });
+  }
+
+  // Header sports chip click: switch to dashboard & scroll to widget
+  if (sportsChip) {
+    sportsChip.addEventListener('click', () => {
+      if (currentAppView !== 'dashboard') {
+        switchAppView('dashboard');
+      }
+      if (dashSportsList) {
+        dashSportsList.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+
+  // --- Modal de Preferências Esportivas ---
+  const fetchSportsPreferences = async () => {
+    if (!activeSportsPrefsContainer || !getStoredToken()) return;
+    try {
+      const res = await apiFetch('/api/esportes/preferencias');
+      if (res.ok) {
+        cachedSportsPreferences = await res.json();
+        renderSportsPreferences();
+      }
+    } catch (err) {
+      console.error('Erro ao buscar preferências de esportes:', err);
+    }
+  };
+
+  const renderSportsPreferences = () => {
+    if (!activeSportsPrefsContainer) return;
+
+    if (cachedSportsPreferences.length === 0) {
+      activeSportsPrefsContainer.innerHTML = '<span style="font-size:0.8rem;color:var(--text-muted);">Nenhum esporte ou time seguido ainda. Clique nas sugestões abaixo para adicionar!</span>';
+      return;
+    }
+
+    activeSportsPrefsContainer.innerHTML = cachedSportsPreferences.map(p => `
+      <span class="sports-pref-tag" style="border-left:3px solid ${p.cor || '#10b981'};">
+        <span>${escapeHtml(p.icone || '🏆')}</span>
+        <span>${escapeHtml(p.nomeInteresse)}</span>
+        <button type="button" class="sports-pref-remove btn-remove-pref" data-id="${p.id}" title="Deixar de seguir">&times;</button>
+      </span>
+    `).join('');
+
+    activeSportsPrefsContainer.querySelectorAll('.btn-remove-pref').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        try {
+          const res = await apiFetch(`/api/esportes/preferencias/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            showToast('Interesse removido.');
+            await fetchSportsPreferences();
+            await fetchSportsData();
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
+  };
+
+  const openSportsPrefsModal = () => {
+    if (!sportsPreferencesModal) return;
+    sportsPreferencesModal.classList.remove('hidden');
+    fetchSportsPreferences();
+  };
+
+  const closeSportsPrefsModal = () => {
+    if (sportsPreferencesModal) sportsPreferencesModal.classList.add('hidden');
+  };
+
+  if (btnOpenSportsPrefs) btnOpenSportsPrefs.addEventListener('click', openSportsPrefsModal);
+  if (btnCloseSportsPrefsModal) btnCloseSportsPrefsModal.addEventListener('click', closeSportsPrefsModal);
+  if (btnCloseSportsPrefsBtn) btnCloseSportsPrefsBtn.addEventListener('click', closeSportsPrefsModal);
+  if (sportsPreferencesModalBackdrop) sportsPreferencesModalBackdrop.addEventListener('click', closeSportsPrefsModal);
+
+  // Quick Preset buttons inside preferences modal
+  const sportsSuggestions = document.querySelectorAll('.btn-quick-pref');
+  sportsSuggestions.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const esporte = btn.dataset.sport;
+      const nomeInteresse = btn.dataset.name;
+
+      try {
+        const res = await apiFetch('/api/esportes/preferencias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ esporte, nomeInteresse })
+        });
+
+        if (res.ok) {
+          showToast(`"${nomeInteresse}" adicionado aos seus esportes seguidos! 🏆`);
+          await fetchSportsPreferences();
+          await fetchSportsData();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  });
+
+  // Custom preference form submit
+  if (addSportsPrefForm) {
+    addSportsPrefForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const esporte = document.getElementById('customPrefSport').value;
+      const nomeInteresse = document.getElementById('customPrefName').value.trim();
+
+      if (!nomeInteresse) return;
+
+      try {
+        const res = await apiFetch('/api/esportes/preferencias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ esporte, nomeInteresse })
+        });
+
+        if (res.ok) {
+          showToast(`"${nomeInteresse}" adicionado com sucesso! 🎯`);
+          document.getElementById('customPrefName').value = '';
+          await fetchSportsPreferences();
+          await fetchSportsData();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  // ==========================================================================
+  // MÓDULO DE METAS, SONHOS & OKRs
+  // ==========================================================================
+  const dashGoalsList = document.getElementById('dashGoalsList');
+  const goalsCardsGrid = document.getElementById('goalsCardsGrid');
+  const btnOpenNewGoalCockpit = document.getElementById('btnOpenNewGoalCockpit');
+  const btnGoGoalsView = document.getElementById('btnGoGoalsView');
+  const btnOpenNewGoalMain = document.getElementById('btnOpenNewGoalMain');
+
+  const goalModal = document.getElementById('goalModal');
+  const goalModalBackdrop = document.getElementById('goalModalBackdrop');
+  const btnCloseGoalModal = document.getElementById('btnCloseGoalModal');
+  const btnCancelGoal = document.getElementById('btnCancelGoal');
+  const goalForm = document.getElementById('goalForm');
+
+  const goalAporteModal = document.getElementById('goalAporteModal');
+  const goalAporteModalBackdrop = document.getElementById('goalAporteModalBackdrop');
+  const btnCloseGoalAporteModal = document.getElementById('btnCloseGoalAporteModal');
+  const btnCancelAporte = document.getElementById('btnCancelAporte');
+  const goalAporteForm = document.getElementById('goalAporteForm');
+
+  const kpiGoalsInProgress = document.getElementById('kpiGoalsInProgress');
+  const kpiGoalsCompleted = document.getElementById('kpiGoalsCompleted');
+  const kpiGoalsAvgProgress = document.getElementById('kpiGoalsAvgProgress');
+  const goalsCategoryFilters = document.getElementById('goalsCategoryFilters');
+
+  let cachedGoalsList = [];
+  let currentGoalsCategoryFilter = 'all';
+  let editingGoalId = null;
+
+  const fetchGoalsData = async () => {
+    if (!getStoredToken()) return;
+    try {
+      const response = await apiFetch('/api/metas');
+      if (response.ok) {
+        cachedGoalsList = await response.json();
+        renderGoals();
+      }
+    } catch (err) {
+      console.error('Erro ao buscar metas:', err);
+    }
+  };
+
+  const renderGoals = () => {
+    // 1. KPIs
+    if (kpiGoalsInProgress || kpiGoalsCompleted || kpiGoalsAvgProgress) {
+      const inProg = cachedGoalsList.filter(g => !g.concluida).length;
+      const comp = cachedGoalsList.filter(g => g.concluida).length;
+      const total = cachedGoalsList.length;
+      const avgPct = total > 0
+        ? Math.round(cachedGoalsList.reduce((acc, g) => acc + (g.percentualConcluido || 0), 0) / total)
+        : 0;
+
+      if (kpiGoalsInProgress) kpiGoalsInProgress.textContent = inProg;
+      if (kpiGoalsCompleted) kpiGoalsCompleted.textContent = comp;
+      if (kpiGoalsAvgProgress) kpiGoalsAvgProgress.textContent = `${avgPct}%`;
+    }
+
+    // 2. Cockpit Widget
+    if (dashGoalsList) {
+      if (cachedGoalsList.length === 0) {
+        dashGoalsList.innerHTML = '<div class="dash-empty">Nenhuma meta cadastrada. Clique em "+ Nova" para definir seus objetivos! 🎯</div>';
+      } else {
+        const topGoals = cachedGoalsList.slice(0, 3);
+        dashGoalsList.innerHTML = topGoals.map(g => {
+          const valDisplay = g.unidade === 'R$'
+            ? `${formatCurrency(g.valorAtual)} / ${formatCurrency(g.valorAlvo)}`
+            : `${g.valorAtual} / ${g.valorAlvo} ${escapeHtml(g.unidade || '')}`;
+          const pct = Math.min(100, Math.round(g.percentualConcluido || 0));
+
+          return `
+            <div class="dash-goal-item">
+              <div class="dash-goal-top">
+                <span class="dash-goal-title">
+                  <span style="color:${g.cor || '#10b981'};">●</span>
+                  ${escapeHtml(g.titulo)}
+                </span>
+                <span class="dash-goal-pct">${pct}%</span>
+              </div>
+              <div class="dash-goal-progress-bar">
+                <div class="dash-goal-progress-fill" style="width:${pct}%;background:${g.cor || '#10b981'};"></div>
+              </div>
+              <div class="dash-goal-bottom">
+                <span>${valDisplay}</span>
+                <button type="button" class="btn btn-xs btn-outline btn-quick-aporte" data-id="${g.id}" data-title="${escapeHtml(g.titulo)}">+ Aporte</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        dashGoalsList.querySelectorAll('.btn-quick-aporte').forEach(btn => {
+          btn.addEventListener('click', () => {
+            openAporteModal(btn.dataset.id, btn.dataset.title);
+          });
+        });
+      }
+    }
+
+    // 3. Full Goals Grid View
+    if (goalsCardsGrid) {
+      const filtered = currentGoalsCategoryFilter === 'all'
+        ? cachedGoalsList
+        : cachedGoalsList.filter(g => (g.categoria || '').toUpperCase() === currentGoalsCategoryFilter.toUpperCase());
+
+      if (filtered.length === 0) {
+        goalsCardsGrid.innerHTML = '<div class="dash-empty" style="grid-column: 1 / -1;">Nenhuma meta encontrada nesta categoria. ✨</div>';
+        return;
+      }
+
+      goalsCardsGrid.innerHTML = filtered.map(g => {
+        const pct = Math.min(100, Math.round(g.percentualConcluido || 0));
+        const valAtualStr = g.unidade === 'R$' ? formatCurrency(g.valorAtual) : `${g.valorAtual} ${escapeHtml(g.unidade || '')}`;
+        const valAlvoStr = g.unidade === 'R$' ? formatCurrency(g.valorAlvo) : `${g.valorAlvo} ${escapeHtml(g.unidade || '')}`;
+        const prazoStr = g.prazo ? `Prazo: ${formatDateOnly(g.prazo)}` : 'Sem prazo definido';
+
+        return `
+          <div class="goal-card ${g.concluida ? 'goal-completed' : ''}" data-id="${g.id}">
+            <div class="goal-card-header">
+              <span class="goal-card-badge" style="background:${g.cor ? g.cor + '22' : '#e0e7ff'};color:${g.cor || '#6366f1'};">
+                ${escapeHtml(g.categoria || 'GERAL')}
+              </span>
+              <div class="goal-card-actions">
+                <button type="button" class="btn btn-xs btn-outline btn-edit-goal" data-id="${g.id}" title="Editar Meta">✏️</button>
+                <button type="button" class="btn btn-xs btn-outline btn-delete-goal" data-id="${g.id}" title="Excluir Meta" style="color:var(--danger);">🗑️</button>
+              </div>
+            </div>
+            <div>
+              <h3 class="goal-card-title">${escapeHtml(g.titulo)}</h3>
+              ${g.descricao ? `<p class="goal-card-desc">${escapeHtml(g.descricao)}</p>` : ''}
+            </div>
+            <div class="goal-card-values">
+              <div>
+                <span class="goal-val-current">${valAtualStr}</span>
+                <span class="goal-val-target"> de ${valAlvoStr}</span>
+              </div>
+              <span style="font-weight:700;color:${g.cor || 'var(--primary)'};font-size:0.95rem;">${pct}%</span>
+            </div>
+            <div class="goal-card-progress">
+              <div class="goal-card-fill" style="width:${pct}%;background:${g.cor || '#10b981'};"></div>
+            </div>
+            <div class="goal-card-footer">
+              <span>📅 ${prazoStr}</span>
+              ${!g.concluida ? `<button type="button" class="btn btn-xs btn-primary btn-card-aporte" data-id="${g.id}" data-title="${escapeHtml(g.titulo)}">+ Aporte</button>` : `<span style="color:var(--success);font-weight:700;">Concluída ✅</span>`}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      goalsCardsGrid.querySelectorAll('.btn-card-aporte').forEach(btn => {
+        btn.addEventListener('click', () => {
+          openAporteModal(btn.dataset.id, btn.dataset.title);
+        });
+      });
+
+      goalsCardsGrid.querySelectorAll('.btn-edit-goal').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id);
+          const goal = cachedGoalsList.find(g => g.id === id);
+          if (goal) openGoalModal(goal);
+        });
+      });
+
+      goalsCardsGrid.querySelectorAll('.btn-delete-goal').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Deseja realmente excluir esta meta?')) return;
+          const id = btn.dataset.id;
+          try {
+            const res = await apiFetch(`/api/metas/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              showToast('Meta excluída com sucesso.');
+              await fetchGoalsData();
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        });
+      });
+    }
+  };
+
+  // Category filter clicks in full view
+  if (goalsCategoryFilters) {
+    goalsCategoryFilters.querySelectorAll('.fin-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        goalsCategoryFilters.querySelectorAll('.fin-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentGoalsCategoryFilter = btn.dataset.goalCategory || 'all';
+        renderGoals();
+      });
+    });
+  }
+
+  // Goal Modals
+  const openGoalModal = (goal = null) => {
+    if (!goalModal) return;
+    editingGoalId = goal ? goal.id : null;
+    const titleEl = document.getElementById('goalModalTitle');
+    if (titleEl) titleEl.textContent = goal ? 'Editar Meta ou Sonho' : 'Nova Meta ou Sonho';
+
+    document.getElementById('goalTitulo').value = goal ? goal.titulo : '';
+    document.getElementById('goalDescricao').value = goal ? (goal.descricao || '') : '';
+    document.getElementById('goalCategoria').value = goal ? (goal.categoria || 'FINANCEIRA') : 'FINANCEIRA';
+    document.getElementById('goalUnidade').value = goal ? (goal.unidade || 'R$') : 'R$';
+    document.getElementById('goalValorAlvo').value = goal ? goal.valorAlvo : '';
+    document.getElementById('goalValorAtual').value = goal ? goal.valorAtual : '0.00';
+    document.getElementById('goalPrazo').value = goal && goal.prazo ? goal.prazo : '';
+    document.getElementById('goalCor').value = goal && goal.cor ? goal.cor : '#10b981';
+
+    goalModal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('goalTitulo').focus(), 100);
+  };
+
+  const closeGoalModal = () => {
+    if (goalModal) goalModal.classList.add('hidden');
+    editingGoalId = null;
+  };
+
+  if (btnOpenNewGoalCockpit) btnOpenNewGoalCockpit.addEventListener('click', () => openGoalModal());
+  if (btnOpenNewGoalMain) btnOpenNewGoalMain.addEventListener('click', () => openGoalModal());
+  if (btnGoGoalsView) btnGoGoalsView.addEventListener('click', () => switchAppView('goals'));
+  if (btnCloseGoalModal) btnCloseGoalModal.addEventListener('click', closeGoalModal);
+  if (btnCancelGoal) btnCancelGoal.addEventListener('click', closeGoalModal);
+  if (goalModalBackdrop) goalModalBackdrop.addEventListener('click', closeGoalModal);
+
+  if (goalForm) {
+    goalForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const titulo = document.getElementById('goalTitulo').value.trim();
+      const descricao = document.getElementById('goalDescricao').value.trim();
+      const categoria = document.getElementById('goalCategoria').value;
+      const unidade = document.getElementById('goalUnidade').value.trim() || 'R$';
+      const valorAlvo = parseFloat(document.getElementById('goalValorAlvo').value);
+      const valorAtual = parseFloat(document.getElementById('goalValorAtual').value) || 0;
+      const prazo = document.getElementById('goalPrazo').value || null;
+      const cor = document.getElementById('goalCor').value;
+
+      const payload = { titulo, descricao, categoria, unidade, valorAlvo, valorAtual, prazo, cor };
+
+      try {
+        const url = editingGoalId ? `/api/metas/${editingGoalId}` : '/api/metas';
+        const method = editingGoalId ? 'PUT' : 'POST';
+
+        const res = await apiFetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          showToast(editingGoalId ? 'Meta atualizada com sucesso!' : 'Meta criada com sucesso! 🎯');
+          goalForm.reset();
+          closeGoalModal();
+          await fetchGoalsData();
+        } else {
+          showToast('Erro ao salvar meta.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  // Aporte Modal
+  const openAporteModal = (id, title) => {
+    if (!goalAporteModal) return;
+    document.getElementById('aporteGoalId').value = id;
+    const titleEl = document.getElementById('aporteGoalTitle');
+    if (titleEl) titleEl.textContent = `Meta: ${title}`;
+    const aporteVal = document.getElementById('aporteValor');
+    if (aporteVal) aporteVal.value = '';
+    goalAporteModal.classList.remove('hidden');
+    setTimeout(() => { if (aporteVal) aporteVal.focus(); }, 100);
+  };
+
+  const closeAporteModal = () => {
+    if (goalAporteModal) goalAporteModal.classList.add('hidden');
+  };
+
+  if (btnCloseGoalAporteModal) btnCloseGoalAporteModal.addEventListener('click', closeAporteModal);
+  if (btnCancelAporte) btnCancelAporte.addEventListener('click', closeAporteModal);
+  if (goalAporteModalBackdrop) goalAporteModalBackdrop.addEventListener('click', closeAporteModal);
+
+  if (goalAporteForm) {
+    goalAporteForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('aporteGoalId').value;
+      const valorAporte = parseFloat(document.getElementById('aporteValor').value);
+
+      if (!valorAporte || valorAporte <= 0) return;
+
+      try {
+        const res = await apiFetch(`/api/metas/${id}/aporte`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valorAporte })
+        });
+
+        if (res.ok) {
+          const updated = await res.json();
+          if (updated.concluida) {
+            showToast('Sensacional! Meta atingida com 100% de sucesso! 🏆🎉');
+          } else {
+            showToast(`Aporte de +${formatCurrency(valorAporte)} registrado! 🚀`);
+          }
+          closeAporteModal();
+          await fetchGoalsData();
+        } else {
+          showToast('Erro ao registrar aporte.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  // ==========================================================================
+  // MÓDULO DE CALENDÁRIO UNIFICADO
+  // ==========================================================================
+  const calendarDaysGrid = document.getElementById('calendarDaysGrid');
+  const calendarMonthTitle = document.getElementById('calendarMonthTitle');
+  const btnPrevCalendarMonth = document.getElementById('btnPrevCalendarMonth');
+  const btnNextCalendarMonth = document.getElementById('btnNextCalendarMonth');
+  const btnCalendarToday = document.getElementById('btnCalendarToday');
+  const btnOpenNewEvent = document.getElementById('btnOpenNewEvent');
+  const calendarChip = document.getElementById('calendarChip');
+
+  const eventModal = document.getElementById('eventModal');
+  const eventModalBackdrop = document.getElementById('eventModalBackdrop');
+  const btnCloseEventModal = document.getElementById('btnCloseEventModal');
+  const btnCancelEvent = document.getElementById('btnCancelEvent');
+  const eventForm = document.getElementById('eventForm');
+
+  const dayDetailsModal = document.getElementById('dayDetailsModal');
+  const dayDetailsModalBackdrop = document.getElementById('dayDetailsModalBackdrop');
+  const btnCloseDayDetailsModal = document.getElementById('btnCloseDayDetailsModal');
+  const btnCloseDayDetailsBtn = document.getElementById('btnCloseDayDetailsBtn');
+  const btnDayAddEvent = document.getElementById('btnDayAddEvent');
+  const dayDetailsList = document.getElementById('dayDetailsList');
+  const dayDetailsModalTitle = document.getElementById('dayDetailsModalTitle');
+
+  let calendarCurrentYear = new Date().getFullYear();
+  let calendarCurrentMonth = new Date().getMonth() + 1; // 1-12
+  let cachedCalendarItems = [];
+  let selectedCalendarDateStr = null;
+
+  const fetchCalendarData = async (ano = calendarCurrentYear, mes = calendarCurrentMonth) => {
+    if (!getStoredToken()) return;
+    calendarCurrentYear = ano;
+    calendarCurrentMonth = mes;
+
+    if (calendarMonthTitle) {
+      const d = new Date(calendarCurrentYear, calendarCurrentMonth - 1, 1);
+      const mesNome = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      calendarMonthTitle.textContent = mesNome.charAt(0).toUpperCase() + mesNome.slice(1);
+    }
+
+    try {
+      const response = await apiFetch(`/api/calendario?ano=${calendarCurrentYear}&mes=${calendarCurrentMonth}`);
+      if (response.ok) {
+        cachedCalendarItems = await response.json();
+        renderCalendar();
+      }
+    } catch (err) {
+      console.error('Erro ao buscar itens do calendário:', err);
+    }
+  };
+
+  const renderCalendar = () => {
+    if (!calendarDaysGrid) return;
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    const firstDayIndex = new Date(calendarCurrentYear, calendarCurrentMonth - 1, 1).getDay();
+    const daysInMonth = new Date(calendarCurrentYear, calendarCurrentMonth, 0).getDate();
+    const prevMonthDays = new Date(calendarCurrentYear, calendarCurrentMonth - 1, 0).getDate();
+
+    let cellsHtml = '';
+
+    // Dias anteriores
+    for (let x = firstDayIndex; x > 0; x--) {
+      const dayNum = prevMonthDays - x + 1;
+      cellsHtml += `<div class="calendar-day-cell other-month"><div class="day-cell-header"><span class="day-number">${dayNum}</span></div></div>`;
+    }
+
+    // Dias do mês atual
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${calendarCurrentYear}-${String(calendarCurrentMonth).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const isToday = dateStr === todayStr;
+
+      const dayItems = cachedCalendarItems.filter(item => item.data === dateStr);
+
+      const itemsHtml = dayItems.map(item => {
+        let chipClass = 'chip-task';
+        let icon = '📋';
+        let label = item.titulo;
+
+        if (item.tipo === 'DESPESA') {
+          chipClass = 'chip-expense';
+          icon = '🔴';
+          label = item.valor ? `-${formatCurrency(item.valor)} ${item.titulo}` : item.titulo;
+        } else if (item.tipo === 'RECEITA') {
+          chipClass = 'chip-income';
+          icon = '🟢';
+          label = item.valor ? `+${formatCurrency(item.valor)} ${item.titulo}` : item.titulo;
+        } else if (item.tipo === 'EVENTO') {
+          chipClass = 'chip-event';
+          icon = '🟣';
+          label = item.hora ? `${item.hora.substring(0, 5)} ${item.titulo}` : item.titulo;
+        }
+
+        const isCompleted = item.status === 'CONCLUIDA' || item.status === 'PAGO';
+
+        return `
+          <div class="day-chip ${chipClass} ${isCompleted ? 'completed-item' : ''}" title="${escapeHtml(item.titulo)}">
+            <span>${icon}</span>
+            <span>${escapeHtml(label)}</span>
+          </div>
+        `;
+      }).join('');
+
+      cellsHtml += `
+        <div class="calendar-day-cell ${isToday ? 'is-today' : ''}" data-date="${dateStr}">
+          <div class="day-cell-header">
+            <span class="day-number">${i}</span>
+            ${dayItems.length > 0 ? `<span style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">${dayItems.length}</span>` : ''}
+          </div>
+          <div class="day-items-list">
+            ${itemsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    const totalRendered = firstDayIndex + daysInMonth;
+    const nextDays = totalRendered % 7 === 0 ? 0 : 7 - (totalRendered % 7);
+    for (let j = 1; j <= nextDays; j++) {
+      cellsHtml += `<div class="calendar-day-cell other-month"><div class="day-cell-header"><span class="day-number">${j}</span></div></div>`;
+    }
+
+    calendarDaysGrid.innerHTML = cellsHtml;
+
+    calendarDaysGrid.querySelectorAll('.calendar-day-cell:not(.other-month)').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const dateStr = cell.dataset.date;
+        const items = cachedCalendarItems.filter(it => it.data === dateStr);
+        openDayDetails(dateStr, items);
+      });
+    });
+  };
+
+  const openDayDetails = (dateStr, items) => {
+    selectedCalendarDateStr = dateStr;
+    if (!dayDetailsModal) return;
+
+    if (dayDetailsModalTitle) {
+      const parts = dateStr.split('-');
+      dayDetailsModalTitle.textContent = `Compromissos de ${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    if (dayDetailsList) {
+      if (items.length === 0) {
+        dayDetailsList.innerHTML = '<div class="dash-empty">Nenhum compromisso ou vencimento agendado para este dia. ✨</div>';
+      } else {
+        dayDetailsList.innerHTML = items.map(it => {
+          let badgeColor = '#3b82f6';
+          let actionBtn = '';
+
+          if (it.tipo === 'TAREFA') {
+            badgeColor = '#3b82f6';
+            const isDone = it.status === 'CONCLUIDA';
+            actionBtn = `<button type="button" class="btn btn-xs ${isDone ? 'btn-outline' : 'btn-primary'} btn-day-toggle-task" data-id="${it.origemId}">${isDone ? 'Concluída ✓' : 'Concluir'}</button>`;
+          } else if (it.tipo === 'DESPESA' || it.tipo === 'RECEITA') {
+            badgeColor = it.tipo === 'RECEITA' ? '#10b981' : '#ef4444';
+            const isPaid = it.status === 'PAGO';
+            actionBtn = `<button type="button" class="btn btn-xs ${isPaid ? 'btn-outline' : 'btn-primary'} btn-day-toggle-trans" data-id="${it.origemId}" data-status="${it.status}">${isPaid ? 'Pago ✓' : 'Pagar'}</button>`;
+          } else if (it.tipo === 'EVENTO') {
+            badgeColor = '#8b5cf6';
+            actionBtn = `<button type="button" class="btn btn-xs btn-outline btn-day-delete-event" data-id="${it.origemId}" style="color:var(--danger);">Excluir</button>`;
+          }
+
+          const valText = it.valor ? ` • <strong>${formatCurrency(it.valor)}</strong>` : '';
+
+          return `
+            <div class="day-detail-item" style="border-left: 3px solid ${badgeColor};">
+              <div>
+                <div style="font-weight:600;font-size:0.9rem;">${escapeHtml(it.titulo)}${valText}</div>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
+                  <span style="color:${badgeColor};font-weight:700;">${it.tipo}</span> | ${escapeHtml(it.detalhe || '')}
+                  ${it.hora ? ` • ⏰ ${it.hora.substring(0, 5)}` : ''}
+                </div>
+              </div>
+              <div>${actionBtn}</div>
+            </div>
+          `;
+        }).join('');
+
+        dayDetailsList.querySelectorAll('.btn-day-toggle-task').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            await apiFetch(`/api/tarefas/${id}/toggle-concluida`, { method: 'PUT' });
+            showToast('Status da tarefa atualizado!');
+            await fetchCalendarData();
+            closeDayDetailsModal();
+          });
+        });
+
+        dayDetailsList.querySelectorAll('.btn-day-toggle-trans').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            const newStatus = btn.dataset.status === 'PAGO' ? 'PENDENTE' : 'PAGO';
+            await toggleTransStatus(id, newStatus);
+            await fetchCalendarData();
+            closeDayDetailsModal();
+          });
+        });
+
+        dayDetailsList.querySelectorAll('.btn-day-delete-event').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            if (!confirm('Deseja excluir este evento?')) return;
+            const id = btn.dataset.id;
+            await apiFetch(`/api/calendario/eventos/${id}`, { method: 'DELETE' });
+            showToast('Evento excluído.');
+            await fetchCalendarData();
+            closeDayDetailsModal();
+          });
+        });
+      }
+    }
+
+    dayDetailsModal.classList.remove('hidden');
+  };
+
+  const closeDayDetailsModal = () => {
+    if (dayDetailsModal) dayDetailsModal.classList.add('hidden');
+  };
+
+  if (btnCloseDayDetailsModal) btnCloseDayDetailsModal.addEventListener('click', closeDayDetailsModal);
+  if (btnCloseDayDetailsBtn) btnCloseDayDetailsBtn.addEventListener('click', closeDayDetailsModal);
+  if (dayDetailsModalBackdrop) dayDetailsModalBackdrop.addEventListener('click', closeDayDetailsModal);
+
+  // Month navigation buttons
+  if (btnPrevCalendarMonth) {
+    btnPrevCalendarMonth.addEventListener('click', () => {
+      calendarCurrentMonth--;
+      if (calendarCurrentMonth < 1) {
+        calendarCurrentMonth = 12;
+        calendarCurrentYear--;
+      }
+      fetchCalendarData(calendarCurrentYear, calendarCurrentMonth);
+    });
+  }
+
+  if (btnNextCalendarMonth) {
+    btnNextCalendarMonth.addEventListener('click', () => {
+      calendarCurrentMonth++;
+      if (calendarCurrentMonth > 12) {
+        calendarCurrentMonth = 1;
+        calendarCurrentYear++;
+      }
+      fetchCalendarData(calendarCurrentYear, calendarCurrentMonth);
+    });
+  }
+
+  if (btnCalendarToday) {
+    btnCalendarToday.addEventListener('click', () => {
+      const now = new Date();
+      fetchCalendarData(now.getFullYear(), now.getMonth() + 1);
+    });
+  }
+
+  // Event Modal
+  const openEventModal = (prefillDate = null) => {
+    if (!eventModal) return;
+    if (eventForm) eventForm.reset();
+    const dateInput = document.getElementById('eventData');
+    if (dateInput) {
+      dateInput.value = prefillDate || selectedCalendarDateStr || new Date().toISOString().split('T')[0];
+    }
+    eventModal.classList.remove('hidden');
+    setTimeout(() => {
+      const titleInput = document.getElementById('eventTitulo');
+      if (titleInput) titleInput.focus();
+    }, 100);
+  };
+
+  const closeEventModal = () => {
+    if (eventModal) eventModal.classList.add('hidden');
+  };
+
+  if (btnOpenNewEvent) btnOpenNewEvent.addEventListener('click', () => openEventModal());
+  if (btnDayAddEvent) {
+    btnDayAddEvent.addEventListener('click', () => {
+      closeDayDetailsModal();
+      openEventModal(selectedCalendarDateStr);
+    });
+  }
+  if (btnCloseEventModal) btnCloseEventModal.addEventListener('click', closeEventModal);
+  if (btnCancelEvent) btnCancelEvent.addEventListener('click', closeEventModal);
+  if (eventModalBackdrop) eventModalBackdrop.addEventListener('click', closeEventModal);
+
+  if (eventForm) {
+    eventForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const titulo = document.getElementById('eventTitulo').value.trim();
+      const descricao = document.getElementById('eventDescricao').value.trim();
+      const dataEvento = document.getElementById('eventData').value;
+      const horaInicio = document.getElementById('eventHoraInicio').value || null;
+      const horaFim = document.getElementById('eventHoraFim').value || null;
+      const categoria = document.getElementById('eventCategoria').value;
+      const cor = document.getElementById('eventCor').value;
+
+      try {
+        const res = await apiFetch('/api/calendario/eventos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo, descricao, dataEvento, horaInicio, horaFim, categoria, cor })
+        });
+
+        if (res.ok) {
+          showToast('Compromisso agendado com sucesso! 📅');
+          eventForm.reset();
+          closeEventModal();
+          await fetchCalendarData();
+        } else {
+          showToast('Erro ao agendar compromisso.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  if (calendarChip) {
+    calendarChip.addEventListener('click', () => {
+      switchAppView('calendar');
+    });
+  }
+
+
+  // --- Cockpit Dashboard Data ---
+  const fetchDashboardData = async () => {
+    if (!getStoredToken()) return;
+    try {
+      const [resumoRes] = await Promise.all([
+        apiFetch('/api/dashboard/resumo'),
+        fetchHabitsData(),
+        fetchScratchpadData(),
+        fetchSportsData(),
+        fetchWeatherData(),
+        fetchGoalsData()
+      ]);
+      if (resumoRes && resumoRes.ok) {
+        const data = await resumoRes.json();
+        renderDashboard(data);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar dados do dashboard:', err);
+    }
+  };
+
+  const renderDashboard = (data) => {
+    // KPIs
+    const dashKpiTarefasHoje = document.getElementById('dashKpiTarefasHoje');
+    const dashKpiTarefasAtrasadas = document.getElementById('dashKpiTarefasAtrasadas');
+    const dashKpiContasVencer = document.getElementById('dashKpiContasVencer');
+    const dashKpiContasAtrasadas = document.getElementById('dashKpiContasAtrasadas');
+    const dashKpiSaldoTotal = document.getElementById('dashKpiSaldoTotal');
+    const dashKpiSaldoPrevisto = document.getElementById('dashKpiSaldoPrevisto');
+    const dashKpiBalancoMes = document.getElementById('dashKpiBalancoMes');
+
+    if (dashKpiTarefasHoje) dashKpiTarefasHoje.textContent = data.tarefasHoje || 0;
+    if (dashKpiTarefasAtrasadas) dashKpiTarefasAtrasadas.textContent = `${data.tarefasAtrasadas || 0} em atraso`;
+    if (dashKpiContasVencer) dashKpiContasVencer.textContent = data.contasPagarHoje || 0;
+    if (dashKpiContasAtrasadas) dashKpiContasAtrasadas.textContent = `${data.contasPagarAtrasadas || 0} em atraso`;
+    if (dashKpiSaldoTotal) dashKpiSaldoTotal.textContent = formatCurrency(data.saldoTotalContas);
+    if (sidebarSaldoTotal) sidebarSaldoTotal.textContent = formatCurrency(data.saldoTotalContas);
+    if (dashKpiSaldoPrevisto) dashKpiSaldoPrevisto.textContent = formatCurrency(data.saldoPrevistoMes);
+    if (dashKpiBalancoMes) {
+      dashKpiBalancoMes.textContent = `+${formatCurrency(data.totalReceitasMes)} / -${formatCurrency(data.totalDespesasMes)}`;
+    }
+
+    // Alerts Ribbon
+    const cockpitAlertsBanner = document.getElementById('cockpitAlertsBanner');
+    const cockpitAlertsText = document.getElementById('cockpitAlertsText');
+    if (cockpitAlertsBanner && cockpitAlertsText) {
+      const totalAlerts = (data.tarefasAtrasadas || 0) + (data.contasPagarAtrasadas || 0) + (data.contasPagarHoje || 0);
+      if (totalAlerts > 0) {
+        let msg = [];
+        if (data.tarefasAtrasadas > 0) msg.push(`${data.tarefasAtrasadas} tarefa(s) atrasada(s)`);
+        if (data.contasPagarAtrasadas > 0) msg.push(`${data.contasPagarAtrasadas} conta(s) em atraso`);
+        if (data.contasPagarHoje > 0) msg.push(`${data.contasPagarHoje} conta(s) vencendo hoje`);
+        cockpitAlertsText.textContent = `Atenção: Você tem ${msg.join(', ')}!`;
+        cockpitAlertsBanner.classList.remove('hidden');
+      } else {
+        cockpitAlertsBanner.classList.add('hidden');
+      }
+    }
+
+    // Tasks of the Day
+    const dashTasksList = document.getElementById('dashTasksList');
+    if (dashTasksList) {
+      if (data.tarefasHojeLista && data.tarefasHojeLista.length > 0) {
+        dashTasksList.innerHTML = data.tarefasHojeLista.map(t => `
+          <div class="dash-item" data-task-id="${t.id}">
+            <div class="dash-item-left">
+              <input type="checkbox" ${t.concluida ? 'checked' : ''} class="dash-task-check" data-id="${t.id}" style="width:18px;height:18px;cursor:pointer;">
+              <div>
+                <div class="dash-item-title ${t.concluida ? 'completed-text' : ''}">${escapeHtml(t.titulo)}</div>
+                <div class="dash-item-meta">Prioridade: <strong>${t.prioridade}</strong> | ${t.categoria}</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-xs btn-outline btn-dash-edit-task" data-id="${t.id}">Editar</button>
+          </div>
+        `).join('');
+
+        dashTasksList.querySelectorAll('.dash-task-check').forEach(chk => {
+          chk.addEventListener('change', async () => {
+            const taskId = chk.dataset.id;
+            try {
+              await apiFetch(`/api/tarefas/${taskId}/toggle-concluida`, { method: 'PUT' });
+              showToast('Status da tarefa atualizado!');
+              await refreshData();
+            } catch (err) {
+              console.error(err);
+            }
+          });
+        });
+
+        dashTasksList.querySelectorAll('.btn-dash-edit-task').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const taskId = btn.dataset.id;
+            openEditModal(taskId);
+          });
+        });
+      } else {
+        dashTasksList.innerHTML = '<div class="dash-empty">Nenhuma tarefa agendada para hoje. Aproveite o dia! ✨</div>';
+      }
+    }
+
+    // Urgent Items
+    const dashUrgentList = document.getElementById('dashUrgentList');
+    if (dashUrgentList) {
+      let urgentItemsHtml = '';
+      if (data.contasProximasVencimento) {
+        const atrasadas = data.contasProximasVencimento.filter(c => c.estaAtrasada && c.tipo === 'DESPESA');
+        atrasadas.forEach(c => {
+          urgentItemsHtml += `
+            <div class="dash-item" style="border-left: 3px solid var(--danger);">
+              <div class="dash-item-left">
+                <span style="font-size:1.1rem;">🚨</span>
+                <div>
+                  <div class="dash-item-title">${escapeHtml(c.descricao)} (${formatCurrency(c.valor)})</div>
+                  <div class="dash-item-meta" style="color:var(--danger);font-weight:600;">Venceu em ${formatDateOnly(c.dataVencimento)}</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-xs btn-primary btn-pay-trans" data-id="${c.id}">Pagar</button>
+            </div>
+          `;
+        });
+      }
+
+      if (data.tarefasUrgentesLista && data.tarefasUrgentesLista.length > 0) {
+        data.tarefasUrgentesLista.slice(0, 4).forEach(t => {
+          urgentItemsHtml += `
+            <div class="dash-item" style="border-left: 3px solid var(--warning);">
+              <div class="dash-item-left">
+                <span style="font-size:1.1rem;">⚡</span>
+                <div>
+                  <div class="dash-item-title">${escapeHtml(t.titulo)}</div>
+                  <div class="dash-item-meta">Urgente | ${t.categoria}</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-xs btn-outline btn-dash-edit-task" data-id="${t.id}">Ver</button>
+            </div>
+          `;
+        });
+      }
+
+      if (urgentItemsHtml) {
+        dashUrgentList.innerHTML = urgentItemsHtml;
+        dashUrgentList.querySelectorAll('.btn-pay-trans').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const transId = btn.dataset.id;
+            await toggleTransStatus(transId, 'PAGO');
+          });
+        });
+        dashUrgentList.querySelectorAll('.btn-dash-edit-task').forEach(btn => {
+          btn.addEventListener('click', () => {
+            openEditModal(btn.dataset.id);
+          });
+        });
+      } else {
+        dashUrgentList.innerHTML = '<div class="dash-empty">Tudo em dia! Nenhum item atrasado ou urgente. 👍</div>';
+      }
+    }
+
+    // Bills list (Next 7 days)
+    const dashBillsList = document.getElementById('dashBillsList');
+    if (dashBillsList) {
+      if (data.contasProximasVencimento && data.contasProximasVencimento.length > 0) {
+        dashBillsList.innerHTML = data.contasProximasVencimento.slice(0, 5).map(c => `
+          <div class="dash-item">
+            <div class="dash-item-left">
+              <span class="trans-account-tag" style="background:${c.contaCor || '#6366f1'};">${escapeHtml(c.contaNome)}</span>
+              <div>
+                <div class="dash-item-title">${escapeHtml(c.descricao)}</div>
+                <div class="dash-item-meta">Vencimento: ${formatDateOnly(c.dataVencimento)}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-weight:700;color:${c.tipo === 'RECEITA' ? 'var(--success)' : 'var(--danger)'};">
+                ${c.tipo === 'RECEITA' ? '+' : '-'}${formatCurrency(c.valor)}
+              </span>
+              <button type="button" class="btn btn-xs ${c.status === 'PAGO' ? 'btn-outline' : 'btn-primary'} btn-quick-pay" data-id="${c.id}" data-status="${c.status}">
+                ${c.status === 'PAGO' ? 'Pago' : 'Pagar'}
+              </button>
+            </div>
+          </div>
+        `).join('');
+
+        dashBillsList.querySelectorAll('.btn-quick-pay').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const transId = btn.dataset.id;
+            const newStatus = btn.dataset.status === 'PAGO' ? 'PENDENTE' : 'PAGO';
+            await toggleTransStatus(transId, newStatus);
+          });
+        });
+      } else {
+        dashBillsList.innerHTML = '<div class="dash-empty">Nenhum pagamento pendente para os próximos 7 dias. 🎉</div>';
+      }
+    }
+
+    // Accounts Mini Grid
+    const dashAccountsGrid = document.getElementById('dashAccountsGrid');
+    if (dashAccountsGrid) {
+      if (data.contas && data.contas.length > 0) {
+        dashAccountsGrid.innerHTML = data.contas.map(a => `
+          <div class="account-card-mini" style="background:${a.cor || '#6366f1'};">
+            <div class="acc-mini-name">${escapeHtml(a.nome)}</div>
+            <div class="acc-mini-val">${formatCurrency(a.saldoAtual)}</div>
+          </div>
+        `).join('');
+      } else {
+        dashAccountsGrid.innerHTML = '<div class="dash-empty">Nenhuma conta cadastrada.</div>';
+      }
+    }
+  };
+
+  // Buttons in Dashboard widgets
+  const btnDashGoTasks = document.getElementById('btnDashGoTasks');
+  const btnDashGoFinances = document.getElementById('btnDashGoFinances');
+  const btnDashAddAccount = document.getElementById('btnDashAddAccount');
+
+  if (btnDashGoTasks) btnDashGoTasks.addEventListener('click', () => switchAppView('tasks'));
+  if (btnDashGoFinances) btnDashGoFinances.addEventListener('click', () => switchAppView('finances'));
+  if (btnDashAddAccount) btnDashAddAccount.addEventListener('click', () => openAccountModal());
+
+  // --- Finances Module ---
+  let currentFinancesMonth = new Date().getMonth() + 1;
+  let currentFinancesYear = new Date().getFullYear();
+  let currentFinFilter = 'all';
+  let cachedAccountsList = [];
+  let cachedCategoriesList = [];
+  let cachedTransactionsList = [];
+
+  const updateMonthLabel = () => {
+    const lblFinancesMonth = document.getElementById('lblFinancesMonth');
+    if (lblFinancesMonth) {
+      const d = new Date(currentFinancesYear, currentFinancesMonth - 1, 1);
+      const str = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      lblFinancesMonth.textContent = str.charAt(0).toUpperCase() + str.slice(1);
+    }
+  };
+
+  const btnPrevMonth = document.getElementById('btnPrevMonth');
+  const btnNextMonth = document.getElementById('btnNextMonth');
+
+  if (btnPrevMonth) {
+    btnPrevMonth.addEventListener('click', () => {
+      currentFinancesMonth--;
+      if (currentFinancesMonth < 1) {
+        currentFinancesMonth = 12;
+        currentFinancesYear--;
+      }
+      updateMonthLabel();
+      fetchFinancesData();
+    });
+  }
+
+  if (btnNextMonth) {
+    btnNextMonth.addEventListener('click', () => {
+      currentFinancesMonth++;
+      if (currentFinancesMonth > 12) {
+        currentFinancesMonth = 1;
+        currentFinancesYear++;
+      }
+      updateMonthLabel();
+      fetchFinancesData();
+    });
+  }
+
+  const fetchFinancesData = async () => {
+    if (!getStoredToken()) return;
+    updateMonthLabel();
+
+    const inicio = `${currentFinancesYear}-${String(currentFinancesMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(currentFinancesYear, currentFinancesMonth, 0).getDate();
+    const fim = `${currentFinancesYear}-${String(currentFinancesMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    try {
+      const [accRes, catRes, transRes] = await Promise.all([
+        apiFetch('/api/financas/contas'),
+        apiFetch('/api/financas/categorias'),
+        apiFetch(`/api/financas/transacoes?inicio=${inicio}&fim=${fim}`)
+      ]);
+
+      if (accRes.ok && catRes.ok && transRes.ok) {
+        cachedAccountsList = await accRes.json();
+        cachedCategoriesList = await catRes.json();
+        cachedTransactionsList = await transRes.json();
+
+        renderFinances();
+      }
+    } catch (err) {
+      console.error('Erro ao buscar dados financeiros:', err);
+    }
+  };
+
+  const renderFinances = () => {
+    // 1. Balances
+    let totalSaldo = 0;
+    cachedAccountsList.forEach(a => {
+      totalSaldo += Number(a.saldoAtual) || 0;
+    });
+
+    let totalReceitas = 0;
+    let totalDespesas = 0;
+    let receitasPendentes = 0;
+    let despesasPendentes = 0;
+
+    cachedTransactionsList.forEach(t => {
+      const val = Number(t.valor) || 0;
+      if (t.tipo === 'RECEITA') {
+        totalReceitas += val;
+        if (t.status === 'PENDENTE') receitasPendentes += val;
+      } else {
+        totalDespesas += val;
+        if (t.status === 'PENDENTE') despesasPendentes += val;
+      }
+    });
+
+    const saldoPrevisto = totalSaldo + receitasPendentes - despesasPendentes;
+
+    // Summary Cards
+    const finTotalSaldo = document.getElementById('finTotalSaldo');
+    const finTotalReceitas = document.getElementById('finTotalReceitas');
+    const finTotalDespesas = document.getElementById('finTotalDespesas');
+    const finSaldoPrevisto = document.getElementById('finSaldoPrevisto');
+
+    if (finTotalSaldo) finTotalSaldo.textContent = formatCurrency(totalSaldo);
+    if (sidebarSaldoTotal) sidebarSaldoTotal.textContent = formatCurrency(totalSaldo);
+    if (finTotalReceitas) finTotalReceitas.textContent = `+ ${formatCurrency(totalReceitas)}`;
+    if (finTotalDespesas) finTotalDespesas.textContent = `- ${formatCurrency(totalDespesas)}`;
+    if (finSaldoPrevisto) finSaldoPrevisto.textContent = formatCurrency(saldoPrevisto);
+
+    // 2. Render Accounts Grid
+    const finAccountsList = document.getElementById('finAccountsList');
+    if (finAccountsList) {
+      if (cachedAccountsList.length > 0) {
+        finAccountsList.innerHTML = cachedAccountsList.map(a => `
+          <div class="account-full-card" style="background:${a.cor || '#6366f1'};">
+            <div class="acc-card-top">
+              <span class="acc-card-name">${escapeHtml(a.nome)}</span>
+              <span class="acc-card-type">${a.tipo}</span>
+            </div>
+            <div class="acc-card-balance">${formatCurrency(a.saldoAtual)}</div>
+          </div>
+        `).join('');
+      } else {
+        finAccountsList.innerHTML = '<div class="dash-empty">Nenhuma conta cadastrada.</div>';
+      }
+    }
+
+    // Populate Account Filter Select
+    const finAccountFilter = document.getElementById('finAccountFilter');
+    if (finAccountFilter) {
+      const currentVal = finAccountFilter.value;
+      finAccountFilter.innerHTML = '<option value="">Todas as Contas</option>' +
+        cachedAccountsList.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join('');
+      finAccountFilter.value = currentVal;
+    }
+
+    // 3. Render Transactions List
+    renderTransactionsList();
+  };
+
+  const renderTransactionsList = () => {
+    const finTransactionsList = document.getElementById('finTransactionsList');
+    const finAccountFilter = document.getElementById('finAccountFilter');
+    if (!finTransactionsList) return;
+
+    const selectedAccId = finAccountFilter ? finAccountFilter.value : '';
+
+    let list = cachedTransactionsList.filter(t => {
+      if (selectedAccId && String(t.contaId) !== String(selectedAccId)) return false;
+      if (currentFinFilter === 'DESPESA') return t.tipo === 'DESPESA';
+      if (currentFinFilter === 'RECEITA') return t.tipo === 'RECEITA';
+      if (currentFinFilter === 'PENDENTE') return t.status === 'PENDENTE';
+      if (currentFinFilter === 'PAGO') return t.status === 'PAGO';
+      return true;
+    });
+
+    if (list.length > 0) {
+      finTransactionsList.innerHTML = list.map(t => {
+        const isExp = t.tipo === 'DESPESA';
+        const isPaid = t.status === 'PAGO';
+        const isOverdue = t.estaAtrasada;
+        const catIcon = t.categoriaIcone === 'utensils' ? '🍽️' :
+                        t.categoriaIcone === 'home' ? '🏠' :
+                        t.categoriaIcone === 'car' ? '🚗' :
+                        t.categoriaIcone === 'gamepad' ? '🎮' :
+                        t.categoriaIcone === 'heartbeat' ? '❤️' :
+                        t.categoriaIcone === 'graduation-cap' ? '🎓' :
+                        t.categoriaIcone === 'money-bill-wave' ? '💵' :
+                        t.categoriaIcone === 'laptop-code' ? '💻' :
+                        t.categoriaIcone === 'chart-line' ? '📈' : '🏷️';
+
+        let statusClass = 'pending';
+        let statusText = 'Pendente';
+        if (isPaid) {
+          statusClass = 'paid';
+          statusText = isExp ? 'Pago' : 'Recebido';
+        } else if (isOverdue) {
+          statusClass = 'overdue';
+          statusText = 'Atrasado';
+        }
+
+        return `
+          <div class="trans-item-row" data-id="${t.id}">
+            <div class="trans-item-left">
+              <div class="trans-cat-badge" style="background:${t.categoriaCor || '#6366f1'};">
+                ${catIcon}
+              </div>
+              <div class="trans-item-center">
+                <div class="trans-title">${escapeHtml(t.descricao)}</div>
+                <div class="trans-meta-tags">
+                  <span class="trans-account-tag" style="background:${t.contaCor || '#6366f1'};">${escapeHtml(t.contaNome)}</span>
+                  <span>Vencimento: <strong>${formatDateOnly(t.dataVencimento)}</strong></span>
+                  ${t.parcelado ? `<span style="background:var(--bg-card);padding:1px 6px;border-radius:4px;border:1px solid var(--border-color);">Parcela ${t.numeroParcela}/${t.totalParcelas}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="trans-item-right">
+              <span class="trans-amount ${isExp ? 'expense' : 'income'}">
+                ${isExp ? '-' : '+'}${formatCurrency(t.valor)}
+              </span>
+              <button type="button" class="trans-status-badge ${statusClass} btn-toggle-status" data-id="${t.id}" data-current="${t.status}" title="Clique para alternar status">
+                ${statusText}
+              </button>
+              <button type="button" class="btn-icon btn-delete-trans" data-id="${t.id}" title="Excluir Transação" style="color:var(--text-muted);">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      finTransactionsList.querySelectorAll('.btn-toggle-status').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const transId = btn.dataset.id;
+          const current = btn.dataset.current;
+          const novoStatus = current === 'PAGO' ? 'PENDENTE' : 'PAGO';
+          await toggleTransStatus(transId, novoStatus);
+        });
+      });
+
+      finTransactionsList.querySelectorAll('.btn-delete-trans').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const transId = btn.dataset.id;
+          if (confirm('Deseja realmente excluir este lançamento financeiro?')) {
+            await deleteTrans(transId);
+          }
+        });
+      });
+    } else {
+      finTransactionsList.innerHTML = '<div class="dash-empty">Nenhum lançamento encontrado para os filtros selecionados.</div>';
+    }
+  };
+
+  // Filter pills
+  const finFilterPills = document.querySelectorAll('.fin-filter-pill');
+  finFilterPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      finFilterPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      currentFinFilter = pill.dataset.finFilter;
+      renderTransactionsList();
+    });
+  });
+
+  const finAccountFilter = document.getElementById('finAccountFilter');
+  if (finAccountFilter) {
+    finAccountFilter.addEventListener('change', () => {
+      renderTransactionsList();
+    });
+  }
+
+  const toggleTransStatus = async (id, status) => {
+    try {
+      const response = await apiFetch(`/api/financas/transacoes/${id}/status?status=${status}`, {
+        method: 'PATCH'
+      });
+      if (response.ok) {
+        showToast(`Status atualizado para ${status === 'PAGO' ? 'Pago' : 'Pendente'}!`);
+        await refreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteTrans = async (id) => {
+    try {
+      const response = await apiFetch(`/api/financas/transacoes/${id}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        showToast('Transação excluída com sucesso!');
+        await refreshData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // --- Modais de Transação & Conta ---
+  const transactionModal = document.getElementById('transactionModal');
+  const transModalBackdrop = document.getElementById('transModalBackdrop');
+  const btnCloseTransModal = document.getElementById('btnCloseTransModal');
+  const btnCancelTrans = document.getElementById('btnCancelTrans');
+  const transactionForm = document.getElementById('transactionForm');
+  const btnTypeExpense = document.getElementById('btnTypeExpense');
+  const btnTypeIncome = document.getElementById('btnTypeIncome');
+  const transTypeInput = document.getElementById('transTypeInput');
+  const transConta = document.getElementById('transConta');
+  const transCategoria = document.getElementById('transCategoria');
+  const transParcelado = document.getElementById('transParcelado');
+  const transParcelasGroup = document.getElementById('transParcelasGroup');
+
+  const openTransactionModal = async (tipo = 'DESPESA') => {
+    if (!transactionModal) return;
+
+    if (cachedAccountsList.length === 0) {
+      try {
+        const accRes = await apiFetch('/api/financas/contas');
+        if (accRes.ok) cachedAccountsList = await accRes.json();
+      } catch {}
+    }
+    if (cachedCategoriesList.length === 0) {
+      try {
+        const catRes = await apiFetch('/api/financas/categorias');
+        if (catRes.ok) cachedCategoriesList = await catRes.json();
+      } catch {}
+    }
+
+    if (transConta) {
+      transConta.innerHTML = cachedAccountsList.map(a => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join('');
+    }
+
+    setTransType(tipo);
+
+    const dateInput = document.getElementById('transDataVencimento');
+    if (dateInput && !dateInput.value) {
+      dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    transactionModal.classList.remove('hidden');
+    const descInput = document.getElementById('transDescricao');
+    if (descInput) setTimeout(() => descInput.focus(), 100);
+  };
+
+  const closeTransactionModal = () => {
+    if (transactionModal) transactionModal.classList.add('hidden');
+  };
+
+  const setTransType = (tipo) => {
+    if (!transTypeInput) return;
+    transTypeInput.value = tipo;
+    if (tipo === 'DESPESA') {
+      btnTypeExpense.classList.add('active-expense');
+      btnTypeIncome.classList.remove('active-income');
+    } else {
+      btnTypeIncome.classList.add('active-income');
+      btnTypeExpense.classList.remove('active-expense');
+    }
+    updateCategoriesDropdown(tipo);
+  };
+
+  const updateCategoriesDropdown = (tipo) => {
+    if (!transCategoria) return;
+    const cats = cachedCategoriesList.filter(c => c.tipo === tipo);
+    transCategoria.innerHTML = cats.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
+  };
+
+  if (btnTypeExpense) btnTypeExpense.addEventListener('click', () => setTransType('DESPESA'));
+  if (btnTypeIncome) btnTypeIncome.addEventListener('click', () => setTransType('RECEITA'));
+
+  if (transParcelado && transParcelasGroup) {
+    transParcelado.addEventListener('change', () => {
+      if (transParcelado.checked) {
+        transParcelasGroup.classList.remove('hidden');
+      } else {
+        transParcelasGroup.classList.add('hidden');
+      }
+    });
+  }
+
+  if (btnCloseTransModal) btnCloseTransModal.addEventListener('click', closeTransactionModal);
+  if (btnCancelTrans) btnCancelTrans.addEventListener('click', closeTransactionModal);
+  if (transModalBackdrop) transModalBackdrop.addEventListener('click', closeTransactionModal);
+
+  const btnOpenTransModal = document.getElementById('btnOpenTransModal');
+  if (btnOpenTransModal) btnOpenTransModal.addEventListener('click', () => openTransactionModal('DESPESA'));
+
+  if (transactionForm) {
+    transactionForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tipo = transTypeInput.value;
+      const descricao = document.getElementById('transDescricao').value;
+      const valor = parseFloat(document.getElementById('transValor').value);
+      const dataVencimento = document.getElementById('transDataVencimento').value;
+      const contaId = parseInt(document.getElementById('transConta').value, 10);
+      const categoriaId = transCategoria.value ? parseInt(transCategoria.value, 10) : null;
+      const jaPago = document.getElementById('transStatusPago').checked;
+      const isParcelado = transParcelado.checked;
+      const totalParcelas = isParcelado ? parseInt(document.getElementById('transTotalParcelas').value, 10) : null;
+      const observacoes = document.getElementById('transObservacoes').value;
+
+      const payload = {
+        tipo,
+        descricao,
+        valor,
+        dataVencimento,
+        contaId,
+        categoriaId,
+        status: jaPago ? 'PAGO' : 'PENDENTE',
+        parcelado: isParcelado,
+        totalParcelas: isParcelado ? totalParcelas : null,
+        observacoes
+      };
+
+      try {
+        const response = await apiFetch('/api/financas/transacoes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          showToast(isParcelado ? `Lançamento parcelado em ${totalParcelas}x criado!` : 'Transação registrada com sucesso!');
+          transactionForm.reset();
+          if (transParcelasGroup) transParcelasGroup.classList.add('hidden');
+          closeTransactionModal();
+          await refreshData();
+        } else {
+          showToast('Erro ao criar transação. Verifique os dados.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  // Account Modal
+  const accountModal = document.getElementById('accountModal');
+  const accountModalBackdrop = document.getElementById('accountModalBackdrop');
+  const btnCloseAccountModal = document.getElementById('btnCloseAccountModal');
+  const btnCancelAccount = document.getElementById('btnCancelAccount');
+  const accountForm = document.getElementById('accountForm');
+  const btnOpenAccountModal = document.getElementById('btnOpenAccountModal');
+
+  const openAccountModal = () => {
+    if (!accountModal) return;
+    accountModal.classList.remove('hidden');
+    const nameInput = document.getElementById('accountNome');
+    if (nameInput) setTimeout(() => nameInput.focus(), 100);
+  };
+
+  const closeAccountModal = () => {
+    if (accountModal) accountModal.classList.add('hidden');
+  };
+
+  if (btnOpenAccountModal) btnOpenAccountModal.addEventListener('click', openAccountModal);
+  if (btnCloseAccountModal) btnCloseAccountModal.addEventListener('click', closeAccountModal);
+  if (btnCancelAccount) btnCancelAccount.addEventListener('click', closeAccountModal);
+  if (accountModalBackdrop) accountModalBackdrop.addEventListener('click', closeAccountModal);
+
+  if (accountForm) {
+    accountForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nome = document.getElementById('accountNome').value;
+      const tipo = document.getElementById('accountTipo').value;
+      const saldoInicial = parseFloat(document.getElementById('accountSaldoInicial').value) || 0;
+      const cor = document.getElementById('accountCor').value;
+
+      try {
+        const response = await apiFetch('/api/financas/contas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, tipo, saldoInicial, cor })
+        });
+
+        if (response.ok) {
+          showToast(`Conta "${nome}" criada com sucesso!`);
+          accountForm.reset();
+          closeAccountModal();
+          await refreshData();
+        } else {
+          showToast('Erro ao criar conta.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  switchAppView('dashboard');
   checkInitialAuth();
 });

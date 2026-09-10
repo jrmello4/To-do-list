@@ -281,16 +281,25 @@ public class TaskService {
     @CacheEvict(value = {"resumo", "estatisticas"}, allEntries = true)
     public void excluirDefinitivamente(Long id) {
         User user = authService.obterUsuarioAutenticado();
-        if (!taskRepository.existsByIdAndUsuarioId(id, user.getId())) {
-            throw new ResourceNotFoundException("Tarefa", id);
+        Task task = taskRepository.findByIdAndUsuarioId(id, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tarefa", id));
+
+        if (task.getAnexos() != null && !task.getAnexos().isEmpty()) {
+            attachmentService.deletarArquivosFisicos(task.getAnexos());
         }
-        taskRepository.deleteById(id);
+        taskRepository.delete(task);
     }
 
     @Transactional
     @CacheEvict(value = {"resumo", "estatisticas"}, allEntries = true)
     public void esvaziarLixeira() {
         User user = authService.obterUsuarioAutenticado();
+        List<Task> lixeira = taskRepository.findByUsuarioIdAndDeletadaTrueOrderByDataDelecaoDesc(user.getId());
+        for (Task t : lixeira) {
+            if (t.getAnexos() != null && !t.getAnexos().isEmpty()) {
+                attachmentService.deletarArquivosFisicos(t.getAnexos());
+            }
+        }
         taskRepository.esvaziarLixeiraDoUsuario(user.getId());
     }
 
@@ -334,6 +343,28 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Subtarefa", subtaskId));
 
         subtask.setConcluida(!Boolean.TRUE.equals(subtask.getConcluida()));
+        return toResponse(taskRepository.save(task));
+    }
+
+    @Transactional
+    @CacheEvict(value = {"resumo", "estatisticas"}, allEntries = true)
+    public TaskResponse atualizarSubtarefa(Long taskId, Long subtaskId, SubtaskRequest request) {
+        User user = authService.obterUsuarioAutenticado();
+        Task task = taskRepository.findByIdAndUsuarioIdAndDeletadaFalse(taskId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tarefa", taskId));
+
+        Subtask subtask = task.getSubtarefas().stream()
+                .filter(s -> s.getId().equals(subtaskId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Subtarefa", subtaskId));
+
+        if (request.getTitulo() != null && !request.getTitulo().isBlank()) {
+            subtask.setTitulo(request.getTitulo().trim());
+        }
+        if (request.getConcluida() != null) {
+            subtask.setConcluida(request.getConcluida());
+        }
+
         return toResponse(taskRepository.save(task));
     }
 
@@ -542,7 +573,7 @@ public class TaskService {
         return "\"" + clean + "\"";
     }
 
-    private TaskResponse toResponse(Task task) {
+    public TaskResponse toResponse(Task task) {
         boolean estaAtrasada = task.getDataVencimento() != null &&
                 task.getDataVencimento().isBefore(LocalDate.now()) &&
                 !Boolean.TRUE.equals(task.getConcluida());

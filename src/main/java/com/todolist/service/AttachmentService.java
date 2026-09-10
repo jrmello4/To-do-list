@@ -37,6 +37,10 @@ public class AttachmentService {
     @Value("${app.upload.dir:uploads/}")
     private String uploadDir;
 
+    private static final java.util.Set<String> EXTENSOES_BLOQUEADAS = java.util.Set.of(
+            ".exe", ".bat", ".cmd", ".sh", ".com", ".msi", ".jar", ".vbs", ".ps1", ".scr", ".pif"
+    );
+
     @Transactional
     public AttachmentResponse salvarAnexo(Long taskId, MultipartFile file) throws IOException {
         if (file.isEmpty()) {
@@ -51,6 +55,13 @@ public class AttachmentService {
         // Remove caracteres perigosos de path traversal
         if (originalFilename.contains("..")) {
             throw new IllegalArgumentException("Nome de arquivo inválido: " + originalFilename);
+        }
+
+        String lowerName = originalFilename.toLowerCase();
+        for (String ext : EXTENSOES_BLOQUEADAS) {
+            if (lowerName.endsWith(ext)) {
+                throw new IllegalArgumentException("Extensão de arquivo não permitida por motivos de segurança: " + ext);
+            }
         }
 
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
@@ -118,19 +129,34 @@ public class AttachmentService {
         Attachment attachment = attachmentRepository.findByIdAndTaskIdAndTaskUsuarioId(anexoId, taskId, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Anexo", anexoId));
 
+        deletarArquivoFisico(attachment);
+        attachmentRepository.delete(attachment);
+    }
+
+    public void deletarArquivoFisico(Attachment attachment) {
+        if (attachment == null || attachment.getNomeArmazenado() == null) return;
         Path filePath = Paths.get(uploadDir).toAbsolutePath().normalize().resolve(attachment.getNomeArmazenado());
         try {
             Files.deleteIfExists(filePath);
         } catch (IOException ignored) {
             // Log e continua
         }
+    }
 
-        attachmentRepository.delete(attachment);
+    public void deletarArquivosFisicos(java.util.Collection<Attachment> attachments) {
+        if (attachments == null) return;
+        for (Attachment a : attachments) {
+            deletarArquivoFisico(a);
+        }
     }
 
     public AttachmentResponse toResponse(Attachment attachment) {
         boolean isImagem = attachment.getTipoConteudo() != null &&
-                attachment.getTipoConteudo().toLowerCase().startsWith("image/");
+                (attachment.getTipoConteudo().equalsIgnoreCase("image/png") ||
+                 attachment.getTipoConteudo().equalsIgnoreCase("image/jpeg") ||
+                 attachment.getTipoConteudo().equalsIgnoreCase("image/jpg") ||
+                 attachment.getTipoConteudo().equalsIgnoreCase("image/gif") ||
+                 attachment.getTipoConteudo().equalsIgnoreCase("image/webp"));
 
         String urlDownload = "/api/tarefas/" + attachment.getTask().getId() + "/anexos/" + attachment.getId();
 

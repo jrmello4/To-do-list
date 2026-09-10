@@ -3,548 +3,1162 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>To-do List - Produtividade & Kanban</title>
-  <meta name="description" content="Gerenciador avançado de tarefas com visão Kanban, prioridades, subtarefas e exportação CSV">
+  <title>LifeHub - Cockpit Pessoal, Tarefas & Finanças</title>
+  <meta name="description" content="Cockpit inteligente de produtividade pessoal, gestão avançada de tarefas, quadro Kanban e controle financeiro integrado">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6366f1">
   <link rel="stylesheet" href="css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="app-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="header-content">
-        <div class="brand">
+  <div class="app-layout" id="appLayout">
+    <!-- Sidebar Retrátil -->
+    <aside class="app-sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
           <div class="brand-icon">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 11l3 3L22 4"></path>
               <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
             </svg>
           </div>
-          <div>
-            <h1>Minhas Tarefas</h1>
-            <p class="subtitle">Gestão ágil de tarefas, quadro Kanban e produtividade</p>
+          <div class="brand-info">
+            <h2>LifeHub</h2>
+            <span class="brand-tag">Cockpit Diário</span>
           </div>
         </div>
-        <div class="header-actions">
-          <button id="btnExportCsv" class="btn btn-outline btn-sm" title="Exportar tarefas para CSV">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Exportar CSV
-          </button>
-          <button id="btnExportPdf" class="btn btn-outline btn-sm" title="Exportar Relatório Executivo em PDF">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-            Exportar PDF
-          </button>
-          <a href="/swagger-ui.html" target="_blank" class="btn btn-outline btn-sm" title="Abrir Swagger API">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 18 22 12 16 6"></polyline>
-              <polyline points="8 6 2 12 8 18"></polyline>
-            </svg>
-            API Swagger
-          </a>
+        <button type="button" id="btnToggleSidebar" class="sidebar-toggle-btn" title="Recolher / Expandir Menu" aria-label="Menu">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+      </div>
 
-          <!-- Central de Notificações -->
-          <div class="notification-container" id="notificationContainer">
-            <button type="button" id="btnNotification" class="btn-icon notification-btn" title="Central de Notificações" aria-label="Notificações">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              <span id="notificationBadge" class="notification-badge hidden">0</span>
-            </button>
-            <div id="notificationDropdown" class="notification-dropdown hidden">
-              <div class="notification-header">
-                <span class="notification-header-title">Alertas & Notificações</span>
-                <button type="button" id="btnRequestNotifyPerm" class="btn btn-xs btn-outline" title="Receber alertas nativos na área de trabalho">🔔 Alertas no Windows</button>
+      <nav class="sidebar-nav">
+        <button type="button" class="sidebar-nav-item active" data-app-view="dashboard" title="Visão Geral (Cockpit)">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Visão Geral</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" data-app-view="tasks" title="Tarefas & Kanban">
+          <span class="nav-icon">📋</span>
+          <span class="nav-text">Tarefas & Projetos</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" data-app-view="finances" title="Finanças & Carteiras">
+          <span class="nav-icon">💰</span>
+          <span class="nav-text">Finanças Pessoais</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" data-app-view="calendar" title="Calendário Unificado">
+          <span class="nav-icon">📅</span>
+          <span class="nav-text">Calendário</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" data-app-view="goals" title="Metas & OKRs">
+          <span class="nav-icon">🎯</span>
+          <span class="nav-text">Metas & Sonhos</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" data-app-view="stats" title="Gráficos & Métricas">
+          <span class="nav-icon">📈</span>
+          <span class="nav-text">Produtividade</span>
+        </button>
+        <button type="button" class="sidebar-nav-item" data-app-view="trash" title="Lixeira">
+          <span class="nav-icon">🗑️</span>
+          <span class="nav-text">Lixeira</span>
+          <span class="sidebar-badge" id="sidebarTrashBadge">0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-quick-card">
+          <span class="quick-card-title">Saldo Total</span>
+          <span class="quick-card-val" id="sidebarSaldoTotal">R$ 0,00</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="app-main-content">
+      <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+          <div class="header-content">
+            <div class="brand">
+              <button type="button" id="btnMobileMenu" class="btn-icon mobile-menu-btn" title="Abrir Menu Lateral">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
+              <div>
+                <h1 id="headerGreeting">👋 Bom dia!</h1>
+                <p class="subtitle" id="headerDateFormatted">Carregando seu cockpit...</p>
               </div>
-              <div id="notificationList" class="notification-list">
-                <div class="notification-empty">Nenhum alerta pendente 🎉</div>
+            </div>
+
+            <!-- Ticker de Informações Rápidas: Clima & Jogos -->
+            <div class="header-tickers-bar">
+              <div class="ticker-chip weather-chip" id="weatherChip" title="Previsão do Tempo Local (Clique para atualizar)">
+                <span id="weatherIcon">⛅</span>
+                <span id="weatherText">Consultando clima...</span>
+              </div>
+              <div class="ticker-chip sports-chip" id="sportsChip" title="Radar Esportivo / Futebol">
+                <span>⚽</span>
+                <span id="sportsHighlightText">Carregando jogos...</span>
+              </div>
+              <div class="ticker-chip calendar-chip" id="calendarChip" title="Ver Calendário Unificado">
+                <span>📅</span>
+                <span id="calendarChipText">Agenda & Compromissos</span>
+              </div>
+            </div>
+
+            <div class="header-actions">
+              <!-- Quick Action Buttons -->
+              <button type="button" id="btnQuickNewTask" class="btn btn-primary btn-sm" title="Criar Nova Tarefa">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                + Tarefa
+              </button>
+              <button type="button" id="btnQuickNewTrans" class="btn btn-success-action btn-sm" title="Novo Lançamento Financeiro">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                + Finança
+              </button>
+
+              <button id="btnExportCsv" class="btn btn-outline btn-sm" title="Exportar tarefas para CSV">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                CSV
+              </button>
+              <button id="btnExportPdf" class="btn btn-outline btn-sm" title="Exportar Relatório Executivo em PDF">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                PDF
+              </button>
+              <a href="/swagger-ui.html" target="_blank" class="btn btn-outline btn-sm" title="Abrir Swagger API">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 18 22 12 16 6"></polyline>
+                  <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                Swagger
+              </a>
+
+              <!-- Central de Notificações -->
+              <div class="notification-container" id="notificationContainer">
+                <button type="button" id="btnNotification" class="btn-icon notification-btn" title="Central de Notificações" aria-label="Notificações">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                  <span id="notificationBadge" class="notification-badge hidden">0</span>
+                </button>
+                <div id="notificationDropdown" class="notification-dropdown hidden">
+                  <div class="notification-header">
+                    <span class="notification-header-title">Alertas & Notificações</span>
+                    <button type="button" id="btnRequestNotifyPerm" class="btn btn-xs btn-outline" title="Receber alertas nativos na área de trabalho">🔔 Alertas no Windows</button>
+                  </div>
+                  <div id="notificationList" class="notification-list">
+                    <div class="notification-empty">Nenhum alerta pendente 🎉</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tema Claro / Escuro -->
+              <button id="themeToggle" class="btn-icon" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+                <svg id="moonIcon" class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <svg id="sunIcon" class="icon hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+              </button>
+
+              <!-- Atalhos de Teclado -->
+              <button id="btnShortcuts" class="btn-icon" aria-label="Atalhos de Teclado (?)" title="Atalhos de Teclado (?)">
+                <span style="font-weight:700;font-size:0.95rem;">?</span>
+              </button>
+              
+              <!-- User Profile & Auth Controls -->
+              <div id="authContainer" class="auth-container" style="display: flex; gap: 8px;">
+                <button id="btnHeaderGuest" class="btn btn-outline btn-sm" title="Acessar como Convidado (Modo Demonstração)">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <polyline points="17 11 19 13 23 9"></polyline>
+                  </svg>
+                  Convidado
+                </button>
+                <button id="btnLoginOpen" class="btn btn-primary btn-sm">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                    <polyline points="10 17 15 12 10 7"></polyline>
+                    <line x1="15" y1="12" x2="3" y2="12"></line>
+                  </svg>
+                  Entrar
+                </button>
+                <div id="userProfile" class="user-profile hidden">
+                  <div class="user-avatar" id="userAvatar" title="Usuário logado">U</div>
+                  <div class="user-details">
+                    <span class="user-name" id="userName">Usuário</span>
+                    <span class="user-email" id="userEmail">user@email.com</span>
+                  </div>
+                  <button id="btnLogout" class="btn-icon btn-logout" title="Sair da conta" aria-label="Sair">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                      <polyline points="16 17 21 12 16 7"></polyline>
+                      <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-          <button id="themeToggle" class="btn-icon" aria-label="Alternar tema claro/escuro" title="Alternar tema">
-            <svg id="moonIcon" class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-            <svg id="sunIcon" class="icon hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-          </button>
-          
-          <!-- User Profile & Auth Controls -->
-          <div id="authContainer" class="auth-container" style="display: flex; gap: 8px;">
-            <button id="btnHeaderGuest" class="btn btn-outline btn-sm" title="Acessar como Convidado (Modo Demonstração)">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="8.5" cy="7" r="4"></circle>
-                <polyline points="17 11 19 13 23 9"></polyline>
-              </svg>
-              Convidado
-            </button>
-            <button id="btnLoginOpen" class="btn btn-primary btn-sm">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                <polyline points="10 17 15 12 10 7"></polyline>
-                <line x1="15" y1="12" x2="3" y2="12"></line>
-              </svg>
-              Entrar
-            </button>
-            <div id="userProfile" class="user-profile hidden">
-              <div class="user-avatar" id="userAvatar" title="Usuário logado">U</div>
-              <div class="user-details">
-                <span class="user-name" id="userName">Usuário</span>
-                <span class="user-email" id="userEmail">user@email.com</span>
+        </header>
+
+        <!-- ================================================================
+             PAINEL 1: DASHBOARD CENTRAL / COCKPIT DIÁRIO
+             ================================================================ -->
+        <section id="dashboardView" class="app-panel-view">
+          <!-- Banner de Alertas e Atenção Imediata -->
+          <div id="cockpitAlertsBanner" class="cockpit-alerts-banner hidden">
+            <div class="alert-banner-icon">🚨</div>
+            <div class="alert-banner-content" id="cockpitAlertsText">Você possui itens com vencimento para hoje ou atrasados!</div>
+          </div>
+
+          <!-- Métricas Rápidas do Cockpit -->
+          <div class="cockpit-kpi-grid">
+            <div class="cockpit-kpi-card">
+              <div class="kpi-card-header">
+                <span class="kpi-card-label">Tarefas de Hoje</span>
+                <span class="kpi-card-icon">📋</span>
               </div>
-              <button id="btnLogout" class="btn-icon btn-logout" title="Sair da conta" aria-label="Sair">
+              <div class="kpi-card-value" id="dashKpiTarefasHoje">0</div>
+              <div class="kpi-card-sub" id="dashKpiTarefasAtrasadas">0 atrasadas</div>
+            </div>
+
+            <div class="cockpit-kpi-card warning">
+              <div class="kpi-card-header">
+                <span class="kpi-card-label">Contas a Vencer</span>
+                <span class="kpi-card-icon">⚠️</span>
+              </div>
+              <div class="kpi-card-value" id="dashKpiContasVencer">0</div>
+              <div class="kpi-card-sub" id="dashKpiContasAtrasadas">0 em atraso</div>
+            </div>
+
+            <div class="cockpit-kpi-card success">
+              <div class="kpi-card-header">
+                <span class="kpi-card-label">Saldo em Contas</span>
+                <span class="kpi-card-icon">💰</span>
+              </div>
+              <div class="kpi-card-value" id="dashKpiSaldoTotal">R$ 0,00</div>
+              <div class="kpi-card-sub">Saldo consolidado</div>
+            </div>
+
+            <div class="cockpit-kpi-card primary">
+              <div class="kpi-card-header">
+                <span class="kpi-card-label">Previsão Fim do Mês</span>
+                <span class="kpi-card-icon">📈</span>
+              </div>
+              <div class="kpi-card-value" id="dashKpiSaldoPrevisto">R$ 0,00</div>
+              <div class="kpi-card-sub" id="dashKpiBalancoMes">Receitas - Despesas</div>
+            </div>
+          </div>
+
+          <!-- Grid Principal do Cockpit (2 Colunas) -->
+          <div class="cockpit-main-grid">
+            <!-- Coluna 1: Meu Dia & Foco Imediato -->
+            <div class="cockpit-column">
+              <!-- Widget: Tarefas do Dia -->
+              <div class="cockpit-widget card">
+                <div class="widget-header">
+                  <div class="widget-title">
+                    <span class="widget-icon">📅</span>
+                    <h3>Meu Dia (Tarefas Prioritárias)</h3>
+                  </div>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnDashGoTasks">Ver Todas &rarr;</button>
+                </div>
+                <div id="dashTasksList" class="dash-list">
+                  <div class="dash-empty">Nenhuma tarefa agendada para hoje. Aproveite o dia! ✨</div>
+                </div>
+              </div>
+
+              <!-- Widget: Atenção Urgente (Tarefas e Contas Atrasadas) -->
+              <div class="cockpit-widget card">
+                <div class="widget-header">
+                  <div class="widget-title">
+                    <span class="widget-icon">⚡</span>
+                    <h3>Atenção Urgente</h3>
+                  </div>
+                </div>
+                <div id="dashUrgentList" class="dash-list">
+                  <div class="dash-empty">Tudo em dia! Nenhum item atrasado ou de risco crítico. 👍</div>
+                </div>
+              </div>
+
+              <!-- Widget: Hábitos Diários & Streaks -->
+              <div class="cockpit-widget card">
+                <div class="widget-header">
+                  <div class="widget-title">
+                    <span class="widget-icon">🔄</span>
+                    <h3>Hábitos & Rotinas</h3>
+                  </div>
+                  <button type="button" class="btn btn-xs btn-primary" id="btnOpenNewHabit">+ Novo Hábito</button>
+                </div>
+                <!-- Barra de Progresso dos Hábitos -->
+                <div class="habits-progress-wrapper">
+                  <div class="habits-progress-text">
+                    <span>Progresso de Hoje</span>
+                    <span id="habitsProgressText">0 / 0 (0%)</span>
+                  </div>
+                  <div class="progress-bar-bg" style="height:6px;margin:6px 0 14px 0;">
+                    <div class="progress-bar-fill" id="habitsProgressBarFill" style="width:0%;background:linear-gradient(90deg, #10b981, #06b6d4);"></div>
+                  </div>
+                </div>
+                <div id="dashHabitsList" class="dash-habits-list">
+                  <!-- Inserido dinamicamente via JS -->
+                </div>
+              </div>
+
+              <!-- Widget: Metas & Sonhos (Cockpit) -->
+              <div class="card cockpit-widget">
+                <div class="widget-header">
+                  <div class="widget-header-title">
+                    <span class="widget-icon">🎯</span>
+                    <h3>Metas & Objetivos</h3>
+                  </div>
+                  <div style="display:flex;gap:6px;">
+                    <button type="button" class="btn btn-xs btn-outline" id="btnOpenNewGoalCockpit" title="Criar Nova Meta">+ Nova</button>
+                    <button type="button" class="btn btn-xs btn-outline" id="btnGoGoalsView" title="Ver Painel Completo">➔</button>
+                  </div>
+                </div>
+                <div id="dashGoalsList" class="dash-goals-list">
+                  <!-- Inserido dinamicamente via JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Coluna 2: Radar Financeiro & Foco Rápido -->
+            <div class="cockpit-column">
+              <!-- Widget: Radar Financeiro & Próximos Vencimentos -->
+              <div class="cockpit-widget card">
+                <div class="widget-header">
+                  <div class="widget-title">
+                    <span class="widget-icon">💳</span>
+                    <h3>Próximos Vencimentos (7 dias)</h3>
+                  </div>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnDashGoFinances">Ver Finanças &rarr;</button>
+                </div>
+                <div id="dashBillsList" class="dash-list">
+                  <div class="dash-empty">Nenhum pagamento pendente para os próximos 7 dias. 🎉</div>
+                </div>
+              </div>
+
+              <!-- Widget: Carteiras & Contas Bancárias -->
+              <div class="cockpit-widget card">
+                <div class="widget-header">
+                  <div class="widget-title">
+                    <span class="widget-icon">🏦</span>
+                    <h3>Minhas Contas & Carteiras</h3>
+                  </div>
+                  <button type="button" class="btn btn-xs btn-primary" id="btnDashAddAccount">+ Nova Conta</button>
+                </div>
+                <div id="dashAccountsGrid" class="dash-accounts-grid">
+                  <!-- Inserido dinamicamente via JS -->
+                </div>
+              </div>
+
+              <!-- Widget: Bloco de Notas Rápidas (Scratchpad) -->
+              <div class="cockpit-widget card">
+                <div class="widget-header">
+                  <div class="widget-title">
+                    <span class="widget-icon">📝</span>
+                    <h3>Bloco de Notas Rápidas</h3>
+                  </div>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnConvertNoteToTask" title="Transformar este rascunho em uma Tarefa">
+                    ➔ Criar Tarefa
+                  </button>
+                </div>
+                <div class="scratchpad-box">
+                  <textarea id="scratchpadTextarea" class="scratchpad-textarea" placeholder="Digite seus pensamentos, rascunhos, links úteis ou anotações aqui... Salva automaticamente!"></textarea>
+                  <div class="scratchpad-footer">
+                    <span class="scratchpad-status" id="scratchpadStatus">Salvo automaticamente ✅</span>
+                    <span id="scratchpadCharCount" style="font-size:0.75rem;color:var(--text-muted);">0 caracteres</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Widget: Radar Esportivo (Futebol / Jogos) -->
+              <div class="cockpit-widget card">
+                <div class="widget-header">
+                  <div class="widget-title">
+                    <span class="widget-icon">🏆</span>
+                    <h3>Radar Esportivo & Lutas</h3>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <button type="button" class="btn btn-xs btn-outline" id="btnOpenSportsPrefs" title="Personalizar esportes e times">
+                      ⚙️ Meus Esportes
+                    </button>
+                    <input type="text" id="sportsFilterInput" placeholder="Buscar time, luta..." class="select-filter-sm" style="max-width:115px;padding:3px 8px;font-size:0.78rem;">
+                  </div>
+                </div>
+                <!-- Filtro rápido de modalidades -->
+                <div class="sports-sport-pills" id="sportsSportPills" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;">
+                  <button type="button" class="sport-pill active" data-sport="all">Todos</button>
+                  <button type="button" class="sport-pill" data-sport="UFC">🥊 UFC</button>
+                  <button type="button" class="sport-pill" data-sport="F1">🏎️ F1</button>
+                  <button type="button" class="sport-pill" data-sport="FUTEBOL">⚽ Futebol</button>
+                  <button type="button" class="sport-pill" data-sport="BASQUETE">🏀 Basquete</button>
+                </div>
+                <div id="dashSportsList" class="dash-sports-list">
+                  <!-- Inserido dinamicamente via JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             PAINEL 2: TAREFAS & KANBAN
+             ================================================================ -->
+        <section id="tasksView" class="app-panel-view hidden">
+          <!-- View Switcher Tabs Internos -->
+          <nav class="view-nav">
+            <div class="view-tabs">
+              <button class="view-tab-btn active" data-view="list">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                  <polyline points="16 17 21 12 16 7"></polyline>
-                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
                 </svg>
+                Lista de Tarefas
+              </button>
+              <button class="view-tab-btn" data-view="kanban">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="5" height="18" rx="1"></rect>
+                  <rect x="10" y="3" width="5" height="12" rx="1"></rect>
+                  <rect x="17" y="3" width="5" height="15" rx="1"></rect>
+                </svg>
+                Quadro Kanban
+              </button>
+            </div>
+          </nav>
+
+          <!-- Pomodoro Mode Widget -->
+          <section class="card pomodoro-card" id="pomodoroSection">
+            <div class="pomodoro-header">
+              <div class="pomodoro-title-group">
+                <span class="pomodoro-icon">🍅</span>
+                <div>
+                  <h3>Modo Foco & Pomodoro</h3>
+                  <p class="pomodoro-target" id="pomodoroTaskLabel">Nenhuma tarefa em foco (clique em "🍅 Focar" em um card)</p>
+                </div>
+              </div>
+              <div class="pomodoro-modes">
+                <button type="button" class="pomo-mode-btn active" data-mode="pomodoro" data-time="1500">Pomodoro (25m)</button>
+                <button type="button" class="pomo-mode-btn" data-mode="short" data-time="300">Pausa Curta (5m)</button>
+                <button type="button" class="pomo-mode-btn" data-mode="long" data-time="900">Pausa Longa (15m)</button>
+              </div>
+            </div>
+            <div class="pomodoro-timer-row">
+              <div class="pomodoro-timer-display" id="pomodoroDisplay">25:00</div>
+              <div class="pomodoro-controls">
+                <button type="button" class="btn btn-primary" id="btnPomoStart">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  Iniciar
+                </button>
+                <button type="button" class="btn btn-secondary" id="btnPomoPause" disabled>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                  Pausar
+                </button>
+                <button type="button" class="btn btn-outline" id="btnPomoReset">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+                  Reiniciar
+                </button>
+                <button type="button" class="btn btn-outline" id="btnPomoSound" title="Alternar som do alarme Pomodoro">
+                  🔔 Som: Ativo
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Metrics Dashboard -->
+          <section class="metrics-grid">
+            <div class="metric-card total">
+              <div class="metric-info">
+                <span class="metric-label">Total Ativas</span>
+                <span class="metric-value" id="metricTotal">0</span>
+              </div>
+              <div class="metric-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </div>
+            </div>
+
+            <div class="metric-card pending">
+              <div class="metric-info">
+                <span class="metric-label">Pendentes</span>
+                <span class="metric-value" id="metricPending">0</span>
+              </div>
+              <div class="metric-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 16 14"></polyline>
+                </svg>
+              </div>
+            </div>
+
+            <div class="metric-card overdue">
+              <div class="metric-info">
+                <span class="metric-label">Atrasadas</span>
+                <span class="metric-value" id="metricOverdue">0</span>
+              </div>
+              <div class="metric-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </div>
+            </div>
+
+            <div class="metric-card completed">
+              <div class="metric-info">
+                <span class="metric-label">Concluídas</span>
+                <span class="metric-value" id="metricCompleted">0</span>
+              </div>
+              <div class="metric-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+            </div>
+          </section>
+
+          <!-- Progress Bar -->
+          <div class="progress-section">
+            <div class="progress-header">
+              <span>Progresso Geral</span>
+              <span id="progressPercentage">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- Create Task Section -->
+          <section class="card create-card" id="createTaskSection">
+            <h2>Nova Tarefa</h2>
+            <form id="createTaskForm">
+              <div class="form-row">
+                <div class="form-group flex-2">
+                  <label for="taskTitle">Título *</label>
+                  <input type="text" id="taskTitle" name="titulo" placeholder="Ex: Criar apresentação do projeto" required maxlength="200" autocomplete="off">
+                </div>
+                <div class="form-group flex-1">
+                  <label for="taskDueDate">Data de Vencimento</label>
+                  <input type="date" id="taskDueDate" name="dataVencimento">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="taskPriority">Prioridade</label>
+                  <select id="taskPriority" name="prioridade">
+                    <option value="BAIXA">🟢 Baixa</option>
+                    <option value="MEDIA" selected>🟡 Média</option>
+                    <option value="ALTA">🟠 Alta</option>
+                    <option value="URGENTE">🔴 Urgente</option>
+                  </select>
+                </div>
+                <div class="form-group flex-1">
+                  <label for="taskCategory">Categoria</label>
+                  <select id="taskCategory" name="categoria">
+                    <option value="GERAL" selected>📁 Geral</option>
+                    <option value="TRABALHO">💼 Trabalho</option>
+                    <option value="ESTUDOS">🎓 Estudos</option>
+                    <option value="PESSOAL">🏠 Pessoal</option>
+                    <option value="FINANCAS">💰 Finanças</option>
+                    <option value="SAUDE">🏃 Saúde</option>
+                  </select>
+                </div>
+                <div class="form-group flex-1">
+                  <label for="taskRecurrence">Recorrência</label>
+                  <select id="taskRecurrence" name="recorrencia">
+                    <option value="NENHUMA" selected>Nenhuma</option>
+                    <option value="DIARIA">🔁 Diária</option>
+                    <option value="SEMANAL">🔁 Semanal</option>
+                    <option value="MENSAL">🔁 Mensal</option>
+                  </select>
+                </div>
+                <div class="form-group flex-1">
+                  <label for="taskEstimatedPomodoros">🍅 Pomodoros Estimados</label>
+                  <input type="number" id="taskEstimatedPomodoros" name="pomodorosEstimados" min="1" max="20" value="1" title="Quantidade estimada de blocos de foco de 25min">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="taskDescription">Descrição</label>
+                <textarea id="taskDescription" name="descricao" rows="2" placeholder="Detalhes da tarefa (opcional)" maxlength="1000"></textarea>
+              </div>
+
+              <!-- Tags / Etiquetas Selector -->
+              <div class="form-group">
+                <div class="tags-header-row">
+                  <label>Tags / Etiquetas</label>
+                  <button type="button" id="btnOpenCreateTag" class="btn btn-xs btn-outline">+ Nova Tag</button>
+                </div>
+                <div id="createTaskTagsList" class="tags-picker-container">
+                  <span class="text-muted" style="font-size:0.82rem;">Carregando tags...</span>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary" id="btnSubmitTask">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Adicionar Tarefa
+              </button>
+            </form>
+          </section>
+
+          <!-- Main Toolbar (Filtros e Pesquisa) -->
+          <section class="toolbar card" id="mainToolbar">
+            <div class="toolbar-search">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="searchInput" placeholder="Pesquisar tarefas pelo título ou descrição..." autocomplete="off">
+              <button id="clearSearchBtn" class="btn-clear hidden" aria-label="Limpar pesquisa">&times;</button>
+            </div>
+
+            <div class="toolbar-filters">
+              <select id="categoryFilter" class="select-filter" aria-label="Filtrar por categoria">
+                <option value="">Todas as Categorias</option>
+                <option value="GERAL">📁 Geral</option>
+                <option value="TRABALHO">💼 Trabalho</option>
+                <option value="ESTUDOS">🎓 Estudos</option>
+                <option value="PESSOAL">🏠 Pessoal</option>
+                <option value="FINANCAS">💰 Finanças</option>
+                <option value="SAUDE">🏃 Saúde</option>
+              </select>
+
+              <select id="priorityFilter" class="select-filter" aria-label="Filtrar por prioridade">
+                <option value="">Todas as Prioridades</option>
+                <option value="BAIXA">🟢 Baixa</option>
+                <option value="MEDIA">🟡 Média</option>
+                <option value="ALTA">🟠 Alta</option>
+                <option value="URGENTE">🔴 Urgente</option>
+              </select>
+
+              <select id="tagFilter" class="select-filter" aria-label="Filtrar por etiqueta/tag">
+                <option value="">Todas as Tags</option>
+              </select>
+
+              <div class="filter-tabs" id="statusTabs">
+                <button class="filter-btn active" data-filter="all">Todas</button>
+                <button class="filter-btn" data-filter="pending">Pendentes</button>
+                <button class="filter-btn" data-filter="completed">Concluídas</button>
+              </div>
+            </div>
+
+            <div class="period-filter-group" id="periodFilterGroup">
+              <span class="period-filter-label">Prazo:</span>
+              <button type="button" class="period-pill active" data-period="all">Todos</button>
+              <button type="button" class="period-pill" data-period="overdue">⚠️ Atrasadas</button>
+              <button type="button" class="period-pill" data-period="today">📅 Vence Hoje</button>
+              <button type="button" class="period-pill" data-period="week">📆 Esta Semana</button>
+              <button type="button" class="period-pill" data-period="nodate">⏳ Sem Prazo</button>
+            </div>
+          </section>
+
+          <!-- VIEW 1: LIST VIEW -->
+          <section class="view-content" id="listView">
+            <div id="taskList" class="task-list"></div>
+            <div id="emptyState" class="empty-state hidden">
+              <div class="empty-icon">
+                <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <h3>Nenhuma tarefa encontrada</h3>
+              <p id="emptyMessage">Você ainda não possui tarefas ativas. Crie uma nova tarefa acima!</p>
+            </div>
+          </section>
+
+          <!-- VIEW 2: KANBAN BOARD -->
+          <section class="view-content hidden" id="kanbanView">
+            <div class="kanban-board">
+              <!-- Column 1: A Fazer -->
+              <div class="kanban-column" data-status="A_FAZER">
+                <div class="kanban-header column-todo">
+                  <div class="kanban-title">
+                    <span class="status-dot dot-todo"></span>
+                    <h3>A Fazer</h3>
+                  </div>
+                  <span class="kanban-count" id="countAFazer">0</span>
+                </div>
+                <div class="kanban-cards" id="cardsAFazer"></div>
+              </div>
+
+              <!-- Column 2: Em Andamento -->
+              <div class="kanban-column" data-status="EM_ANDAMENTO">
+                <div class="kanban-header column-progress">
+                  <div class="kanban-title">
+                    <span class="status-dot dot-progress"></span>
+                    <h3>Em Andamento</h3>
+                  </div>
+                  <span class="kanban-count" id="countEmAndamento">0</span>
+                </div>
+                <div class="kanban-cards" id="cardsEmAndamento"></div>
+              </div>
+
+              <!-- Column 3: Concluída -->
+              <div class="kanban-column" data-status="CONCLUIDA">
+                <div class="kanban-header column-done">
+                  <div class="kanban-title">
+                    <span class="status-dot dot-done"></span>
+                    <h3>Concluída</h3>
+                  </div>
+                  <span class="kanban-count" id="countConcluida">0</span>
+                </div>
+                <div class="kanban-cards" id="cardsConcluida"></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================================================================
+             PAINEL 3: FINANÇAS & CARTEIRAS
+             ================================================================ -->
+        <section id="financesView" class="app-panel-view hidden">
+          <!-- Top Bar de Finanças: Período e Ações -->
+          <div class="finances-toolbar card">
+            <div class="month-selector">
+              <button type="button" class="btn btn-icon btn-sm" id="btnPrevMonth" title="Mês Anterior">&larr;</button>
+              <span class="current-month-label" id="lblFinancesMonth">Setembro 2026</span>
+              <button type="button" class="btn btn-icon btn-sm" id="btnNextMonth" title="Próximo Mês">&rarr;</button>
+            </div>
+            <div class="finances-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="btnOpenAccountModal">+ Nova Conta</button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnOpenTransModal">+ Nova Transação</button>
+            </div>
+          </div>
+
+          <!-- Cards de Resumo Financeiro -->
+          <div class="fin-summary-grid">
+            <div class="fin-card">
+              <span class="fin-card-label">Saldo Atual Consolidado</span>
+              <span class="fin-card-val" id="finTotalSaldo">R$ 0,00</span>
+              <span class="fin-card-sub">Total em todas as carteiras</span>
+            </div>
+            <div class="fin-card income">
+              <span class="fin-card-label">Receitas do Mês</span>
+              <span class="fin-card-val" id="finTotalReceitas">+ R$ 0,00</span>
+              <span class="fin-card-sub">Entradas no período</span>
+            </div>
+            <div class="fin-card expense">
+              <span class="fin-card-label">Despesas do Mês</span>
+              <span class="fin-card-val" id="finTotalDespesas">- R$ 0,00</span>
+              <span class="fin-card-sub">Saídas no período</span>
+            </div>
+            <div class="fin-card balance">
+              <span class="fin-card-label">Saldo Previsto Fim do Mês</span>
+              <span class="fin-card-val" id="finSaldoPrevisto">R$ 0,00</span>
+              <span class="fin-card-sub">Considerando pendências</span>
+            </div>
+          </div>
+
+          <!-- Seção de Contas / Carteiras -->
+          <div class="card fin-accounts-section">
+            <div class="fin-section-header">
+              <h3>Contas & Carteiras</h3>
+            </div>
+            <div id="finAccountsList" class="accounts-cards-container">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+
+          <!-- Seção de Extrato de Transações -->
+          <div class="card fin-transactions-section">
+            <div class="fin-section-header">
+              <h3>Lançamentos do Mês</h3>
+              <div class="fin-filters-bar">
+                <button type="button" class="fin-filter-pill active" data-fin-filter="all">Todas</button>
+                <button type="button" class="fin-filter-pill" data-fin-filter="DESPESA">Despesas</button>
+                <button type="button" class="fin-filter-pill" data-fin-filter="RECEITA">Receitas</button>
+                <button type="button" class="fin-filter-pill" data-fin-filter="PENDENTE">Pendentes</button>
+                <button type="button" class="fin-filter-pill" data-fin-filter="PAGO">Pagas</button>
+                <select id="finAccountFilter" class="select-filter-sm">
+                  <option value="">Todas as Contas</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="finTransactionsList" class="fin-trans-list">
+              <div class="dash-empty">Nenhum lançamento registrado para este mês. Clique em "+ Nova Transação" acima!</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             PAINEL 4: STATS & CHARTS
+             ================================================================ -->
+        <section id="statsView" class="app-panel-view hidden">
+          <div class="stats-header">
+            <div>
+              <h2>Painel de Produtividade & Métricas</h2>
+              <p class="subtitle">Estatísticas detalhadas sobre seu fluxo de trabalho, foco e pontualidade</p>
+            </div>
+            <button id="btnRefreshStats" class="btn btn-outline btn-sm" title="Atualizar dados dos gráficos">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Atualizar Gráficos
+            </button>
+          </div>
+
+          <!-- KPI Summary Cards -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-label">Taxa de Entrega no Prazo</span>
+              <span class="kpi-value" id="kpiOnTimeRate">100%</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Pomodoros Finalizados</span>
+              <span class="kpi-value" id="kpiPomodorosDone">0</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Tarefas com Recorrência</span>
+              <span class="kpi-value" id="kpiRecurringTasks">0</span>
+            </div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h4>Distribuição por Categoria</h4>
+              <div class="chart-wrapper">
+                <canvas id="categoryChart"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <h4>Tarefas por Prioridade</h4>
+              <div class="chart-wrapper">
+                <canvas id="priorityChart"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-card chart-card-wide">
+              <h4>Produtividade Semanal (Últimos 7 dias: Criadas vs Concluídas)</h4>
+              <div class="chart-wrapper chart-wide">
+                <canvas id="weeklyTrendChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             PAINEL 5: TRASH (LIXEIRA)
+             ================================================================ -->
+        <section id="trashView" class="app-panel-view hidden">
+          <div class="trash-header">
+            <div>
+              <h2>Lixeira</h2>
+              <p class="subtitle">Itens excluídos podem ser restaurados ou eliminados permanentemente</p>
+            </div>
+            <button id="btnEmptyTrash" class="btn btn-danger btn-sm">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Esvaziar Lixeira
+            </button>
+          </div>
+
+          <div id="trashList" class="task-list"></div>
+          <div id="emptyTrashState" class="empty-state hidden">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </div>
+            <h3>Lixeira Vazia</h3>
+            <p>Nenhuma tarefa na lixeira.</p>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             PAINEL 5: CALENDÁRIO UNIFICADO
+             ================================================================ -->
+        <section id="calendarView" class="app-view hidden">
+          <div class="calendar-view-header">
+            <div class="cal-title-nav">
+              <button type="button" class="btn btn-icon btn-outline" id="btnPrevCalendarMonth" title="Mês Anterior">&larr;</button>
+              <h2 id="calendarMonthTitle">Setembro de 2026</h2>
+              <button type="button" class="btn btn-icon btn-outline" id="btnNextCalendarMonth" title="Próximo Mês">&rarr;</button>
+              <button type="button" class="btn btn-xs btn-outline" id="btnCalendarToday">Hoje</button>
+            </div>
+            <div class="cal-header-actions">
+              <button type="button" class="btn btn-primary" id="btnOpenNewEvent">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Novo Compromisso
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </header>
 
-    <!-- View Switcher Tabs -->
-    <nav class="view-nav">
-      <div class="view-tabs">
-        <button class="view-tab-btn active" data-view="list">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-          </svg>
-          Lista de Tarefas
-        </button>
-        <button class="view-tab-btn" data-view="kanban">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="5" height="18" rx="1"></rect>
-            <rect x="10" y="3" width="5" height="12" rx="1"></rect>
-            <rect x="17" y="3" width="5" height="15" rx="1"></rect>
-          </svg>
-          Quadro Kanban
-        </button>
-        <button class="view-tab-btn" data-view="trash">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-          Lixeira <span class="tab-badge" id="trashCountBadge">0</span>
-        </button>
-        <button class="view-tab-btn" data-view="stats">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"></line>
-            <line x1="12" y1="20" x2="12" y2="4"></line>
-            <line x1="6" y1="20" x2="6" y2="14"></line>
-          </svg>
-          Gráficos & Métricas
-        </button>
-      </div>
-    </nav>
+          <!-- Legenda de Cores -->
+          <div class="calendar-legend-bar">
+            <span class="legend-item"><span class="legend-dot dot-task"></span> Tarefa a Entregar</span>
+            <span class="legend-item"><span class="legend-dot dot-expense"></span> Despesa a Vencer</span>
+            <span class="legend-item"><span class="legend-dot dot-income"></span> Receita Prevista</span>
+            <span class="legend-item"><span class="legend-dot dot-event"></span> Compromisso / Evento</span>
+          </div>
 
-    <!-- Pomodoro Mode Widget -->
-    <section class="card pomodoro-card" id="pomodoroSection">
-      <div class="pomodoro-header">
-        <div class="pomodoro-title-group">
-          <span class="pomodoro-icon">🍅</span>
-          <div>
-            <h3>Modo Foco & Pomodoro</h3>
-            <p class="pomodoro-target" id="pomodoroTaskLabel">Nenhuma tarefa em foco (clique em "🍅 Focar" em um card)</p>
+          <!-- Grade Mensal -->
+          <div class="calendar-container card">
+            <div class="calendar-weekdays-grid">
+              <div class="weekday-header">Dom</div>
+              <div class="weekday-header">Seg</div>
+              <div class="weekday-header">Ter</div>
+              <div class="weekday-header">Qua</div>
+              <div class="weekday-header">Qui</div>
+              <div class="weekday-header">Sex</div>
+              <div class="weekday-header">Sáb</div>
+            </div>
+            <div class="calendar-days-grid" id="calendarDaysGrid">
+              <!-- Células dos dias geradas dinamicamente via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             PAINEL 6: METAS & OKRs (PAINEL COMPLETO)
+             ================================================================ -->
+        <section id="goalsView" class="app-view hidden">
+          <div class="goals-view-header">
+            <div>
+              <h2>Metas, Sonhos & OKRs 🎯</h2>
+              <p class="section-subtitle">Conecte sua rotina diária aos seus grandes objetivos de vida e carreira</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="btnOpenNewGoalMain">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Nova Meta
+            </button>
+          </div>
+
+          <!-- KPIs de Metas -->
+          <div class="cockpit-kpi-grid" style="margin-bottom:20px;">
+            <div class="kpi-card">
+              <span class="kpi-label">Metas em Andamento</span>
+              <span class="kpi-value" id="kpiGoalsInProgress">0</span>
+              <span class="kpi-sub">Foco ativo</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Metas Concluídas</span>
+              <span class="kpi-value" id="kpiGoalsCompleted" style="color:var(--success);">0</span>
+              <span class="kpi-sub">Sonhos atingidos 🎉</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Progresso Médio</span>
+              <span class="kpi-value" id="kpiGoalsAvgProgress">0%</span>
+              <span class="kpi-sub">Consistência total</span>
+            </div>
+          </div>
+
+          <!-- Filtro por Categoria -->
+          <div class="finances-filter-pills" id="goalsCategoryFilters" style="margin-bottom:18px;">
+            <button type="button" class="fin-pill active" data-goal-category="all">Todas</button>
+            <button type="button" class="fin-pill" data-goal-category="FINANCEIRA">💰 Financeiras</button>
+            <button type="button" class="fin-pill" data-goal-category="ESTUDO">📚 Estudos</button>
+            <button type="button" class="fin-pill" data-goal-category="CARREIRA">💼 Carreira</button>
+            <button type="button" class="fin-pill" data-goal-category="SAUDE">🏋️ Saúde</button>
+            <button type="button" class="fin-pill" data-goal-category="PESSOAL">🌟 Pessoal</button>
+          </div>
+
+          <!-- Grade de Cartões de Metas -->
+          <div class="goals-grid" id="goalsCardsGrid">
+            <!-- Renderizado dinamicamente via JS -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ================================================================
+       MODAIS
+       ================================================================ -->
+
+  <!-- Modal Nova / Editar Transação Financeira -->
+  <div id="transactionModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="transModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="transModalTitle">Nova Transação Financeira</h3>
+        <button type="button" class="btn-close" id="btnCloseTransModal" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="transactionForm">
+        <div class="modal-body">
+          <!-- Toggle Tipo: Despesa vs Receita -->
+          <div class="trans-type-toggle">
+            <button type="button" class="trans-type-btn active-expense" id="btnTypeExpense" data-type="DESPESA">💸 Despesa (Saída)</button>
+            <button type="button" class="trans-type-btn" id="btnTypeIncome" data-type="RECEITA">💰 Receita (Entrada)</button>
+          </div>
+          <input type="hidden" id="transTypeInput" value="DESPESA">
+
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="transDescricao">Descrição *</label>
+              <input type="text" id="transDescricao" required placeholder="Ex: Mercado, Aluguel, Salário..." maxlength="255">
+            </div>
+            <div class="form-group flex-1">
+              <label for="transValor">Valor (R$) *</label>
+              <input type="number" id="transValor" step="0.01" min="0.01" required placeholder="0,00">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="transDataVencimento">Data de Vencimento *</label>
+              <input type="date" id="transDataVencimento" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="transConta">Conta / Carteira *</label>
+              <select id="transConta" required>
+                <!-- Preenchido dinamicamente -->
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="transCategoria">Categoria</label>
+              <select id="transCategoria">
+                <!-- Preenchido dinamicamente -->
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="transStatusPago" style="display:flex;align-items:center;gap:8px;margin-top:28px;cursor:pointer;">
+                <input type="checkbox" id="transStatusPago" style="width:18px;height:18px;">
+                <span>Já foi pago / recebido</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Parcelamento -->
+          <div class="form-group" style="background:var(--bg-main);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-color);">
+            <label for="transParcelado" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+              <input type="checkbox" id="transParcelado" style="width:18px;height:18px;">
+              <span>Compra Parcelada / Recorrência Mensal</span>
+            </label>
+            <div id="transParcelasGroup" class="hidden" style="margin-top:10px;">
+              <label for="transTotalParcelas">Número total de parcelas:</label>
+              <input type="number" id="transTotalParcelas" min="2" max="48" value="2" style="max-width:140px;">
+              <span style="font-size:0.8rem;color:var(--text-muted);display:block;margin-top:4px;">
+                As parcelas mensais com vencimento sequencial serão geradas automaticamente.
+              </span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="transObservacoes">Observações (Opcional)</label>
+            <textarea id="transObservacoes" rows="2" placeholder="Detalhes, número de nota, link de comprovante..."></textarea>
           </div>
         </div>
-        <div class="pomodoro-modes">
-          <button type="button" class="pomo-mode-btn active" data-mode="pomodoro" data-time="1500">Pomodoro (25m)</button>
-          <button type="button" class="pomo-mode-btn" data-mode="short" data-time="300">Pausa Curta (5m)</button>
-          <button type="button" class="pomo-mode-btn" data-mode="long" data-time="900">Pausa Longa (15m)</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelTrans">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitTrans">Salvar Transação</button>
         </div>
-      </div>
-      <div class="pomodoro-timer-row">
-        <div class="pomodoro-timer-display" id="pomodoroDisplay">25:00</div>
-        <div class="pomodoro-controls">
-          <button type="button" class="btn btn-primary" id="btnPomoStart">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            Iniciar
-          </button>
-          <button type="button" class="btn btn-secondary" id="btnPomoPause" disabled>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-            Pausar
-          </button>
-          <button type="button" class="btn btn-outline" id="btnPomoReset">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
-            Reiniciar
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Metrics Dashboard -->
-    <section class="metrics-grid">
-      <div class="metric-card total">
-        <div class="metric-info">
-          <span class="metric-label">Total Ativas</span>
-          <span class="metric-value" id="metricTotal">0</span>
-        </div>
-        <div class="metric-icon">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-          </svg>
-        </div>
-      </div>
-
-      <div class="metric-card pending">
-        <div class="metric-info">
-          <span class="metric-label">Pendentes</span>
-          <span class="metric-value" id="metricPending">0</span>
-        </div>
-        <div class="metric-icon">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-        </div>
-      </div>
-
-      <div class="metric-card overdue">
-        <div class="metric-info">
-          <span class="metric-label">Atrasadas</span>
-          <span class="metric-value" id="metricOverdue">0</span>
-        </div>
-        <div class="metric-icon">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-        </div>
-      </div>
-
-      <div class="metric-card completed">
-        <div class="metric-info">
-          <span class="metric-label">Concluídas</span>
-          <span class="metric-value" id="metricCompleted">0</span>
-        </div>
-        <div class="metric-icon">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
-      </div>
-    </section>
-
-    <!-- Progress Bar -->
-    <div class="progress-section">
-      <div class="progress-header">
-        <span>Progresso Geral</span>
-        <span id="progressPercentage">0%</span>
-      </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
-      </div>
-    </div>
-
-    <!-- Create Task Section -->
-    <section class="card create-card" id="createTaskSection">
-      <h2>Nova Tarefa</h2>
-      <form id="createTaskForm">
-        <div class="form-row">
-          <div class="form-group flex-2">
-            <label for="taskTitle">Título *</label>
-            <input type="text" id="taskTitle" name="titulo" placeholder="Ex: Criar apresentação do projeto" required maxlength="200" autocomplete="off">
-          </div>
-          <div class="form-group flex-1">
-            <label for="taskDueDate">Data de Vencimento</label>
-            <input type="date" id="taskDueDate" name="dataVencimento">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="taskPriority">Prioridade</label>
-            <select id="taskPriority" name="prioridade">
-              <option value="BAIXA">🟢 Baixa</option>
-              <option value="MEDIA" selected>🟡 Média</option>
-              <option value="ALTA">🟠 Alta</option>
-              <option value="URGENTE">🔴 Urgente</option>
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label for="taskCategory">Categoria</label>
-            <select id="taskCategory" name="categoria">
-              <option value="GERAL" selected>📁 Geral</option>
-              <option value="TRABALHO">💼 Trabalho</option>
-              <option value="ESTUDOS">🎓 Estudos</option>
-              <option value="PESSOAL">🏠 Pessoal</option>
-              <option value="FINANCAS">💰 Finanças</option>
-              <option value="SAUDE">🏃 Saúde</option>
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label for="taskInitialStatus">Status Inicial</label>
-            <select id="taskInitialStatus" name="status">
-              <option value="A_FAZER" selected>A Fazer</option>
-              <option value="EM_ANDAMENTO">Em Andamento</option>
-              <option value="CONCLUIDA">Concluída</option>
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label for="taskRecurrence">Recorrência</label>
-            <select id="taskRecurrence" name="recorrencia">
-              <option value="NENHUMA" selected>Nenhuma</option>
-              <option value="DIARIA">🔁 Diária</option>
-              <option value="SEMANAL">🔁 Semanal</option>
-              <option value="MENSAL">🔁 Mensal</option>
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label for="taskEstimatedPomodoros" title="Estimativa de blocos de foco de 25 min">🍅 Pomodoros</label>
-            <input type="number" id="taskEstimatedPomodoros" name="pomodorosEstimados" min="1" max="20" value="1">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="taskDescription">Descrição (opcional)</label>
-          <textarea id="taskDescription" name="descricao" rows="2" placeholder="Detalhes, anotações ou observações..." maxlength="1000"></textarea>
-        </div>
-
-        <div class="form-group">
-          <div class="form-label-row">
-            <label>Tags / Etiquetas</label>
-            <button type="button" id="btnOpenCreateTag" class="btn-text-link">+ Nova Tag</button>
-          </div>
-          <div id="createTaskTagsList" class="tags-picker-container">
-            <span class="text-muted" style="font-size:0.82rem;">Carregando tags...</span>
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary" id="btnSubmitTask">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Adicionar Tarefa
-        </button>
       </form>
-    </section>
+    </div>
+  </div>
 
-    <!-- Toolbar: Search & Quick Filters -->
-    <section class="toolbar" id="mainToolbar">
-      <div class="search-box">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" id="searchInput" placeholder="Pesquisar por título ou descrição..." autocomplete="off">
-        <button type="button" id="clearSearchBtn" class="btn-clear hidden" title="Limpar pesquisa">&times;</button>
+  <!-- Modal Nova Conta / Carteira -->
+  <div id="accountModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="accountModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Nova Conta / Carteira</h3>
+        <button type="button" class="btn-close" id="btnCloseAccountModal" aria-label="Fechar">&times;</button>
       </div>
-
-      <div class="filter-controls">
-        <select id="categoryFilter" class="select-filter" aria-label="Filtrar por categoria">
-          <option value="">Todas as Categorias</option>
-          <option value="GERAL">📁 Geral</option>
-          <option value="TRABALHO">💼 Trabalho</option>
-          <option value="ESTUDOS">🎓 Estudos</option>
-          <option value="PESSOAL">🏠 Pessoal</option>
-          <option value="FINANCAS">💰 Finanças</option>
-          <option value="SAUDE">🏃 Saúde</option>
-        </select>
-
-        <select id="priorityFilter" class="select-filter" aria-label="Filtrar por prioridade">
-          <option value="">Todas as Prioridades</option>
-          <option value="URGENTE">🔴 Urgente</option>
-          <option value="ALTA">🟠 Alta</option>
-          <option value="MEDIA">🟡 Média</option>
-          <option value="BAIXA">🟢 Baixa</option>
-        </select>
-
-        <select id="tagFilter" class="select-filter" aria-label="Filtrar por etiqueta/tag">
-          <option value="">Todas as Tags</option>
-        </select>
-
-        <div class="filter-tabs" id="statusTabs">
-          <button class="filter-btn active" data-filter="all">Todas</button>
-          <button class="filter-btn" data-filter="pending">Pendentes</button>
-          <button class="filter-btn" data-filter="completed">Concluídas</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- VIEW 1: LIST VIEW -->
-    <section class="view-content" id="listView">
-      <div id="taskList" class="task-list"></div>
-      <div id="emptyState" class="empty-state hidden">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-          </svg>
-        </div>
-        <h3>Nenhuma tarefa encontrada</h3>
-        <p id="emptyMessage">Você ainda não possui tarefas ativas. Crie uma nova tarefa acima!</p>
-      </div>
-    </section>
-
-    <!-- VIEW 2: KANBAN BOARD -->
-    <section class="view-content hidden" id="kanbanView">
-      <div class="kanban-board">
-        <!-- Column 1: A Fazer -->
-        <div class="kanban-column" data-status="A_FAZER">
-          <div class="kanban-header column-todo">
-            <div class="kanban-title">
-              <span class="status-dot dot-todo"></span>
-              <h3>A Fazer</h3>
+      <form id="accountForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="accountNome">Nome da Conta / Banco *</label>
+            <input type="text" id="accountNome" required placeholder="Ex: Nubank, Itaú, Dinheiro na Carteira..." maxlength="100">
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="accountTipo">Tipo da Conta *</label>
+              <select id="accountTipo" required>
+                <option value="CORRENTE">Conta Corrente</option>
+                <option value="POUPANCA">Poupança</option>
+                <option value="DINHEIRO">Dinheiro Físico</option>
+                <option value="INVESTIMENTO">Investimentos</option>
+                <option value="CARTAO">Cartão de Crédito</option>
+              </select>
             </div>
-            <span class="kanban-count" id="countAFazer">0</span>
-          </div>
-          <div class="kanban-cards" id="cardsAFazer"></div>
-        </div>
-
-        <!-- Column 2: Em Andamento -->
-        <div class="kanban-column" data-status="EM_ANDAMENTO">
-          <div class="kanban-header column-progress">
-            <div class="kanban-title">
-              <span class="status-dot dot-progress"></span>
-              <h3>Em Andamento</h3>
+            <div class="form-group flex-1">
+              <label for="accountSaldoInicial">Saldo Inicial (R$)</label>
+              <input type="number" id="accountSaldoInicial" step="0.01" value="0.00">
             </div>
-            <span class="kanban-count" id="countEmAndamento">0</span>
           </div>
-          <div class="kanban-cards" id="cardsEmAndamento"></div>
-        </div>
-
-        <!-- Column 3: Concluída -->
-        <div class="kanban-column" data-status="CONCLUIDA">
-          <div class="kanban-header column-done">
-            <div class="kanban-title">
-              <span class="status-dot dot-done"></span>
-              <h3>Concluída</h3>
+          <div class="form-group">
+            <label for="accountCor">Cor da Conta</label>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input type="color" id="accountCor" value="#820ad1" class="color-picker-input">
+              <span style="font-size:0.85rem;color:var(--text-muted);">Escolha uma cor para identificar visualmente</span>
             </div>
-            <span class="kanban-count" id="countConcluida">0</span>
-          </div>
-          <div class="kanban-cards" id="cardsConcluida"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- VIEW 3: TRASH (LIXEIRA) -->
-    <section class="view-content hidden" id="trashView">
-      <div class="trash-header">
-        <div>
-          <h2>Lixeira</h2>
-          <p class="subtitle">Itens excluídos podem ser restaurados ou eliminados permanentemente</p>
-        </div>
-        <button id="btnEmptyTrash" class="btn btn-danger btn-sm">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-          Esvaziar Lixeira
-        </button>
-      </div>
-
-      <div id="trashList" class="task-list"></div>
-      <div id="emptyTrashState" class="empty-state hidden">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-        </div>
-        <h3>Lixeira Vazia</h3>
-        <p>Nenhuma tarefa na lixeira.</p>
-      </div>
-    </section>
-
-    <!-- VIEW 4: STATS & CHARTS -->
-    <section class="view-content hidden" id="statsView">
-      <div class="stats-header">
-        <div>
-          <h2>Painel de Produtividade & Métricas</h2>
-          <p class="subtitle">Estatísticas detalhadas sobre seu fluxo de trabalho, foco e pontualidade</p>
-        </div>
-        <button id="btnRefreshStats" class="btn btn-outline btn-sm" title="Atualizar dados dos gráficos">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <polyline points="1 20 1 14 7 14"></polyline>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-          </svg>
-          Atualizar Gráficos
-        </button>
-      </div>
-
-      <!-- KPI Summary Cards -->
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <span class="kpi-label">Taxa de Entrega no Prazo</span>
-          <span class="kpi-value" id="kpiOnTimeRate">100%</span>
-        </div>
-        <div class="kpi-card">
-          <span class="kpi-label">Pomodoros Finalizados</span>
-          <span class="kpi-value" id="kpiPomodorosDone">0</span>
-        </div>
-        <div class="kpi-card">
-          <span class="kpi-label">Tarefas com Recorrência</span>
-          <span class="kpi-value" id="kpiRecurringTasks">0</span>
-        </div>
-      </div>
-
-      <!-- Charts Grid -->
-      <div class="charts-grid">
-        <div class="chart-card">
-          <h4>Distribuição por Categoria</h4>
-          <div class="chart-wrapper">
-            <canvas id="categoryChart"></canvas>
           </div>
         </div>
-
-        <div class="chart-card">
-          <h4>Tarefas por Prioridade</h4>
-          <div class="chart-wrapper">
-            <canvas id="priorityChart"></canvas>
-          </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelAccount">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Criar Conta</button>
         </div>
-
-        <div class="chart-card chart-card-wide">
-          <h4>Produtividade Semanal (Últimos 7 dias: Criadas vs Concluídas)</h4>
-          <div class="chart-wrapper chart-wide">
-            <canvas id="weeklyTrendChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </section>
+      </form>
+    </div>
   </div>
 
   <!-- Edit Task Modal -->
@@ -757,6 +1371,386 @@
           ⚡ Entrar como Convidado (Acesso Completo)
         </button>
         <span class="guest-login-hint">Modo teste imediato com tarefas, métricas e tags pré-carregadas</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="shortcutsModalTitle">
+    <div class="modal-backdrop" id="shortcutsModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="shortcutsModalTitle">⌨️ Atalhos de Teclado</h3>
+        <button class="btn-close" id="btnCloseShortcuts" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <table class="shortcuts-table">
+          <tbody>
+            <tr>
+              <td><kbd class="shortcut-kbd">1</kbd></td>
+              <td>Ir para Visão Geral (Cockpit)</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">2</kbd></td>
+              <td>Ir para Tarefas & Kanban</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">3</kbd></td>
+              <td>Ir para Finanças Pessoais</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">N</kbd></td>
+              <td>Focar na criação de nova tarefa</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">F</kbd></td>
+              <td>Abrir modal de Nova Finança / Transação</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">/</kbd></td>
+              <td>Focar na barra de pesquisa</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">P</kbd></td>
+              <td>Iniciar / pausar timer Pomodoro</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">K</kbd></td>
+              <td>Alternar para o Quadro Kanban</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">L</kbd></td>
+              <td>Alternar para a Lista de Tarefas</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">Esc</kbd></td>
+              <td>Fechar qualquer modal ativo</td>
+            </tr>
+            <tr>
+              <td><kbd class="shortcut-kbd">?</kbd></td>
+              <td>Abrir esta tela de atalhos</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnOkShortcuts">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subtask Edit Modal -->
+  <div id="subtaskEditModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="subtaskEditModalTitle">
+    <div class="modal-backdrop" id="subtaskEditModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="subtaskEditModalTitle">Editar Subtarefa</h3>
+        <button class="btn-close" id="btnCloseSubtaskEdit" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="subtaskEditForm">
+        <div class="modal-body">
+          <input type="hidden" id="editSubtaskTaskId">
+          <input type="hidden" id="editSubtaskSubId">
+          <div class="form-group">
+            <label for="editSubtaskTitle">Título da Subtarefa *</label>
+            <input type="text" id="editSubtaskTitle" required maxlength="200">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelSubtaskEdit">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Alteração</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  
+  <!-- Modal Novo Hábito -->
+  <div id="habitModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="habitModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Novo Hábito Diário</h3>
+        <button type="button" class="btn-close" id="btnCloseHabitModal" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="habitForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="habitNome">Nome do Hábito *</label>
+            <input type="text" id="habitNome" required placeholder="Ex: Beber 2L de Água, Meditar, Treinar..." maxlength="100">
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="habitIcone">Ícone Temático</label>
+              <select id="habitIcone">
+                <option value="droplet">💧 Hidratação / Água</option>
+                <option value="activity">🏋️ Exercício / Treino</option>
+                <option value="book-open">📚 Leitura / Estudo</option>
+                <option value="smile">🧘 Meditação / Bem-estar</option>
+                <option value="code">💻 Programação / Foco</option>
+                <option value="heart">❤️ Saúde / Remédio</option>
+                <option value="sun">☀️ Acordar Cedo</option>
+                <option value="check">✅ Hábito Geral</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="habitCor">Cor de Destaque</label>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                <input type="color" id="habitCor" value="#10b981" class="color-picker-input">
+                <span style="font-size:0.8rem;color:var(--text-muted);">Identificação visual</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelHabit">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Criar Hábito</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Nova / Editar Meta -->
+  <div id="goalModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="goalModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="goalModalTitle">Nova Meta ou Sonho</h3>
+        <button type="button" class="btn-close" id="btnCloseGoalModal" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="goalForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="goalTitulo">Título da Meta *</label>
+            <input type="text" id="goalTitulo" required placeholder="Ex: Reserva de Emergência, Comprar Carro, Ler 12 Livros..." maxlength="150">
+          </div>
+          <div class="form-group">
+            <label for="goalDescricao">Descrição ou Motivação</label>
+            <textarea id="goalDescricao" rows="2" placeholder="Por que essa meta é importante para você?"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="goalCategoria">Categoria</label>
+              <select id="goalCategoria">
+                <option value="FINANCEIRA">💰 Financeira</option>
+                <option value="ESTUDO">📚 Estudo / Leitura</option>
+                <option value="CARREIRA">💼 Carreira / Projetos</option>
+                <option value="SAUDE">🏋️ Saúde / Fitness</option>
+                <option value="PESSOAL">🌟 Pessoal / Viagem</option>
+                <option value="GERAL">🎯 Geral</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="goalUnidade">Unidade de Medida</label>
+              <input type="text" id="goalUnidade" placeholder="Ex: R$, livros, km, kg, aulas" value="R$">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="goalValorAlvo">Valor Alvo (Objetivo) *</label>
+              <input type="number" id="goalValorAlvo" step="0.01" min="0.01" required placeholder="10000.00">
+            </div>
+            <div class="form-group flex-1">
+              <label for="goalValorAtual">Valor Já Conquistado</label>
+              <input type="number" id="goalValorAtual" step="0.01" min="0" value="0.00">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="goalPrazo">Data Limite (Deadline)</label>
+              <input type="date" id="goalPrazo">
+            </div>
+            <div class="form-group flex-1">
+              <label for="goalCor">Cor Temática</label>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                <input type="color" id="goalCor" value="#10b981" class="color-picker-input">
+                <span style="font-size:0.8rem;color:var(--text-muted);">Destaque visual</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelGoal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Meta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Aporte / Avanço na Meta -->
+  <div id="goalAporteModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="goalAporteModalBackdrop"></div>
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3>Registrar Progresso / Aporte</h3>
+        <button type="button" class="btn-close" id="btnCloseGoalAporteModal" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="goalAporteForm">
+        <input type="hidden" id="aporteGoalId">
+        <div class="modal-body">
+          <p id="aporteGoalTitle" style="font-weight:600;margin-bottom:12px;color:var(--primary);"></p>
+          <div class="form-group">
+            <label for="aporteValor">Valor a Somar ao Progresso *</label>
+            <input type="number" id="aporteValor" step="0.01" min="0.01" required placeholder="Ex: 250.00">
+            <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-top:4px;">
+              Este valor será adicionado ao montante acumulado da meta.
+            </span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelAporte">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Confirmar Aporte</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Novo Evento / Compromisso -->
+  <div id="eventModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="eventModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Novo Compromisso / Evento</h3>
+        <button type="button" class="btn-close" id="btnCloseEventModal" aria-label="Fechar">&times;</button>
+      </div>
+      <form id="eventForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="eventTitulo">Título do Compromisso *</label>
+            <input type="text" id="eventTitulo" required placeholder="Ex: Reunião com Cliente, Dentista, Aniversário..." maxlength="150">
+          </div>
+          <div class="form-group">
+            <label for="eventDescricao">Local ou Observações</label>
+            <textarea id="eventDescricao" rows="2" placeholder="Ex: Google Meet, Consultório Dr. Silva, Sala 3..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="eventData">Data *</label>
+              <input type="date" id="eventData" required>
+            </div>
+            <div class="form-group flex-1">
+              <label for="eventCategoria">Categoria</label>
+              <select id="eventCategoria">
+                <option value="Trabalho">💼 Trabalho / Reunião</option>
+                <option value="Saúde">🩺 Saúde / Médico</option>
+                <option value="Estudo">📚 Estudo / Aula</option>
+                <option value="Pessoal">🌟 Pessoal / Lazer</option>
+                <option value="Família">🏡 Família / Casa</option>
+                <option value="Geral">📌 Geral</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="eventHoraInicio">Hora Início (Opcional)</label>
+              <input type="time" id="eventHoraInicio">
+            </div>
+            <div class="form-group flex-1">
+              <label for="eventHoraFim">Hora Término (Opcional)</label>
+              <input type="time" id="eventHoraFim">
+            </div>
+            <div class="form-group" style="min-width:100px;">
+              <label for="eventCor">Cor</label>
+              <input type="color" id="eventCor" value="#8b5cf6" class="color-picker-input" style="margin-top:6px;">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelEvent">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Agendar Evento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Detalhes do Dia (Calendário) -->
+  <div id="dayDetailsModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="dayDetailsModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="dayDetailsModalTitle">Compromissos do Dia</h3>
+        <button type="button" class="btn-close" id="btnCloseDayDetailsModal" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="dayDetailsList" class="day-details-list">
+          <!-- Inserido dinamicamente via JS -->
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button type="button" class="btn btn-primary" id="btnDayAddEvent">+ Adicionar Evento Neste Dia</button>
+        <button type="button" class="btn btn-secondary" id="btnCloseDayDetailsBtn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Modal Personalizar Esportes e Times -->
+  <div id="sportsPreferencesModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="sportsPreferencesModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Meus Esportes, Ligas & Times Favoritos 🏆</h3>
+        <button type="button" class="btn-close" id="btnCloseSportsPrefsModal" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.84rem;color:var(--text-muted);margin-bottom:14px;">
+          Escolha os esportes, lutas ou clubes que você quer acompanhar no seu LifeHub e sincronizar com o calendário:
+        </p>
+
+        <!-- Meus Interesses Ativos -->
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:6px;">Interesses Seguidos Atualmente:</label>
+        <div id="activeSportsPrefsContainer" class="sports-prefs-tags-box">
+          <!-- Tags com botão de remover inseridas via JS -->
+        </div>
+
+        <hr style="margin:16px 0;border:0;border-top:1px solid var(--border-color);">
+
+        <!-- Sugestões Rápidas (1 clique) -->
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:6px;">Sugestões Populares (Clique para adicionar):</label>
+        <div class="sports-suggestions-grid">
+          <button type="button" class="btn-quick-pref" data-sport="UFC" data-name="UFC / MMA">🥊 UFC / MMA</button>
+          <button type="button" class="btn-quick-pref" data-sport="F1" data-name="Fórmula 1">🏎️ Fórmula 1</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Flamengo">⚽ Flamengo</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Palmeiras">⚽ Palmeiras</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="São Paulo">⚽ São Paulo</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Corinthians">⚽ Corinthians</button>
+          <button type="button" class="btn-quick-pref" data-sport="FUTEBOL" data-name="Real Madrid">⚽ Real Madrid</button>
+          <button type="button" class="btn-quick-pref" data-sport="BASQUETE" data-name="NBA / Lakers">🏀 NBA / Lakers</button>
+          <button type="button" class="btn-quick-pref" data-sport="BASQUETE" data-name="Warriors">🏀 Warriors</button>
+          <button type="button" class="btn-quick-pref" data-sport="NFL" data-name="NFL">🏈 NFL</button>
+        </div>
+
+        <hr style="margin:16px 0;border:0;border-top:1px solid var(--border-color);">
+
+        <!-- Formulário para Adicionar Interesse Personalizado -->
+        <form id="addSportsPrefForm">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:6px;">Adicionar Outro Time, Atleta ou Esporte:</label>
+          <div class="form-row" style="align-items:flex-end;">
+            <div class="form-group flex-1">
+              <label for="customPrefSport" style="font-size:0.75rem;">Modalidade</label>
+              <select id="customPrefSport" class="select-filter-sm" style="width:100%;height:38px;font-size:0.88rem;">
+                <option value="UFC">🥊 UFC / MMA</option>
+                <option value="F1">🏎️ Fórmula 1</option>
+                <option value="FUTEBOL">⚽ Futebol</option>
+                <option value="BASQUETE">🏀 Basquete (NBA)</option>
+                <option value="NFL">🏈 Futebol Americano (NFL)</option>
+                <option value="TENIS">🎾 Tênis</option>
+                <option value="OUTRO">🏆 Outro</option>
+              </select>
+            </div>
+            <div class="form-group flex-2">
+              <label for="customPrefName" style="font-size:0.75rem;">Nome do Time / Atleta / Liga</label>
+              <input type="text" id="customPrefName" placeholder="Ex: Charles Oliveira, Grêmio, Liverpool..." required style="height:38px;">
+            </div>
+            <div>
+              <button type="submit" class="btn btn-primary" style="height:38px;">+ Adicionar</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCloseSportsPrefsBtn">Concluir</button>
       </div>
     </div>
   </div>

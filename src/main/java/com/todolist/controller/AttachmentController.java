@@ -53,10 +53,14 @@ public class AttachmentController {
             mediaType = MediaType.APPLICATION_OCTET_STREAM;
         }
 
-        String dispositionType = (attachment.getTipoConteudo() != null &&
-                attachment.getTipoConteudo().toLowerCase().startsWith("image/"))
-                ? "inline"
-                : "attachment";
+        boolean isSafeRasterImage = attachment.getTipoConteudo() != null &&
+                (attachment.getTipoConteudo().equalsIgnoreCase("image/png") ||
+                 attachment.getTipoConteudo().equalsIgnoreCase("image/jpeg") ||
+                 attachment.getTipoConteudo().equalsIgnoreCase("image/jpg") ||
+                 attachment.getTipoConteudo().equalsIgnoreCase("image/gif") ||
+                 attachment.getTipoConteudo().equalsIgnoreCase("image/webp"));
+
+        String dispositionType = isSafeRasterImage ? "inline" : "attachment";
 
         return ResponseEntity.ok()
                 .contentType(mediaType)

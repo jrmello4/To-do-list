@@ -142,4 +142,23 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.nome").value("Usuário Convidado"))
                 .andExpect(jsonPath("$.email").value("convidado@todolist.local"));
     }
+
+    @Test
+    @DisplayName("POST /api/auth/login - Deve retornar 401 para credenciais incorretas")
+    void deveRetornar401ParaCredenciaisInvalidas() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .email("dev@teste.com")
+                .senha("senhaerrada")
+                .build();
+
+        when(authService.autenticar(any(LoginRequest.class)))
+                .thenThrow(new org.springframework.security.authentication.BadCredentialsException("Bad credentials"));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.mensagem").value("Credenciais inválidas: e-mail ou senha incorretos."));
+    }
 }
