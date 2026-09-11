@@ -79,17 +79,29 @@ public class TransacaoService {
             int totalParcelas = request.getTotalParcelas();
             List<Transacao> listaParcelas = new ArrayList<>();
 
+            // Divisão do valor TOTAL entre as parcelas, distribuindo os centavos
+            // restantes nas primeiras parcelas para que a soma seja exatamente o total.
+            BigDecimal valorBase = request.getValor()
+                    .divide(BigDecimal.valueOf(totalParcelas), 2, java.math.RoundingMode.DOWN);
+            int centavosRestantes = request.getValor()
+                    .subtract(valorBase.multiply(BigDecimal.valueOf(totalParcelas)))
+                    .movePointRight(2)
+                    .intValue();
+
             for (int i = 1; i <= totalParcelas; i++) {
                 LocalDate vencimentoParcela = request.getDataVencimento().plusMonths(i - 1);
                 StatusTransacao statusParcela = (i == 1 && status == StatusTransacao.PAGO) ? StatusTransacao.PAGO : StatusTransacao.PENDENTE;
                 LocalDate dataPagamentoParcela = (statusParcela == StatusTransacao.PAGO)
                         ? (request.getDataPagamento() != null ? request.getDataPagamento() : LocalDate.now())
                         : null;
+                BigDecimal valorParcela = (i <= centavosRestantes)
+                        ? valorBase.add(new BigDecimal("0.01"))
+                        : valorBase;
 
                 Transacao parcela = Transacao.builder()
                         .descricao(request.getDescricao().trim() + " (" + i + "/" + totalParcelas + ")")
                         .tipo(request.getTipo())
-                        .valor(request.getValor())
+                        .valor(valorParcela)
                         .dataVencimento(vencimentoParcela)
                         .dataPagamento(dataPagamentoParcela)
                         .status(statusParcela)
@@ -153,6 +165,7 @@ public class TransacaoService {
 
         if (transacao.getStatus() != novoStatus) {
             ContaFinanceira conta = transacao.getConta();
+            StatusTransacao statusAnterior = transacao.getStatus();
             if (novoStatus == StatusTransacao.PAGO) {
                 transacao.setStatus(StatusTransacao.PAGO);
                 transacao.setDataPagamento(LocalDate.now());
@@ -164,6 +177,9 @@ public class TransacaoService {
                 transacao.setStatus(StatusTransacao.PENDENTE);
                 transacao.setDataPagamento(null);
                 reverterImpactoSaldo(conta, transacao.getTipo(), transacao.getValor());
+                if (statusAnterior == StatusTransacao.PAGO && transacao.getTipo() == TipoTransacao.RECEITA) {
+                    reverterAutoAporteEmMetas(user, transacao.getValor());
+                }
             }
             contaRepository.save(conta);
             transacao = transacaoRepository.save(transacao);
@@ -196,6 +212,32 @@ public class TransacaoService {
         }
     }
 
+    /** Estorna o mesmo % desviado quando a receita deixa de estar paga ou é excluída. */
+    private void reverterAutoAporteEmMetas(User user, BigDecimal valorReceita) {
+        List<com.todolist.entity.Meta> metas = metaRepository.findByUsuarioAndAtivoTrueOrderByConcluidaAscPrazoAsc(user);
+        for (com.todolist.entity.Meta meta : metas) {
+            if (!Boolean.TRUE.equals(meta.getAutoAporteAtivo())) {
+                continue;
+            }
+            if (meta.getAutoAportePercentual() == null
+                    || meta.getAutoAportePercentual().compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            BigDecimal aporte = valorReceita.multiply(meta.getAutoAportePercentual())
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            if (aporte.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            BigDecimal novoValor = meta.getValorAtual().subtract(aporte);
+            if (novoValor.compareTo(BigDecimal.ZERO) < 0) {
+                novoValor = BigDecimal.ZERO;
+            }
+            meta.setValorAtual(novoValor);
+            meta.setConcluida(novoValor.compareTo(meta.getValorAlvo()) >= 0);
+            metaRepository.save(meta);
+        }
+    }
+
     @Transactional
     public void excluir(Long id) {
         User user = authService.obterUsuarioAutenticado();
@@ -206,6 +248,9 @@ public class TransacaoService {
             ContaFinanceira conta = transacao.getConta();
             reverterImpactoSaldo(conta, transacao.getTipo(), transacao.getValor());
             contaRepository.save(conta);
+            if (transacao.getTipo() == TipoTransacao.RECEITA) {
+                reverterAutoAporteEmMetas(user, transacao.getValor());
+            }
         }
 
         transacaoRepository.delete(transacao);
@@ -236,6 +281,7 @@ public class TransacaoService {
                 .dataVencimento(hoje)
                 .dataPagamento(hoje)
                 .status(StatusTransacao.PAGO)
+                .transferencia(true)
                 .conta(origem)
                 .usuario(user)
                 .observacoes("Transferência para " + destino.getNome())
@@ -248,6 +294,7 @@ public class TransacaoService {
                 .dataVencimento(hoje)
                 .dataPagamento(hoje)
                 .status(StatusTransacao.PAGO)
+                .transferencia(true)
                 .conta(destino)
                 .usuario(user)
                 .observacoes("Transferência de " + origem.getNome())
@@ -281,6 +328,7 @@ public class TransacaoService {
         List<Transacao> gastos = transacaoRepository.findByUsuarioIdAndDataVencimentoBetweenOrderByDataVencimentoAsc(
                 user.getId(), inicio, fim).stream()
                 .filter(t -> t.getStatus() == StatusTransacao.PAGO && t.getTipo() == TipoTransacao.DESPESA)
+                .filter(t -> !Boolean.TRUE.equals(t.getTransferencia()))
                 .collect(Collectors.toList());
 
         java.util.Map<Long, com.todolist.dto.OrcamentoItemResponse> porCat = new java.util.LinkedHashMap<>();
@@ -440,6 +488,7 @@ public class TransacaoService {
                 .numeroParcela(t.getNumeroParcela())
                 .totalParcelas(t.getTotalParcelas())
                 .grupoParcelaId(t.getGrupoParcelaId())
+                .transferencia(Boolean.TRUE.equals(t.getTransferencia()))
                 .observacoes(t.getObservacoes())
                 .contaId(t.getConta().getId())
                 .contaNome(t.getConta().getNome())

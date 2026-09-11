@@ -107,17 +107,28 @@ class AttachmentServiceTest {
     }
 
     @Test
-    @DisplayName("Deve rejeitar arquivo com path traversal")
-    void deveRejeitarPathTraversal() {
+    @DisplayName("Deve neutralizar path traversal no nome do arquivo")
+    void deveNeutralizarPathTraversal() throws IOException {
         MockMultipartFile file = new MockMultipartFile(
                 "arquivo", "../../../etc/passwd", "text/plain", "dados".getBytes()
         );
 
         when(taskRepository.findByIdAndUsuarioIdAndDeletadaFalse(10L, 1L)).thenReturn(Optional.of(task));
+        when(attachmentRepository.save(any(Attachment.class))).thenAnswer(i -> {
+            Attachment a = i.getArgument(0);
+            a.setId(200L);
+            a.setDataCriacao(LocalDateTime.now());
+            return a;
+        });
 
-        assertThatThrownBy(() -> attachmentService.salvarAnexo(10L, file))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Nome de arquivo inválido");
+        AttachmentResponse response = attachmentService.salvarAnexo(10L, file);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getNomeOriginal()).isEqualTo("passwd");
+        assertThat(response.getNomeOriginal()).doesNotContain("..");
+        try (var files = Files.list(tempDir)) {
+            assertThat(files.allMatch(p -> p.normalize().startsWith(tempDir))).isTrue();
+        }
     }
 
     @Test

@@ -53,6 +53,10 @@ public class Transacao {
     @Column(name = "grupo_parcela_id", length = 50)
     private String grupoParcelaId;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean transferencia = false;
+
     @Column(columnDefinition = "TEXT")
     private String observacoes;
 

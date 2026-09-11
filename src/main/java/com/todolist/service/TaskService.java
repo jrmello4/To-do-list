@@ -528,43 +528,55 @@ public class TaskService {
     }
 
     private void verificarGerarProximaRecorrencia(Task task, User user) {
-        if (task.getRecorrencia() != null && task.getRecorrencia() != Recorrencia.NENHUMA && Boolean.TRUE.equals(task.getConcluida())) {
-            LocalDate baseDate = task.getDataVencimento() != null ? task.getDataVencimento() : LocalDate.now();
-            LocalDate proximoVencimento = switch (task.getRecorrencia()) {
-                case DIARIA -> baseDate.plusDays(1);
-                case SEMANAL -> baseDate.plusWeeks(1);
-                case MENSAL -> baseDate.plusMonths(1);
-                default -> baseDate;
-            };
-
-            Task proxima = Task.builder()
-                    .titulo(task.getTitulo())
-                    .descricao(task.getDescricao())
-                    .concluida(false)
-                    .status(StatusTarefa.A_FAZER)
-                    .prioridade(task.getPrioridade())
-                    .categoria(task.getCategoria())
-                    .dataVencimento(proximoVencimento)
-                    .recorrencia(task.getRecorrencia())
-                    .pomodorosEstimados(task.getPomodorosEstimados())
-                    .pomodorosRealizados(0)
-                    .deletada(false)
-                    .usuario(user)
-                    .subtarefas(new ArrayList<>())
-                    .build();
-
-            if (task.getSubtarefas() != null) {
-                for (Subtask s : task.getSubtarefas()) {
-                    proxima.getSubtarefas().add(Subtask.builder()
-                            .titulo(s.getTitulo())
-                            .concluida(false)
-                            .task(proxima)
-                            .build());
-                }
-            }
-
-            taskRepository.save(proxima);
+        if (task.getRecorrencia() == null || task.getRecorrencia() == Recorrencia.NENHUMA
+                || !Boolean.TRUE.equals(task.getConcluida())
+                || Boolean.TRUE.equals(task.getRecorrenciaGerada())) {
+            return;
         }
+
+        LocalDate baseDate = task.getDataVencimento() != null ? task.getDataVencimento() : LocalDate.now();
+        LocalDate proximoVencimento = switch (task.getRecorrencia()) {
+            case DIARIA -> baseDate.plusDays(1);
+            case SEMANAL -> baseDate.plusWeeks(1);
+            case MENSAL -> baseDate.plusMonths(1);
+            default -> baseDate;
+        };
+
+        Task proxima = Task.builder()
+                .titulo(task.getTitulo())
+                .descricao(task.getDescricao())
+                .concluida(false)
+                .status(StatusTarefa.A_FAZER)
+                .prioridade(task.getPrioridade())
+                .categoria(task.getCategoria())
+                .dataVencimento(proximoVencimento)
+                .recorrencia(task.getRecorrencia())
+                .pomodorosEstimados(task.getPomodorosEstimados())
+                .pomodorosRealizados(0)
+                .deletada(false)
+                .recorrenciaGerada(false)
+                .usuario(user)
+                .subtarefas(new ArrayList<>())
+                .build();
+
+        if (task.getTags() != null && !task.getTags().isEmpty()) {
+            proxima.setTags(new HashSet<>(task.getTags()));
+        }
+
+        if (task.getSubtarefas() != null) {
+            for (Subtask s : task.getSubtarefas()) {
+                proxima.getSubtarefas().add(Subtask.builder()
+                        .titulo(s.getTitulo())
+                        .concluida(false)
+                        .task(proxima)
+                        .build());
+            }
+        }
+
+        // Marca a origem como já replicada para nunca gerar duplicatas.
+        task.setRecorrenciaGerada(true);
+        taskRepository.save(task);
+        taskRepository.save(proxima);
     }
 
     private String escapeCsv(String val) {

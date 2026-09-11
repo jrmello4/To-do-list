@@ -13,6 +13,8 @@ public class HabitoRequest {
     @NotBlank(message = "O nome do hábito é obrigatório")
     @Size(max = 100)
     private String nome;
+    @Size(max = 50)
     private String icone;
+    @Size(max = 10)
     private String cor;
 }

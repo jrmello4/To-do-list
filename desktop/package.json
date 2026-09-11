@@ -1,0 +1,45 @@
+{
+  "name": "lifehub-desktop",
+  "version": "1.0.0",
+  "description": "LifeHub — cockpit pessoal (tarefas, finanças, hábitos, metas, calendário e esportes) em app desktop.",
+  "main": "main.js",
+  "author": "LifeHub",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build:jar": "cd .. && mvnw.cmd -q package -DskipTests",
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.lifehub.desktop",
+    "productName": "LifeHub",
+    "directories": {
+      "output": "../output/desktop"
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../target/to-do-list-1.0.0.jar",
+        "to": "app/to-do-list-1.0.0.jar"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

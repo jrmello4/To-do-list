@@ -25,6 +25,7 @@ public class TransacaoResponse {
     private Integer numeroParcela;
     private Integer totalParcelas;
     private String grupoParcelaId;
+    private Boolean transferencia;
     private String observacoes;
     private Long contaId;
     private String contaNome;

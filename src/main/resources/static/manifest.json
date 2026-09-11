@@ -1,18 +1,19 @@
 ﻿{
-  "name": "To-do List - Produtividade & Kanban",
-  "short_name": "ToDo Pro",
-  "description": "Gerenciador avançado de tarefas com quadro Kanban, Pomodoro, relatórios e produtividade",
+  "id": "/",
+  "name": "LifeHub",
+  "short_name": "LifeHub",
+  "description": "Cockpit pessoal: tarefas, finanças, hábitos, metas, calendário e radar esportivo",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#6366f1",
+  "background_color": "#f7f7f8",
+  "theme_color": "#f7f7f8",
   "orientation": "any",
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

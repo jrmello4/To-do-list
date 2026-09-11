@@ -23,3 +23,7 @@ pw-test*.cjs
 boot-run.log
 boot.log
 boot.err
+
+# desktop (Electron)
+node_modules/
+desktop/package-lock.json

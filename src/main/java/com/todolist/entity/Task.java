@@ -69,6 +69,10 @@ public class Task {
     @Builder.Default
     private Integer pomodorosRealizados = 0;
 
+    @Column(name = "recorrencia_gerada", nullable = false)
+    @Builder.Default
+    private Boolean recorrenciaGerada = false;
+
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Subtask> subtarefas = new ArrayList<>();

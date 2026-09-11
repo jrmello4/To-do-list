@@ -6,6 +6,7 @@ import com.todolist.dto.TaskResponse;
 import com.todolist.service.NotaRapidaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,13 +36,13 @@ public class NotaRapidaController {
 
     @PostMapping
     @Operation(summary = "Criar nova nota rápida")
-    public ResponseEntity<NotaRapidaResponse> criar(@RequestBody NotaRapidaRequest request) {
+    public ResponseEntity<NotaRapidaResponse> criar(@Valid @RequestBody NotaRapidaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(notaService.salvarOuAtualizar(null, request));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Atualizar nota rápida existente (usado para auto-save)")
-    public ResponseEntity<NotaRapidaResponse> atualizar(@PathVariable Long id, @RequestBody NotaRapidaRequest request) {
+    public ResponseEntity<NotaRapidaResponse> atualizar(@PathVariable Long id, @Valid @RequestBody NotaRapidaRequest request) {
         return ResponseEntity.ok(notaService.salvarOuAtualizar(id, request));
     }
 

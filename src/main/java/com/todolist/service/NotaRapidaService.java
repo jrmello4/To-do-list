@@ -24,23 +24,13 @@ public class NotaRapidaService {
     private final TaskService taskService;
     private final AuthService authService;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<NotaRapidaResponse> listarTodas() {
         User user = authService.obterUsuarioAutenticado();
-        List<NotaRapida> notas = notaRapidaRepository.findByUsuarioIdOrderByFixadaDescDataAtualizacaoDesc(user.getId());
-
-        if (notas.isEmpty()) {
-            NotaRapida padrao = NotaRapida.builder()
-                    .titulo("💡 Ideias & Rascunho")
-                    .conteudo("Este é o seu bloco de notas rápidas! Use para rascunhos, links úteis ou insights rápidos durante o dia. Salva automaticamente!")
-                    .cor("#ffffff")
-                    .fixada(true)
-                    .usuario(user)
-                    .build();
-            notas = List.of(notaRapidaRepository.save(padrao));
-        }
-
-        return notas.stream().map(this::paraResponse).collect(Collectors.toList());
+        return notaRapidaRepository.findByUsuarioIdOrderByFixadaDescDataAtualizacaoDesc(user.getId())
+                .stream()
+                .map(this::paraResponse)
+                .collect(Collectors.toList());
     }
 
     public NotaRapidaResponse buscarPorId(Long id) {

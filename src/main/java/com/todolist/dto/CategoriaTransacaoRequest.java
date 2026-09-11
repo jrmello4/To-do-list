@@ -22,8 +22,10 @@ public class CategoriaTransacaoRequest {
     @NotNull(message = "O tipo é obrigatório (RECEITA ou DESPESA)")
     private TipoTransacao tipo;
 
+    @Size(max = 50, message = "O ícone deve ter no máximo 50 caracteres")
     private String icone;
 
+    @Size(max = 10, message = "A cor deve ter no máximo 10 caracteres")
     private String cor;
 
     private BigDecimal limiteMensal;

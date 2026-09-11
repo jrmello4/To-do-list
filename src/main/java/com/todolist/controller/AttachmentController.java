@@ -68,6 +68,7 @@ public class AttachmentController {
                         .filename(attachment.getNomeOriginal(), StandardCharsets.UTF_8)
                         .build()
                         .toString())
+                .header("X-Content-Type-Options", "nosniff")
                 .body(resource);
     }
 

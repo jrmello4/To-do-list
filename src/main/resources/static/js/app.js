@@ -244,6 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- Authentication Helpers ---
+  let desktopMode = false;
   const getStoredToken = () => localStorage.getItem('auth_token');
   const getStoredUser = () => {
     try {
@@ -269,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateAuthUI = () => {
     const user = getStoredUser();
     const token = getStoredToken();
+    if (btnLogout) btnLogout.classList.toggle('hidden', desktopMode);
     if (token && user) {
       if (btnLoginOpen) btnLoginOpen.classList.add('hidden');
       if (btnHeaderGuest) btnHeaderGuest.classList.add('hidden');
@@ -338,6 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const response = await fetch(url, { ...options, headers });
 
     if (response.status === 401) {
+      if (desktopMode && !options.__retried) {
+        const ok = await tryDesktopLogin();
+        if (ok) {
+          return apiFetch(url, { ...options, __retried: true });
+        }
+      }
       clearAuthData();
       cachedTasks = [];
       resetViewData();
@@ -347,6 +355,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     return response;
+  };
+
+  // No app desktop o servidor é local e de usuário único: entra automaticamente.
+  const tryDesktopLogin = async () => {
+    try {
+      const res = await fetch('/api/auth/desktop', { method: 'POST' });
+      if (!res.ok) return false;
+      const data = await res.json();
+      desktopMode = true;
+      setAuthData(data.token, { id: data.id, nome: data.nome, email: data.email, role: data.role });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const resetViewData = () => {
@@ -370,42 +392,46 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- View Switcher ---
+  const switchView = (viewName) => {
+    if (!viewName) return;
+    currentView = viewName;
+    viewTabButtons.forEach(b => b.classList.toggle('active', b.dataset.view === viewName));
+
+    listView.classList.add('hidden');
+    kanbanView.classList.add('hidden');
+    trashView.classList.add('hidden');
+    statsView.classList.add('hidden');
+
+    if (viewName === 'list') {
+      listView.classList.remove('hidden');
+      createTaskSection.classList.remove('hidden');
+      mainToolbar.classList.remove('hidden');
+      pomodoroSection.classList.remove('hidden');
+      fetchTasks();
+    } else if (viewName === 'kanban') {
+      kanbanView.classList.remove('hidden');
+      createTaskSection.classList.remove('hidden');
+      mainToolbar.classList.remove('hidden');
+      pomodoroSection.classList.remove('hidden');
+      fetchTasks();
+    } else if (viewName === 'trash') {
+      trashView.classList.remove('hidden');
+      createTaskSection.classList.add('hidden');
+      mainToolbar.classList.add('hidden');
+      pomodoroSection.classList.add('hidden');
+      fetchTrash();
+    } else if (viewName === 'stats') {
+      statsView.classList.remove('hidden');
+      createTaskSection.classList.add('hidden');
+      mainToolbar.classList.add('hidden');
+      pomodoroSection.classList.remove('hidden');
+      fetchStats();
+    }
+  };
+
   viewTabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      viewTabButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentView = btn.dataset.view;
-
-      listView.classList.add('hidden');
-      kanbanView.classList.add('hidden');
-      trashView.classList.add('hidden');
-      statsView.classList.add('hidden');
-
-      if (currentView === 'list') {
-        listView.classList.remove('hidden');
-        createTaskSection.classList.remove('hidden');
-        mainToolbar.classList.remove('hidden');
-        pomodoroSection.classList.remove('hidden');
-        fetchTasks();
-      } else if (currentView === 'kanban') {
-        kanbanView.classList.remove('hidden');
-        createTaskSection.classList.remove('hidden');
-        mainToolbar.classList.remove('hidden');
-        pomodoroSection.classList.remove('hidden');
-        fetchTasks();
-      } else if (currentView === 'trash') {
-        trashView.classList.remove('hidden');
-        createTaskSection.classList.add('hidden');
-        mainToolbar.classList.add('hidden');
-        pomodoroSection.classList.add('hidden');
-        fetchTrash();
-      } else if (currentView === 'stats') {
-        statsView.classList.remove('hidden');
-        createTaskSection.classList.add('hidden');
-        mainToolbar.classList.add('hidden');
-        pomodoroSection.classList.remove('hidden');
-        fetchStats();
-      }
+      switchView(btn.dataset.view);
     });
   });
 
@@ -418,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const updatePomodoroDisplay = () => {
     pomodoroDisplay.textContent = formatTime(pomoTimeLeft);
-    document.title = `${formatTime(pomoTimeLeft)} - To-do List Focus`;
+    document.title = `${formatTime(pomoTimeLeft)} - LifeHub Foco`;
   };
 
   const startPomodoro = () => {
@@ -447,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pausePomodoro();
     pomoTimeLeft = pomoDuration;
     updatePomodoroDisplay();
-    document.title = 'To-do List - Produtividade & Kanban';
+    document.title = 'LifeHub — Produtividade & Vida Pessoal';
   };
 
   const finishPomodoroCycle = async () => {
@@ -524,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return '<div class="task-tags-group">' + tags.map(t => {
       const isLight = isColorLight(t.cor);
       const textColor = isLight ? '#0f172a' : '#ffffff';
-      return `<span class="badge badge-tag" style="background-color: ${t.cor}; color: ${textColor};" data-tag-id="${t.id}" title="Filtrar por #${escapeHtml(t.nome)}">#${escapeHtml(t.nome)}</span>`;
+      return `<span class="badge badge-tag" style="background-color: ${safeColor(t.cor, '#64748b')}; color: ${textColor};" data-tag-id="${t.id}" title="Filtrar por #${escapeHtml(t.nome)}">#${escapeHtml(t.nome)}</span>`;
     }).join('') + '</div>';
   };
 
@@ -536,36 +562,96 @@ document.addEventListener('DOMContentLoaded', () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
+  const baixarAnexo = async (url, nome) => {
+    try {
+      const res = await apiFetch(url);
+      if (!res.ok) throw new Error('Falha ao baixar anexo');
+      const blob = await res.blob();
+      const objUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = nome || 'anexo';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(objUrl);
+    } catch (err) {
+      if (err.message !== 'Não autenticado (401)') showToast('Erro ao baixar anexo.', 'error');
+    }
+  };
+
+  const abrirAnexo = async (url, nome) => {
+    try {
+      const res = await apiFetch(url);
+      if (!res.ok) throw new Error('Falha ao abrir anexo');
+      const blob = await res.blob();
+      const objUrl = window.URL.createObjectURL(blob);
+      const win = window.open(objUrl, '_blank', 'noopener');
+      if (!win) {
+        await baixarAnexo(url, nome);
+      } else {
+        setTimeout(() => window.URL.revokeObjectURL(objUrl), 60000);
+      }
+    } catch (err) {
+      if (err.message !== 'Não autenticado (401)') showToast('Erro ao abrir anexo.', 'error');
+    }
+  };
+
+  // Hidrata thumbnails de imagem que exigem Authorization (sem token na URL).
+  const hidratarAnexosImagens = (root) => {
+    if (!root) return;
+    root.querySelectorAll('img[data-anexo-url]').forEach(async (img) => {
+      if (img.dataset.hidratado === '1') return;
+      img.dataset.hidratado = '1';
+      const url = img.dataset.anexoUrl;
+      try {
+        const res = await apiFetch(url);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        img.src = window.URL.createObjectURL(blob);
+      } catch {
+        // 401 já tratado em apiFetch
+      }
+    });
+  };
+
   const renderAttachmentsHtml = (anexos) => {
     if (!anexos || anexos.length === 0) return '';
-    const token = getStoredToken();
-    const tokenSuffix = token ? `?token=${encodeURIComponent(token)}` : '';
     return '<div class="task-attachments-section">' + anexos.map(a => {
-      const fullUrl = a.urlDownload + tokenSuffix;
+      const url = escapeHtml(a.urlDownload);
+      const nome = escapeHtml(a.nomeOriginal);
       if (a.isImagem) {
-        return `<a href="${fullUrl}" target="_blank" class="attachment-thumbnail-card" title="${escapeHtml(a.nomeOriginal)} (${formatFileSize(a.tamanho)})">
-          <img src="${fullUrl}" alt="${escapeHtml(a.nomeOriginal)}" loading="lazy">
-        </a>`;
-      } else {
-        return `<a href="${fullUrl}" target="_blank" class="attachment-file-pill" title="Baixar ${escapeHtml(a.nomeOriginal)}">
-          ${escapeHtml(a.nomeOriginal)} (${formatFileSize(a.tamanho)})
+        return `<a href="#" data-anexo-open data-anexo-url="${url}" data-anexo-nome="${nome}" class="attachment-thumbnail-card" title="${nome} (${formatFileSize(a.tamanho)})">
+          <img data-anexo-url="${url}" alt="${nome}" loading="lazy">
         </a>`;
       }
+      return `<a href="#" data-anexo-download data-anexo-url="${url}" data-anexo-nome="${nome}" class="attachment-file-pill" title="Baixar ${nome}">
+        ${nome} (${formatFileSize(a.tamanho)})
+      </a>`;
     }).join('') + '</div>';
   };
 
   // --- Period Filter Logic ---
   let currentPeriodFilter = 'all'; // 'all' | 'overdue' | 'today' | 'week' | 'nodate'
 
+  // Data local no formato YYYY-MM-DD (evita o deslocamento de UTC do toISOString).
+  const localISODate = (date = new Date()) => {
+    const d = (date instanceof Date) ? date : new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const filterTasksByPeriod = (tasks) => {
     if (!tasks || currentPeriodFilter === 'all') return tasks;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = localISODate(today);
 
     const nextWeek = new Date(today);
     nextWeek.setDate(nextWeek.getDate() + 7);
-    const nextWeekStr = nextWeek.toISOString().split('T')[0];
+    const nextWeekStr = localISODate(nextWeek);
 
     return tasks.filter(t => {
       if (currentPeriodFilter === 'nodate') {
@@ -695,7 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isLight = isColorLight(tag.cor);
       const textColor = isLight ? '#0f172a' : '#ffffff';
       return `
-        <label class="tag-checkbox-pill ${isSelected ? 'selected' : ''}" style="background-color: ${tag.cor}; color: ${textColor};">
+        <label class="tag-checkbox-pill ${isSelected ? 'selected' : ''}" style="background-color: ${safeColor(tag.cor, '#64748b')}; color: ${textColor};">
           <input type="checkbox" value="${tag.id}" ${isSelected ? 'checked' : ''}>
           #${escapeHtml(tag.nome)}
         </label>
@@ -715,9 +801,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await apiFetch('/api/tarefas/notificacoes');
       if (!response.ok) return;
       const notifications = await response.json();
-      renderNotifications(notifications);
 
-      // Alertas de jogos (proxima hora) — injeta na central
+      // Alertas de jogos (próxima hora) — mesclados antes de renderizar uma única vez
+      let merged = notifications || [];
       try {
         const alertRes = await apiFetch('/api/esportes/alertas');
         if (alertRes.ok) {
@@ -728,10 +814,11 @@ document.addEventListener('DOMContentLoaded', () => {
             titulo: a.titulo,
             mensagem: a.mensagem
           }));
-          const merged = [...(notifications || []), ...extras];
-          renderNotifications(merged);
+          merged = [...merged, ...extras];
         }
       } catch { /* silencioso */ }
+
+      renderNotifications(merged);
     } catch {
       // Silencioso se não autenticado
     }
@@ -1060,6 +1147,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Subtasks item clicks
       bindSubtaskEvents(taskEl, task.id);
 
+      hidratarAnexosImagens(taskEl);
+
       taskList.appendChild(taskEl);
     });
   };
@@ -1158,6 +1247,8 @@ document.addEventListener('DOMContentLoaded', () => {
     card.querySelector('.btn-focus').addEventListener('click', () => focusOnTask(task.id, task.titulo));
     card.querySelector('.btn-edit').addEventListener('click', () => openEditModal(task));
     card.querySelector('.btn-delete').addEventListener('click', () => handleMoveToTrash(task.id));
+
+    hidratarAnexosImagens(card);
 
     return card;
   };
@@ -1476,22 +1567,23 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const token = getStoredToken();
-    const tokenSuffix = token ? `?token=${encodeURIComponent(token)}` : '';
-
     editTaskAttachmentsList.innerHTML = anexos.map(a => {
-      const fullUrl = a.urlDownload + tokenSuffix;
+      const url = escapeHtml(a.urlDownload);
+      const nome = escapeHtml(a.nomeOriginal);
+      const img = a.isImagem ? `<img data-anexo-url="${url}" class="attachment-thumb-small" alt="${nome}">` : '';
       return `
       <div class="attachment-modal-item">
         <div class="attachment-modal-item-left">
-          ${a.isImagem ? `<img src="${fullUrl}" class="attachment-thumb-small">` : ''}
-          <a href="${fullUrl}" target="_blank" title="Baixar / Visualizar">${escapeHtml(a.nomeOriginal)}</a>
+          ${img}
+          <a href="#" data-anexo-download data-anexo-url="${url}" data-anexo-nome="${nome}" title="Baixar / Visualizar">${nome}</a>
           <span class="text-muted" style="font-size:0.75rem;">(${formatFileSize(a.tamanho)})</span>
         </div>
         <button type="button" class="btn-del-attachment" data-anexo-id="${a.id}" title="Excluir este anexo">&times;</button>
       </div>
     `;
     }).join('');
+
+    hidratarAnexosImagens(editTaskAttachmentsList);
 
     editTaskAttachmentsList.querySelectorAll('.btn-del-attachment').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -1546,16 +1638,28 @@ document.addEventListener('DOMContentLoaded', () => {
     editModal.classList.add('hidden');
   };
 
+  // Resolve a tarefa por id (cache local ou API) antes de abrir o modal de edição.
+  const editarTarefaPorId = async (taskId) => {
+    let task = (cachedTasks || []).find(t => String(t.id) === String(taskId));
+    if (!task) {
+      try {
+        const res = await apiFetch(`/api/tarefas/${taskId}`);
+        if (res.ok) task = await res.json();
+      } catch {
+        // 401 tratado em apiFetch
+      }
+    }
+    if (task) {
+      openEditModal(task);
+    } else {
+      showToast('Tarefa não encontrada.', 'error');
+    }
+  };
+
   btnCancelEdit.addEventListener('click', closeEditModal);
   btnModalCancel.addEventListener('click', closeEditModal);
   modalBackdrop.addEventListener('click', closeEditModal);
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (!editModal.classList.contains('hidden')) closeEditModal();
-      if (!authModal.classList.contains('hidden')) closeAuthModal();
-      if (tagModal && !tagModal.classList.contains('hidden')) closeTagModal();
-    }
-  });
+  // (Escape/atalhos globais são tratados em um único listener adiante)
 
   // Upload anexo no modal de edição
   if (editAttachmentInput) {
@@ -1750,7 +1854,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const perm = await Notification.requestPermission();
       if (perm === 'granted') {
         showToast('Notificações ativadas com sucesso!');
-        new Notification('To-do List Pro', {
+        new Notification('LifeHub', {
           body: 'Notificações na área de trabalho ativadas com sucesso!',
           icon: '/favicon.svg'
         });
@@ -1821,6 +1925,21 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLoginOpen.addEventListener('click', () => openAuthModal('login'));
   }
 
+  // Anexos: download/abertura autenticados via Blob (sem token na URL)
+  document.addEventListener('click', (e) => {
+    const downloadEl = e.target.closest('[data-anexo-download]');
+    if (downloadEl) {
+      e.preventDefault();
+      baixarAnexo(downloadEl.dataset.anexoUrl, downloadEl.dataset.anexoNome);
+      return;
+    }
+    const openEl = e.target.closest('[data-anexo-open]');
+    if (openEl) {
+      e.preventDefault();
+      abrirAnexo(openEl.dataset.anexoUrl, openEl.dataset.anexoNome);
+    }
+  });
+
   const loginAsGuest = async () => {
     try {
       if (btnGuestLogin) {
@@ -1883,8 +2002,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnLogout) {
     btnLogout.addEventListener('click', () => {
+      if (desktopMode) {
+        showToast('No modo desktop a sessão é renovada automaticamente.', 'info');
+        return;
+      }
       clearAuthData();
       resetViewData();
+      lastNotifiedTaskIds.clear();
       activeFocusTaskId = null;
       activeFocusTaskTitle = null;
       pomodoroTaskLabel.textContent = 'Nenhuma tarefa em foco (clique em Focar em um card)';
@@ -2035,7 +2159,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Badges & Format Helpers ---
   const getDueDateBadge = (task) => {
     if (!task.dataVencimento) return '';
-    const today = new Date().toISOString().split('T')[0];
+    const today = localISODate();
 
     if (task.estaAtrasada) {
       return `<span class="badge badge-overdue">Atrasada (${formatDateOnly(task.dataVencimento)})</span>`;
@@ -2092,10 +2216,30 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const escapeHtml = (str) => {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  // Evita injeção de CSS via valores de cor vindos da API.
+  const safeColor = (color, fallback = '') => {
+    if (typeof color !== 'string') return fallback;
+    const c = color.trim();
+    if (/^var\(--[a-zA-Z0-9-]+\)$/.test(c)) return c;
+    if (/^#[0-9a-fA-F]{3,8}$/.test(c)) return c;
+    if (/^rgba?\([\d.,\s%]+\)$/i.test(c)) return c;
+    if (/^hsla?\([\d.,\s%]+\)$/i.test(c)) return c;
+    if (/^[a-zA-Z]{3,20}$/.test(c)) return c;
+    return fallback;
+  };
+
+  const hexAlpha = (color, alpha, fallback) => {
+    const c = safeColor(color, '');
+    return /^#[0-9a-fA-F]{6}$/.test(c) ? c + alpha : fallback;
   };
 
   const formatDate = (isoString) => {
@@ -2134,6 +2278,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const token = getStoredToken();
     if (!token) {
+      const desktop = await tryDesktopLogin();
+      if (desktop) {
+        await refreshData();
+        startNotificationPolling();
+        return;
+      }
       openAuthModal('login');
       return;
     }
@@ -2390,10 +2540,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const sidebarScrim = document.getElementById('sidebarScrim');
+  const appLayoutEl = document.getElementById('appLayout');
+
+  const setMobileSidebar = (open) => {
+    if (!appSidebar) return;
+    appSidebar.classList.toggle('mobile-open', open);
+    if (appLayoutEl) appLayoutEl.classList.toggle('sidebar-mobile-open', open);
+    if (sidebarScrim) {
+      sidebarScrim.classList.toggle('is-visible', open);
+      sidebarScrim.hidden = !open;
+    }
+    document.body.style.overflow = open ? 'hidden' : '';
+  };
+
   if (btnMobileMenu && appSidebar) {
     btnMobileMenu.addEventListener('click', () => {
-      appSidebar.classList.toggle('mobile-open');
+      setMobileSidebar(!appSidebar.classList.contains('mobile-open'));
     });
+  }
+  if (sidebarScrim) {
+    sidebarScrim.addEventListener('click', () => setMobileSidebar(false));
   }
 
   const switchAppView = (viewName) => {
@@ -2435,7 +2602,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (appSidebar && appSidebar.classList.contains('mobile-open')) {
-      appSidebar.classList.remove('mobile-open');
+      setMobileSidebar(false);
     }
   };
 
@@ -2589,7 +2756,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dashHabitsList.innerHTML = habitos.map(h => `
       <div class="habit-item ${h.concluidoHoje ? 'habit-completed' : ''}" data-id="${h.id}">
         <div class="habit-item-left">
-          <div class="habit-icon-badge" style="background:${h.cor ? h.cor + '18' : 'var(--panel-3)'}; color:${h.cor || 'var(--ink)'};">
+          <div class="habit-icon-badge" style="background:${hexAlpha(h.cor, '18', 'var(--panel-3)')}; color:${safeColor(h.cor, 'var(--ink)')};">
             ${getHabitIconEmoji(h.icone)}
           </div>
           <div class="habit-info">
@@ -2963,7 +3130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     activeSportsPrefsContainer.innerHTML = cachedSportsPreferences.map(p => `
-      <span class="sports-pref-tag" style="border-left:3px solid ${p.cor || '#10b981'};">
+      <span class="sports-pref-tag" style="border-left:3px solid ${safeColor(p.cor, '#10b981')};">
         
         <span>${escapeHtml(p.nomeInteresse)}</span>
         <button type="button" class="sports-pref-remove btn-remove-pref" data-id="${p.id}" title="Deixar de seguir">&times;</button>
@@ -3129,13 +3296,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="dash-goal-item">
               <div class="dash-goal-top">
                 <span class="dash-goal-title">
-                  <span style="color:${g.cor || '#10b981'};">●</span>
+                  <span style="color:${safeColor(g.cor, '#10b981')};">●</span>
                   ${escapeHtml(g.titulo)}
                 </span>
                 <span class="dash-goal-pct">${pct}%</span>
               </div>
               <div class="dash-goal-progress-bar">
-                <div class="dash-goal-progress-fill" style="width:${pct}%;background:${g.cor || '#10b981'};"></div>
+                <div class="dash-goal-progress-fill" style="width:${pct}%;background:${safeColor(g.cor, '#10b981')};"></div>
               </div>
               <div class="dash-goal-bottom">
                 <span>${valDisplay}</span>
@@ -3173,7 +3340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `
           <div class="goal-card ${g.concluida ? 'goal-completed' : ''}" data-id="${g.id}">
             <div class="goal-card-header">
-              <span class="goal-card-badge" style="background:${g.cor ? g.cor + '18' : 'var(--panel-3)'};color:${g.cor || 'var(--ink-2)'};">
+              <span class="goal-card-badge" style="background:${hexAlpha(g.cor, '18', 'var(--panel-3)')};color:${safeColor(g.cor, 'var(--ink-2)')};">
                 ${escapeHtml(g.categoria || 'GERAL')}
               </span>
               <div class="goal-card-actions">
@@ -3190,10 +3357,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="goal-val-current">${valAtualStr}</span>
                 <span class="goal-val-target"> de ${valAlvoStr}</span>
               </div>
-              <span style="font-weight:700;color:${g.cor || 'var(--primary)'};font-size:0.95rem;">${pct}%</span>
+              <span style="font-weight:700;color:${safeColor(g.cor, 'var(--primary)')};font-size:0.95rem;">${pct}%</span>
             </div>
             <div class="goal-card-progress">
-              <div class="goal-card-fill" style="width:${pct}%;background:${g.cor || '#10b981'};"></div>
+              <div class="goal-card-fill" style="width:${pct}%;background:${safeColor(g.cor, '#10b981')};"></div>
             </div>
             <div class="goal-card-footer">
               <span>${prazoStr}</span>
@@ -3632,7 +3799,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (eventForm) eventForm.reset();
     const dateInput = document.getElementById('eventData');
     if (dateInput) {
-      dateInput.value = prefillDate || selectedCalendarDateStr || new Date().toISOString().split('T')[0];
+      dateInput.value = prefillDate || selectedCalendarDateStr || localISODate();
     }
     eventModal.classList.remove('hidden');
     setTimeout(() => {
@@ -3787,7 +3954,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dashTasksList.querySelectorAll('.btn-dash-edit-task').forEach(btn => {
           btn.addEventListener('click', () => {
             const taskId = btn.dataset.id;
-            openEditModal(taskId);
+            editarTarefaPorId(taskId);
           });
         });
       } else {
@@ -3844,7 +4011,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         dashUrgentList.querySelectorAll('.btn-dash-edit-task').forEach(btn => {
           btn.addEventListener('click', () => {
-            openEditModal(btn.dataset.id);
+            editarTarefaPorId(btn.dataset.id);
           });
         });
       } else {
@@ -3859,7 +4026,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dashBillsList.innerHTML = data.contasProximasVencimento.slice(0, 5).map(c => `
           <div class="dash-item">
             <div class="dash-item-left">
-              <span class="trans-account-tag" style="background:${c.contaCor || '#6366f1'};">${escapeHtml(c.contaNome)}</span>
+              <span class="trans-account-tag" style="background:${safeColor(c.contaCor, '#6366f1')};">${escapeHtml(c.contaNome)}</span>
               <div>
                 <div class="dash-item-title">${escapeHtml(c.descricao)}</div>
                 <div class="dash-item-meta">Vencimento: ${formatDateOnly(c.dataVencimento)}</div>
@@ -4096,13 +4263,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return `
           <div class="trans-item-row" data-id="${t.id}">
             <div class="trans-item-left">
-              <div class="trans-cat-badge" style="background:${t.categoriaCor ? t.categoriaCor + '18' : 'var(--panel-3)'};color:${t.categoriaCor || 'var(--ink)'};">
+              <div class="trans-cat-badge" style="background:${hexAlpha(t.categoriaCor, '18', 'var(--panel-3)')};color:${safeColor(t.categoriaCor, 'var(--ink)')};">
                 ${catIcon}
               </div>
               <div class="trans-item-center">
                 <div class="trans-title">${escapeHtml(t.descricao)}</div>
                 <div class="trans-meta-tags">
-                  <span class="trans-account-tag" style="background:${t.contaCor || '#6366f1'};">${escapeHtml(t.contaNome)}</span>
+                  <span class="trans-account-tag" style="background:${safeColor(t.contaCor, '#6366f1')};">${escapeHtml(t.contaNome)}</span>
                   <span>Vencimento: <strong>${formatDateOnly(t.dataVencimento)}</strong></span>
                   ${t.parcelado ? `<span style="background:var(--bg-card);padding:1px 6px;border-radius:4px;border:1px solid var(--border-color);">Parcela ${t.numeroParcela}/${t.totalParcelas}</span>` : ''}
                 </div>
@@ -4230,7 +4397,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const dateInput = document.getElementById('transDataVencimento');
     if (dateInput && !dateInput.value) {
-      dateInput.value = new Date().toISOString().split('T')[0];
+      dateInput.value = localISODate();
     }
 
     transactionModal.classList.remove('hidden');
@@ -4450,19 +4617,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // ==========================================================================
-  // EMPTY STATES COM CTA
+  // EMPTY STATES COM CTA (delegação de cliques)
   // ==========================================================================
-  const enhanceEmptyStates = () => {
-    const map = [
-      { id: 'dashTasksList', html: '<div class="dash-empty">Nenhuma tarefa para hoje.<br><button type="button" class="btn btn-primary btn-sm btn-cta-new-task">+ Criar tarefa</button></div>' },
-      { id: 'dashHabitsList', html: '<div class="dash-empty">Sem hábitos ainda.<br><button type="button" class="btn btn-primary btn-sm" id="btnOpenNewHabitEmpty">+ Novo hábito</button></div>' },
-      { id: 'dashGoalsList', html: '<div class="dash-empty">Nenhuma meta cadastrada.<br><button type="button" class="btn btn-primary btn-sm" id="btnOpenNewGoalEmpty">+ Nova meta</button></div>' },
-      { id: 'dashAccountsGrid', html: '<div class="dash-empty">Nenhuma conta.<br><button type="button" class="btn btn-primary btn-sm" id="btnDashAddAccountEmpty">+ Nova conta</button></div>' },
-      { id: 'dashSportsList', html: '<div class="dash-empty">Sem eventos agora. Tente outro filtro ou recarregue.</div>' }
-    ];
-    // CTAs são religados nos handlers de empty dinâmicos dos módulos
-  };
-
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (!(t instanceof Element)) return;
@@ -4516,7 +4672,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(updateKanbanWip, 1200);
 
   // Hook no final do boot
-  const _origCheckInitialAuth = typeof checkInitialAuth === 'function' ? checkInitialAuth : null;
   checkInitialAuth();
   maybeShowOnboarding();
 });

@@ -362,11 +362,11 @@ class TaskServiceTest {
 
             taskService.atualizarStatus(1L, true);
 
-            verify(taskRepository, times(2)).save(taskCaptor.capture());
+            verify(taskRepository, times(3)).save(taskCaptor.capture());
             List<Task> savedTasks = taskCaptor.getAllValues();
-            assertThat(savedTasks).hasSize(2);
+            assertThat(savedTasks).hasSize(3);
 
-            Task proxima = savedTasks.get(1);
+            Task proxima = savedTasks.get(2);
             assertThat(proxima.getTitulo()).isEqualTo(task.getTitulo());
             assertThat(proxima.getConcluida()).isFalse();
             assertThat(proxima.getStatus()).isEqualTo(StatusTarefa.A_FAZER);

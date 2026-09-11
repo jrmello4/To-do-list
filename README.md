@@ -1,6 +1,6 @@
 # LifeHub — Plataforma Fullstack (To-do List & Vida Pessoal)
 
-Aplicação **Java 17 + Spring Boot 3.4.1** com interface web integrada, evoluída de um To-do List (Kanban, Pomodoro, tags, anexos, PDF) para um **LifeHub**: finanças, hábitos, notas, metas, calendário unificado e radar multi-esportes.
+Aplicação **Java 17 + Spring Boot 3.4.1** com interface web integrada, evoluída de um To-do List (Kanban, Pomodoro, tags, anexos, PDF) para um **LifeHub**: finanças, hábitos, notas, metas, calendário unificado e radar multi-esportes. Também roda como **app desktop** (Electron + servidor local com login automático).
 
 ---
 
@@ -31,6 +31,25 @@ Aplicação **Java 17 + Spring Boot 3.4.1** com interface web integrada, evoluí
 ---
 
 ## Como executar
+
+### Desktop (app local, sem login) — recomendado para uso pessoal
+O app roda como um programa desktop: uma janela nativa (Electron) que inicia o servidor Spring Boot **apenas em 127.0.0.1:8791**, com banco **persistente** em `~/.lifehub/` e **login automático** (não há tela de autenticação).
+
+```powershell
+# 1) Gere o JAR do servidor
+.\mvnw.cmd package -DskipTests
+
+# 2) Rode a janela desktop
+cd desktop
+npm install        # só na primeira vez
+npm start
+```
+
+- Perfil usado: `desktop` (`application-desktop.yml`) — H2 em arquivo, sem Swagger/H2 console, CORS só para localhost.
+- O endpoint `POST /api/auth/desktop` existe **apenas** nesse perfil e emite o token do proprietário local automaticamente.
+- Para gerar um instalador Windows: `npm run dist` (produz `output/desktop`).
+
+Requisitos: Java 17+ (no PATH ou `JAVA_HOME`); Node/npm apenas para empacotar/executar o Electron.
 
 ### Dev (H2 em memória)
 ```powershell
@@ -87,6 +106,7 @@ java -jar target/to-do-list-1.0.0.jar
 | POST | `/api/auth/cadastro` | Não |
 | POST | `/api/auth/login` | Não |
 | POST | `/api/auth/convidado` | Não |
+| POST | `/api/auth/desktop` | Não (apenas perfil `desktop`) |
 | GET | `/api/auth/me` | Sim |
 
 ### Módulos LifeHub (todos exigem Bearer)
@@ -126,6 +146,8 @@ Configuração em `application.yml` → `app.esportes` (ligas e esportes do dia)
 | V1–V5 | Tasks, usuários, subtarefas, pomodoro, tags/anexos |
 | V6–V9 | Finanças, hábitos/notas, metas/calendário, preferências esportivas |
 | V10 | Índices de consulta (user_id, datas, status) |
+| V11–V12 | Limite mensal por categoria, alertas esportivos e auto-aporte de metas |
+| V13 | Flag de recorrência já gerada (anti-duplicação) e flag de transferência (exclusão de relatórios) |
 
 Dev e prod usam o mesmo caminho de migrations (`ddl-auto: validate`).
 

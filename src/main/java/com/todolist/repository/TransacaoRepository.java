@@ -32,14 +32,14 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
     List<Transacao> findByGrupoParcelaIdAndUsuarioIdOrderByNumeroParcelaAsc(
             String grupoParcelaId, Long usuarioId);
 
-    @Query("SELECT COALESCE(SUM(t.valor), 0) FROM Transacao t WHERE t.usuario.id = :usuarioId AND t.tipo = :tipo AND t.dataVencimento BETWEEN :inicio AND :fim")
+    @Query("SELECT COALESCE(SUM(t.valor), 0) FROM Transacao t WHERE t.usuario.id = :usuarioId AND t.tipo = :tipo AND t.transferencia = false AND t.dataVencimento BETWEEN :inicio AND :fim")
     BigDecimal sumValorByUsuarioIdAndTipoAndDataVencimentoBetween(
             @Param("usuarioId") Long usuarioId,
             @Param("tipo") TipoTransacao tipo,
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim);
 
-    @Query("SELECT COALESCE(SUM(t.valor), 0) FROM Transacao t WHERE t.usuario.id = :usuarioId AND t.tipo = :tipo AND t.status = :status AND t.dataVencimento BETWEEN :inicio AND :fim")
+    @Query("SELECT COALESCE(SUM(t.valor), 0) FROM Transacao t WHERE t.usuario.id = :usuarioId AND t.tipo = :tipo AND t.status = :status AND t.transferencia = false AND t.dataVencimento BETWEEN :inicio AND :fim")
     BigDecimal sumValorByUsuarioIdAndTipoAndStatusAndDataVencimentoBetween(
             @Param("usuarioId") Long usuarioId,
             @Param("tipo") TipoTransacao tipo,
